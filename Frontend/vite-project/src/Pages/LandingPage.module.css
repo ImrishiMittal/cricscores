@@ -1,0 +1,123 @@
+* {
+    box-sizing: border-box;
+  }
+  
+  body {
+    margin: 0;
+    overflow-x: hidden;
+  }
+  
+.container {
+    min-height: 100vh;
+    background-color: #000;
+    color: white;
+    display: flex;
+    flex-direction: column; /* mobile default */
+    padding: 20px;
+  }
+  
+  /* Left content */
+  .leftSection {
+    margin-top: -20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  /* Right image */
+  .rightSection {
+    margin-top: 40px;
+    text-align: center;
+  }
+  
+  .rightSection img {
+    margin-top: -40px;
+    width: 100%;
+    min-width: 400px;
+}
+
+
+@media (min-width: 768px) {
+    .container {
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;  
+        gap: 120px;               
+        top: 0;
+        bottom: 0;
+        /* padding: 40px; */
+    }
+    
+    .leftSection {
+        align-items: flex-start;
+        text-align: left;
+        margin-top: -20px;
+    }
+    
+    .rightSection {
+        margin-top: 0;
+    }
+    
+    .rightSection img {
+        min-width: 400px;
+      }
+      
+}
+  
+  
+  .title {
+    font-size: 56px;
+    font-weight: bold;
+  }
+  
+  .title span {
+    color: #22c55e;
+  }
+  
+  .tagline {
+    margin-top: -14px;
+    color: #ccc;
+    font-size: 24px;
+  }
+  
+  .authLinks {
+    margin-top: 1px;
+    display: flex;
+    gap: 16px;
+  }
+
+  .login, .signup:hover{
+    cursor: pointer;
+  }
+  
+  .login {
+    background: transparent;
+    border: none;
+    color: rgb(209, 207, 207);
+    font-size: 22px;
+}
+.login:hover{
+      color: rgb(255, 255, 255);
+  }
+  
+  .signup {
+    background: transparent;
+    border: none;
+    color: #22c55e;
+    font-size: 22px;
+}
+
+.signup:hover{
+    color: #00ff5e;
+  }
+  
+  .rightSection {
+    margin-top: 40px;
+    text-align: center;
+  }
+  
+  .rightSection img {
+    width: 180px;
+  }
+  
