@@ -121,4 +121,42 @@
     color: #00ff5e;
     text-decoration: underline;
   }
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  
+  .submitBtn {
+    background: #22c55e;
+    color: black;
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: 0.2s ease;
+  }
+  
+  .submitBtn:hover {
+    background: #00ff5e;
+  }
+  
+  .socials {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    font-size: 22px;
+    margin: 10px 0;
+  }
+  
+  .socials i {
+    cursor: pointer;
+    transition: 0.2s ease;
+  }
+  
+  .socials i:hover {
+    transform: scale(1.15);
+    color: #22c55e;
+  }
   

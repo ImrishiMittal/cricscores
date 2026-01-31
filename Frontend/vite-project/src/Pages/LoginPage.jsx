@@ -2,15 +2,37 @@ import styles from "./Auth.module.css";
 import { useNavigate } from "react-router-dom";
 
 function LoginPage() {
-  const navigate = useNavigate();   // ✅ INSIDE component
+  const navigate = useNavigate();
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    // later: backend auth
+    console.log("Login submitted");
+  };
 
   return (
     <div className={styles.container}>
       <div className={styles.card}>
         <div className={styles.badge}>LOG IN</div>
 
-        <input className={styles.input} placeholder="Email" />
-        <input className={styles.input} placeholder="Password" type="password" />
+        <form onSubmit={handleLogin} className={styles.form}>
+          <input
+            className={styles.input}
+            placeholder="Email"
+            type="email"
+            required
+          />
+          <input
+            className={styles.input}
+            placeholder="Password"
+            type="password"
+            required
+          />
+
+          <button type="submit" className={styles.submitBtn}>
+            Log In
+          </button>
+        </form>
 
         <div className={styles.or}>OR</div>
 
