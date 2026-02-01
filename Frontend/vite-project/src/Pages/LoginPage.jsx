@@ -8,6 +8,7 @@ function LoginPage() {
     e.preventDefault();
     // later: backend auth
     console.log("Login submitted");
+    navigate("/setup");
   };
 
   return (

@@ -8,8 +8,9 @@ function SignupPage() {
     e.preventDefault();
     // later: validation + backend API
     console.log("Signup submitted");
+    navigate("/setup");
   };
-
+  
   return (
     <div className={styles.container}>
       <div className={styles.card}>
@@ -53,6 +54,7 @@ function SignupPage() {
         </div>
       </div>
     </div>
+    
   );
 }
 

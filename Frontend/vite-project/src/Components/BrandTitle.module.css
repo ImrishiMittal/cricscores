@@ -1,0 +1,20 @@
+.title {
+    font-weight: bold;
+  }
+  
+  .title span {
+    color: #22c55e;
+  }
+  
+  .large {
+    font-size: 48px;
+  }
+  
+  .medium {
+    font-size: 32px;
+  }
+  
+  .small {
+    font-size: 22px;
+  }
+  

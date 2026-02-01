@@ -1,0 +1,182 @@
+.container {
+    min-height: 100vh;
+    background: #000;
+    padding: 20px;
+    color: white;
+  }
+  
+  .card {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow: hidden;
+  }
+  
+  .sectionTitle {
+    text-align: center;
+    margin-bottom: 10px;
+    background-color: #22c55e;
+    border-radius: 20px;
+    border: 1px solid rgb(255, 255, 255);
+    padding: 4px;
+  }
+  
+  .input {
+    padding: 12px;
+    border: 1px solid #555;
+    background: transparent;
+    color: white;
+  }
+  
+  .tossBtn {
+    background: #444;
+    padding: 12px;
+    border: none;
+    color: white;
+  }
+  
+  .choiceRow {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .choiceBtn {
+    flex: 1;
+    padding: 12px;
+    background: #343232;
+    border: none;
+    color: white;
+  }
+  .choiceBtn:hover{
+    background: #151414;
+  }
+  .choiceBtn,.tossBtn:hover{
+    cursor: pointer;
+  }
+
+  .extrasRow {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .startBtn {
+    margin-top: 10px;
+    padding: 14px;
+    background: #22c55e;
+    border: none;
+    font-weight: bold;
+    color: rgb(0, 0, 0);
+  }
+  /* RULE BOX CONTAINER */
+.ruleBox {
+    margin-top: 16px;
+    padding: 14px 16px;
+    background: #111;
+    border: 1px solid #22c55e;
+    border-radius: 10px;
+    color: white;
+    animation: fadeIn 0.2s ease-in-out;
+  }
+  
+  /* RULE TITLE */
+  .ruleBox p {
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #22c55e;
+  }
+  
+  /* RADIO ROW */
+  .ruleBox label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  /* RADIO BUTTON STYLE */
+  .ruleBox input[type="radio"] {
+    accent-color: #22c55e;
+    transform: scale(1.1);
+  }
+  
+  /* ANIMATION */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+
+  .extrasRow {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+  }
+  
+  .extrasRow label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  
+  .extrasRow input[type="checkbox"] {
+    accent-color: #22c55e;
+    transform: scale(1.1);
+  }
+  
+  .tossCallRow {
+    margin-top: 20px;
+    padding: 14px 16px;
+    background: #111;
+    border: 1px solid #22c55e;
+    border-radius: 10px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .tossCallRow p {
+    margin: 0;
+    font-weight: 600;
+    font-size: 16px;
+    color: #22c55e;
+  }
+  
+  .select {
+    width: 100%;
+    padding: 10px 12px;
+    background: #000;
+    color: white;
+    border: 1px solid #555;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: 0.2s ease;
+  }
+  
+  .select:focus {
+    border-color: #22c55e;
+    box-shadow: 0 0 6px #22c55e;
+  }
+  
+  @media (min-width: 600px) {
+    .tossCallRow {
+      flex-direction: row;
+      align-items: center;
+    }
+  
+    .tossCallRow p {
+      min-width: 120px;
+    }
+  
+    .select {
+      width: auto;
+      flex: 1;
+    }
+  }
+  
