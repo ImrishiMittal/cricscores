@@ -1,0 +1,161 @@
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modalBox {
+    background: #1a1a1a;
+    padding: 30px;
+    border-radius: 16px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 0 25px rgba(0,255,120,0.3);
+    animation: popIn 0.25s ease-out;
+  }
+  
+  .modalTitle {
+    text-align: center;
+    color: #00ff88;
+  }
+  
+  .modalBox input {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #0f0f0f;
+    color: white;
+  }
+  
+  .modalBox button {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #00ff88;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  @keyframes popIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  
+
+.container {
+    background:#0f0f0f;
+    color:white;
+    min-height:100vh;
+    padding:20px;
+    text-align:center;
+  }
+  
+  .scoreCard {
+    margin-top:10px;
+  }
+  
+  .teamName {
+    font-size:18px;
+    color:#aaa;
+  }
+  
+  .bigScore {
+    font-size:60px;
+    color:#00ff88;
+    margin:5px 0 15px;
+  }
+  
+  .infoStrip {
+    background:#1b1b1b;
+    padding:12px;
+    border-radius:12px;
+    display:flex;
+    justify-content:center;
+    gap:25px;
+    align-items:center;
+  }
+  
+  .label {
+    font-size:15px;
+    color:#fcfafa;
+    padding-right: 12px;
+  }
+  
+  .value {
+    font-size:20px;
+    font-weight:bold;
+    color:#00ff88;
+  }
+  
+  .divider {
+    width:2px;
+    height:25px;
+    background:#333;
+  }
+  
+  .overBalls {
+    margin-top:15px;
+    display:flex;
+    justify-content:center;
+    gap:12px;
+  }
+  
+  .ball {
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    border:2px solid #00ff88;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  
+  .batsmenRow {
+    display:flex;
+    justify-content:space-between;
+    margin:5px 0;
+    padding:10px 20px;
+    background:#1a1a1a;
+    border-radius:12px;
+  }
+  
+  .runPanel {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 15px;
+    justify-items: center;
+    margin-top: 20px;
+  }
+  
+  
+  .runPanel button {
+    width:55px;
+    height:55px;
+    border-radius:50%;
+    border:none;
+    background:#00ff88;
+    font-weight:bold;
+  }
+  
+  /* Tablet */
+@media (max-width: 900px) {
+    .runPanel {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  
+  /* Mobile */
+  @media (max-width: 600px) {
+    .runPanel {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
