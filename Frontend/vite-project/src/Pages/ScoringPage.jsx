@@ -8,6 +8,10 @@ import OverBalls from "../Components/Scoring/OverBalls";
 import BatsmenRow from "../Components/Scoring/BatsmenRow";
 import RunControls from "../Components/Scoring/RunControls";
 import WicketButton from "../Components/Scoring/WicketButton";
+import styles from "../Components/Scoring/scoring.module.css";
+import StartInningsModal from "../Components/Scoring/StartInningsModal";
+
+
 
 function ScoringPage() {
   const location = useLocation();
@@ -19,19 +23,40 @@ function ScoringPage() {
   const [overs, setOvers] = useState(0);
   const [ballHistory, setBallHistory] = useState([]);
 
+  const [showDialog, setShowDialog] = useState(true);
+const [strikerName, setStrikerName] = useState("");
+const [nonStrikerName, setNonStrikerName] = useState("");
+const [bowler, setBowler] = useState("");
+
+
   const formatOvers = () => `${overs}.${balls}`;
 
   return (
-    <div>
-      <BrandTitle size="small" />
-      <ScoreHeader team={matchData.battingFirst} score={score} wickets={wickets} />
-      <InfoStrip overs={formatOvers()} bowler="Bowler Name" />
-      <OverBalls history={ballHistory} />
-      <BatsmenRow striker={{}} nonStriker={{}} />
-      <RunControls onRun={(r) => {}} />
-      <WicketButton onWicket={() => {}} />
+    <div className={styles.container}>
+      {showDialog && (
+        <StartInningsModal
+          onStart={(s, ns, b) => {
+            setStrikerName(s);
+            setNonStrikerName(ns);
+            setBowler(b);
+            setShowDialog(false);
+          }}
+        />
+      )}
+  
+      {!showDialog && (
+        <>
+          <BrandTitle size="small" />
+          <ScoreHeader team={matchData.battingFirst} score={score} wickets={wickets} />
+          <InfoStrip overs={formatOvers()} bowler={bowler} />
+          <OverBalls history={ballHistory} />
+          <BatsmenRow striker={{ name: strikerName }} nonStriker={{ name: nonStrikerName }} />
+          <RunControls onRun={handleRun} />
+          <WicketButton onWicket={handleWicket} />
+        </>
+      )}
     </div>
-  );
+  );  
 }
 
 export default ScoringPage;

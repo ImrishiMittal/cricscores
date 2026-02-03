@@ -1,3 +1,8 @@
+.pageContent {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  
 .modalOverlay {
     position: fixed;
     inset: 0;
