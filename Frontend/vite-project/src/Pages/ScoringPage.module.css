@@ -228,20 +228,27 @@
 
   
   .wicketBtn {
-    width: 70px;
-    height: 55px;
-    border-radius: 12px;
+    width: 80px;
+    height: 58px;
+    border-radius: 14px;
     border: none;
-    background: #fd1212;
+    background: linear-gradient(145deg, #ff1a1a, #b80000);
     color: white;
     font-weight: bold;
+    letter-spacing: 1px;
     cursor: pointer;
-    transition: 0.2s;
+    transition: all 0.2s ease;
     margin-top: 12px;
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.4);
   }
   
   .wicketBtn:hover {
     transform: scale(1.08);
-    box-shadow: 0 0 9px #bd0000;
+    box-shadow: 0 0 16px rgba(255, 0, 0, 0.8);
+  }
+  
+  .wicketBtn:active {
+    transform: scale(0.95);
+    box-shadow: 0 0 6px rgba(255, 0, 0, 0.6);
   }
   
