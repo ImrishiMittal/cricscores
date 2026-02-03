@@ -159,3 +159,89 @@
     }
   }
   
+
+  .modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modalBox {
+    background: linear-gradient(145deg, #1b1b1b, #141414);
+    padding: 30px;
+    border-radius: 16px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: 0 0 30px rgba(0,255,120,0.25);
+    border: 1px solid #00ff8840;
+    animation: popIn 0.25s ease-out;
+  }
+  
+  .modalBox h2 {
+    text-align: center;
+    color: #00ff88;
+    font-size: 20px;
+  }
+  
+  .modalBox input {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #0f0f0f;
+    color: white;
+    font-size: 14px;
+    outline: none;
+    border: 1px solid #333;
+  }
+  
+  .modalBox input:focus {
+    border: 1px solid #00ff88;
+  }
+  
+  .modalBox button {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #00ff88;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  
+  .modalBox button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 12px #00ff88;
+  }
+  
+  @keyframes popIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  
+  .wicketBtn {
+    width: 70px;
+    height: 55px;
+    border-radius: 12px;
+    border: none;
+    background: #fd1212;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-top: 12px;
+  }
+  
+  .wicketBtn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 9px #bd0000;
+  }
+  

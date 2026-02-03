@@ -22,6 +22,12 @@ function ScoringPage() {
   const [nonStrikerName, setNonStrikerName] = useState("");
   const [bowler, setBowler] = useState("");
 
+  const [showNewBatsmanPopup, setShowNewBatsmanPopup] = useState(false);
+  const [newBatsmanName, setNewBatsmanName] = useState("");
+
+  const [showBowlerPopup, setShowBowlerPopup] = useState(false);
+  const [newBowlerName, setNewBowlerName] = useState("");
+
   const formatOvers = () => `${overs}.${balls}`;
 
   const swapStrike = () => {
@@ -42,6 +48,7 @@ function ScoringPage() {
       setOvers((prev) => prev + 1);
       setBalls(0);
       swapStrike();
+      setShowBowlerPopup(true);
     } else setBalls(newBallCount);
 
     if (runs % 2 === 1) swapStrike();
@@ -61,6 +68,13 @@ function ScoringPage() {
     setShowDialog(false);
   };
 
+  const handleWicket = () => {
+    setWickets((prev) => prev + 1);
+    setShowNewBatsmanPopup(true);
+
+    setBallHistory((prev) => [...prev, { type: "wicket", runs: 0 }]);
+  };
+
   const striker = players[strikerIndex] || {};
   const nonStriker = players[nonStrikerIndex] || {};
 
@@ -69,39 +83,40 @@ function ScoringPage() {
       <BrandTitle size="small" />
 
       {showDialog && (
-  <div className={styles.modalOverlay}>
-    <div className={styles.modalBox}>
-      <h2 className={styles.modalTitle}>Start Innings</h2>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalBox}>
+            <h2 className={styles.modalTitle}>Start Innings</h2>
 
-      <input
-        type="text"
-        placeholder="Striker Name"
-        onChange={(e) => setStrikerName(e.target.value)}
-      />
+            <input
+              type="text"
+              placeholder="Striker Name"
+              onChange={(e) => setStrikerName(e.target.value)}
+            />
 
-      <input
-        type="text"
-        placeholder="Non-Striker Name"
-        onChange={(e) => setNonStrikerName(e.target.value)}
-      />
+            <input
+              type="text"
+              placeholder="Non-Striker Name"
+              onChange={(e) => setNonStrikerName(e.target.value)}
+            />
 
-      <input
-        type="text"
-        placeholder="Opening Bowler"
-        onChange={(e) => setBowler(e.target.value)}
-      />
+            <input
+              type="text"
+              placeholder="Opening Bowler"
+              onChange={(e) => setBowler(e.target.value)}
+            />
 
-      <button onClick={startInnings}>Start Match</button>
-    </div>
-  </div>
-)}
-
+            <button onClick={startInnings}>Start Match</button>
+          </div>
+        </div>
+      )}
 
       {!showDialog && (
         <>
           <div className={styles.scoreCard}>
             <h2 className={styles.teamName}>{matchData.battingFirst}</h2>
-            <h1 className={styles.bigScore}>{score}/{wickets}</h1>
+            <h1 className={styles.bigScore}>
+              {score}/{wickets}
+            </h1>
           </div>
 
           <div className={styles.infoStrip}>
@@ -118,26 +133,87 @@ function ScoringPage() {
 
           <div className={styles.overBalls}>
             {ballHistory.slice(-6).map((b, i) => (
-              <div key={i} className={styles.ball}>{b.runs}</div>
+              <div key={i} className={styles.ball}>
+                {b.runs}
+              </div>
             ))}
           </div>
 
           <div className={styles.batsmenRow}>
             <div>
               <h3>{striker.name} *</h3>
-              <p>{striker.runs} ({striker.balls})</p>
+              <p>
+                {striker.runs} ({striker.balls})
+              </p>
             </div>
             <div>
               <h3>{nonStriker.name}</h3>
-              <p>{nonStriker.runs} ({nonStriker.balls})</p>
+              <p>
+                {nonStriker.runs} ({nonStriker.balls})
+              </p>
             </div>
           </div>
 
           <div className={styles.runPanel}>
-            {[0,1,2,3,4,5,6].map(r => (
-              <button key={r} onClick={() => handleRun(r)}>{r}</button>
+            {[0, 1, 2, 3, 4, 5, 6].map((r) => (
+              <button key={r} onClick={() => handleRun(r)}>
+                {r}
+              </button>
             ))}
           </div>
+
+          <button className={styles.wicketBtn} onClick={handleWicket}>
+            WICKET
+          </button>
+
+          {showNewBatsmanPopup && (
+            <div className={styles.modalOverlay}>
+              <div className={styles.modalBox}>
+                <h2>New Batsman</h2>
+                <input
+                  placeholder="Enter batsman name"
+                  onChange={(e) => setNewBatsmanName(e.target.value)}
+                />
+                <button
+                  onClick={() => {
+                    if (!newBatsmanName) return;
+
+                    const updatedPlayers = [...players];
+                    updatedPlayers[strikerIndex] = {
+                      name: newBatsmanName,
+                      runs: 0,
+                      balls: 0,
+                    };
+                    setPlayers(updatedPlayers);
+                    setShowNewBatsmanPopup(false);
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showBowlerPopup && (
+            <div className={styles.modalOverlay}>
+              <div className={styles.modalBox}>
+                <h2>New Bowler</h2>
+                <input
+                  placeholder="Enter bowler name"
+                  onChange={(e) => setNewBowlerName(e.target.value)}
+                />
+                <button
+                  onClick={() => {
+                    if (!newBowlerName) return;
+                    setBowler(newBowlerName);
+                    setShowBowlerPopup(false);
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -145,4 +221,3 @@ function ScoringPage() {
 }
 
 export default ScoringPage;
-
