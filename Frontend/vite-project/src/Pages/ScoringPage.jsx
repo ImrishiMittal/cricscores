@@ -10,6 +10,7 @@ import RunControls from "../Components/Scoring/RunControls";
 import WicketButton from "../Components/Scoring/WicketButton";
 import styles from "../Components/Scoring/scoring.module.css";
 import StartInningsModal from "../Components/Scoring/StartInningsModal";
+import NewBatsmanModal from "../Components/Scoring/NewBatsmanModal";
 
 function ScoringPage() {
   const location = useLocation();
@@ -22,14 +23,20 @@ function ScoringPage() {
   const [ballHistory, setBallHistory] = useState([]);
 
   const [showDialog, setShowDialog] = useState(true);
-  const [strikerName, setStrikerName] = useState("");
-  const [nonStrikerName, setNonStrikerName] = useState("");
+  const [strikerIndex, setStrikerIndex] = useState(0);
+  const [nonStrikerIndex, setNonStrikerIndex] = useState(1);
   const [bowler, setBowler] = useState("");
   const formatOvers = () => `${overs}.${balls}`;
 
   const [players, setPlayers] = useState([]);
-  const [strikerIndex, setStrikerIndex] = useState(0);
-  const [nonStrikerIndex, setNonStrikerIndex] = useState(1);
+
+  const [isWicketPending, setIsWicketPending] = useState(false);
+  const [outBatsman, setOutBatsman] = useState(null);
+
+  const [partnershipRuns, setPartnershipRuns] = useState(0);
+const [partnershipBalls, setPartnershipBalls] = useState(0);
+
+  const [fallOfWickets, setFallOfWickets] = useState([]);
 
   const calculateRunRate = () => {
     const totalOvers = overs + balls / 6;
@@ -37,53 +44,84 @@ function ScoringPage() {
     return (score / totalOvers).toFixed(2);
   };
   const swapStrike = () => {
-    setStrikerIndex(prev => (prev === 0 ? 1 : 0));
-    setNonStrikerIndex(prev => (prev === 0 ? 1 : 0));
+    setStrikerIndex(prev => {
+      setNonStrikerIndex(prev);
+      return prev === 0 ? 1 : 0;
+    });
   };
   
+  
+
   const handleRun = (runs) => {
-    setScore(prev => prev + runs);
-  
-    const updated = [...players];
-    updated[strikerIndex].runs += runs;
-    updated[strikerIndex].balls += 1;
-    setPlayers(updated);
-  
+    setPartnershipRuns((prev) => prev + runs);
+    setPartnershipBalls(prev => prev + 1);
+    setScore((prev) => prev + runs);
+    setPlayers((prev) => {
+      const updated = [...prev];
+      updated[strikerIndex] = {
+        ...updated[strikerIndex],
+        runs: updated[strikerIndex].runs + runs,
+        balls: updated[strikerIndex].balls + 1,
+      };
+      return updated;
+    });
+
     let newBall = balls + 1;
-  
+
     // 🟢 Odd runs → swap strike
     if (runs % 2 === 1) {
       swapStrike();
     }
-  
+
     // 🟢 Over complete
     if (newBall === 6) {
-      setOvers(prev => prev + 1);
+      setOvers((prev) => prev + 1);
       setBalls(0);
-  
+
       // swap strike at end of over
       swapStrike();
     } else {
       setBalls(newBall);
     }
-  
-    setBallHistory(prev => [...prev, { runs }]);
+
+    setBallHistory((prev) => [...prev, { runs }]);
   };
-  
 
   const handleWicket = () => {
+    setFallOfWickets((prev) => [...prev, `${wickets + 1}-${score}`]);
+
+    setPartnershipRuns(0);
+    setPartnershipBalls(0);
+    
     setWickets((prev) => prev + 1);
 
     let newBall = balls + 1;
-
     if (newBall === 6) {
       setOvers((prev) => prev + 1);
       setBalls(0);
+      swapStrike(); // over finished → strike changes
     } else {
       setBalls(newBall);
     }
 
-    setBallHistory((prev) => [...prev, { type: "wicket", runs: 0 }]);
+    setBallHistory((prev) => [...prev, { type: "W" }]);
+
+    // mark striker index as out
+    setOutBatsman(strikerIndex);
+    setIsWicketPending(true);
+  };
+
+  const handleNewBatsman = (name) => {
+    const updated = [...players];
+
+    updated[outBatsman] = {
+      name,
+      runs: 0,
+      balls: 0,
+    };
+
+    setPlayers(updated);
+    setIsWicketPending(false);
   };
 
   return (
@@ -116,15 +154,22 @@ function ScoringPage() {
           />
 
           <OverBalls history={ballHistory} />
-          <BatsmenRow
+          {players.length >= 2 && (
+            <BatsmenRow
             striker={players[strikerIndex]}
             nonStriker={players[nonStrikerIndex]}
+            partnershipRuns={partnershipRuns}
+            partnershipBalls={partnershipBalls}
           />
+          
+          )}
 
-          <RunControls onRun={handleRun} />
+          <RunControls onRun={handleRun} disabled={isWicketPending} />
+
           <WicketButton onWicket={handleWicket} />
         </>
       )}
+      {isWicketPending && <NewBatsmanModal onConfirm={handleNewBatsman} />}
     </div>
   );
 }
