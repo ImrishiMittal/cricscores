@@ -1,30 +1,25 @@
 import { useState } from "react";
 import styles from "./scoring.module.css";
 
-function NewBatsmanModal({ onConfirm }) {
+function NewBowlerModal({ onConfirm }) {
   const [name, setName] = useState("");
 
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalBox}>
-        <h2>New Batsman</h2>
-
+        <h2>New Bowler</h2>
         <input
-          placeholder="Enter batsman name"
+          placeholder="Enter bowler name"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-
-        <button
-          onClick={() => {
-            if (name.trim()) onConfirm(name);
-          }}
-        >
-          Confirm
+        <button onClick={() => name.trim() && onConfirm(name)}>
+          Start Over
         </button>
       </div>
     </div>
   );
 }
 
-export default NewBatsmanModal;
+export default NewBowlerModal;
+

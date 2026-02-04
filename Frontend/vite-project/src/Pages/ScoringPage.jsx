@@ -11,6 +11,8 @@ import WicketButton from "../Components/Scoring/WicketButton";
 import styles from "../Components/Scoring/scoring.module.css";
 import StartInningsModal from "../Components/Scoring/StartInningsModal";
 import NewBatsmanModal from "../Components/Scoring/NewBatsmanModal";
+import NewBowlerModal from "../Components/Scoring/NewBowlerModal";
+
 
 function ScoringPage() {
   const location = useLocation();
@@ -34,7 +36,11 @@ function ScoringPage() {
   const [outBatsman, setOutBatsman] = useState(null);
 
   const [partnershipRuns, setPartnershipRuns] = useState(0);
-const [partnershipBalls, setPartnershipBalls] = useState(0);
+  const [partnershipBalls, setPartnershipBalls] = useState(0);
+
+  const [bowlers, setBowlers] = useState([]);
+  const [currentBowlerIndex, setCurrentBowlerIndex] = useState(0);
+  const [isNewBowlerPending, setIsNewBowlerPending] = useState(false);
 
   const [fallOfWickets, setFallOfWickets] = useState([]);
 
@@ -44,17 +50,15 @@ const [partnershipBalls, setPartnershipBalls] = useState(0);
     return (score / totalOvers).toFixed(2);
   };
   const swapStrike = () => {
-    setStrikerIndex(prev => {
+    setStrikerIndex((prev) => {
       setNonStrikerIndex(prev);
       return prev === 0 ? 1 : 0;
     });
   };
-  
-  
 
   const handleRun = (runs) => {
     setPartnershipRuns((prev) => prev + runs);
-    setPartnershipBalls(prev => prev + 1);
+    setPartnershipBalls((prev) => prev + 1);
     setScore((prev) => prev + runs);
     setPlayers((prev) => {
       const updated = [...prev];
@@ -85,6 +89,20 @@ const [partnershipBalls, setPartnershipBalls] = useState(0);
     }
 
     setBallHistory((prev) => [...prev, { runs }]);
+
+    setBowlers((prev) => {
+      const updated = [...prev];
+      updated[currentBowlerIndex].runs += runs;
+      updated[currentBowlerIndex].balls += 1;
+
+      if (updated[currentBowlerIndex].balls === 6) {
+        updated[currentBowlerIndex].overs += 1;
+        updated[currentBowlerIndex].balls = 0;
+        setIsNewBowlerPending(true); // trigger modal
+      }
+
+      return updated;
+    });
   };
 
   const handleWicket = () => {
@@ -92,7 +110,7 @@ const [partnershipBalls, setPartnershipBalls] = useState(0);
 
     setPartnershipRuns(0);
     setPartnershipBalls(0);
-    
+
     setWickets((prev) => prev + 1);
 
     let newBall = balls + 1;
@@ -109,6 +127,19 @@ const [partnershipBalls, setPartnershipBalls] = useState(0);
     // mark striker index as out
     setOutBatsman(strikerIndex);
     setIsWicketPending(true);
+    setBowlers((prev) => {
+      const updated = [...prev];
+      updated[currentBowlerIndex].wickets += 1;
+      updated[currentBowlerIndex].balls += 1;
+
+      if (updated[currentBowlerIndex].balls === 6) {
+        updated[currentBowlerIndex].overs += 1;
+        updated[currentBowlerIndex].balls = 0;
+        setIsNewBowlerPending(true);
+      }
+
+      return updated;
+    });
   };
 
   const handleNewBatsman = (name) => {
@@ -124,6 +155,15 @@ const [partnershipBalls, setPartnershipBalls] = useState(0);
     setIsWicketPending(false);
   };
 
+  const handleNewBowler = (name) => {
+    setBowlers((prev) => [
+      ...prev,
+      { name, overs: 0, balls: 0, runs: 0, wickets: 0 },
+    ]);
+    setCurrentBowlerIndex((prev) => prev + 1);
+    setIsNewBowlerPending(false);
+  };
+
   return (
     <div className={styles.container}>
       {showDialog && (
@@ -133,7 +173,7 @@ const [partnershipBalls, setPartnershipBalls] = useState(0);
               { name: s, runs: 0, balls: 0 },
               { name: ns, runs: 0, balls: 0 },
             ]);
-            setBowler(b);
+            setBowlers([{ name: b, overs: 0, balls: 0, runs: 0, wickets: 0 }]);
             setShowDialog(false);
           }}
         />
@@ -149,19 +189,18 @@ const [partnershipBalls, setPartnershipBalls] = useState(0);
           />
           <InfoStrip
             overs={formatOvers()}
-            bowler={bowler}
+            bowler={`${bowlers[currentBowlerIndex]?.name} ${bowlers[currentBowlerIndex]?.wickets}-${bowlers[currentBowlerIndex]?.runs}`}
             runRate={calculateRunRate()}
           />
 
           <OverBalls history={ballHistory} />
           {players.length >= 2 && (
             <BatsmenRow
-            striker={players[strikerIndex]}
-            nonStriker={players[nonStrikerIndex]}
-            partnershipRuns={partnershipRuns}
-            partnershipBalls={partnershipBalls}
-          />
-          
+              striker={players[strikerIndex]}
+              nonStriker={players[nonStrikerIndex]}
+              partnershipRuns={partnershipRuns}
+              partnershipBalls={partnershipBalls}
+            />
           )}
 
           <RunControls onRun={handleRun} disabled={isWicketPending} />
@@ -170,6 +209,7 @@ const [partnershipBalls, setPartnershipBalls] = useState(0);
         </>
       )}
       {isWicketPending && <NewBatsmanModal onConfirm={handleNewBatsman} />}
+      {isNewBowlerPending && <NewBowlerModal onConfirm={handleNewBowler} />}
     </div>
   );
 }
