@@ -35,6 +35,10 @@
     border: none;
     color: white;
   }
+
+  .tossBtn:hover{
+    cursor: pointer;
+  }
   
   .choiceRow {
     display: flex;

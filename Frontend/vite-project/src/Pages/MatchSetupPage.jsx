@@ -38,7 +38,9 @@ function MatchSetupPage() {
     byes: false,
     wideRunAllowed: false,
     noBallRunAllowed: false,
+    noBallFreeHit: false,   // add this
   });
+  
 
   // ---------------- TOSS LOGIC ----------------
   const handleToss = () => {
@@ -293,27 +295,33 @@ function MatchSetupPage() {
           </div>
         )}
 
-        {rules.noBall && (
-          <div className={styles.ruleBox}>
-            <p>No Ball Rule</p>
-            <label>
-              <input
-                type="radio"
-                name="noBallRun"
-                onChange={() => setRules({ ...rules, noBallRunAllowed: true })}
-              />{" "}
-              FreeHit
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="noBallRun"
-                onChange={() => setRules({ ...rules, noBallRunAllowed: false })}
-              />{" "}
-              Run
-            </label>
-          </div>
-        )}
+{rules.noBall && (
+  <div className={styles.ruleBox}>
+    <p>No Ball Rule</p>
+
+    <label>
+      <input
+        type="checkbox"
+        checked={rules.noBallFreeHit}
+        onChange={(e) =>
+          setRules({ ...rules, noBallFreeHit: e.target.checked })
+        }
+      />
+      Free Hit
+    </label>
+
+    <label>
+      <input
+        type="checkbox"
+        checked={rules.noBallRunAllowed}
+        onChange={(e) =>
+          setRules({ ...rules, noBallRunAllowed: e.target.checked })
+        }
+      />
+      Run
+    </label>
+  </div>
+)}
 
         <button className={styles.startBtn} onClick={startMatch}>
           Start Match
