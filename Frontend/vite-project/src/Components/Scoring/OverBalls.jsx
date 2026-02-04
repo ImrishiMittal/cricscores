@@ -3,18 +3,18 @@ import styles from "./scoring.module.css";
 function OverBalls({ history }) {
   return (
     <div className={styles.overBalls}>
-      {history.slice(-6).map((ball, i) => {
-        let display;
+      {history.map((ball, i) => {
+        let label = "";
 
-        if (ball.type === "W") display = "W";
-        else display = ball.runs;
+        if (ball.runs !== undefined) label = ball.runs;
+        else if (ball.type === "NB") label = "NB";
+        else if (ball.type === "WD") label = "WD";
+        else if (ball.type === "W") label = "W";
+        else if (ball.type === "FH") label = "FH";
 
         return (
-          <div
-            key={i}
-            className={`${styles.ball} ${ball.type === "W" ? styles.wicketBall : ""}`}
-          >
-            {display}
+          <div key={i} className={`${styles.ball} ${styles[label] || ""}`}>
+            {label}
           </div>
         );
       })}
@@ -23,3 +23,4 @@ function OverBalls({ history }) {
 }
 
 export default OverBalls;
+

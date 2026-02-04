@@ -1,6 +1,7 @@
 import styles from "./scoring.module.css";
 
-function InfoStrip({ overs, bowler, runRate, partnership }) {
+
+function InfoStrip({ overs, bowler, runRate, isFreeHit }) {
   return (
     <div className={styles.infoStrip}>
       <div>
@@ -21,6 +22,12 @@ function InfoStrip({ overs, bowler, runRate, partnership }) {
         <span className={styles.label}>BOWLER</span>
         <span className={styles.value}>{bowler}</span>
       </div>
+      {isFreeHit && (
+        <>
+          <div className={styles.divider}></div>
+          <div className={styles.freeHitBox}>FREE HIT</div>
+        </>
+      )}
     </div>
   );
 }

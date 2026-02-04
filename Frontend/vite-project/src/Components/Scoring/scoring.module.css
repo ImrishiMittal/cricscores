@@ -335,3 +335,102 @@
     font-weight: bold;
   }
   
+
+  .freeHitBox {
+    color: #ffce00;
+    font-weight: bold;
+    animation: pulse 0.8s infinite alternate;
+  }
+  
+  @keyframes pulse {
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+  }
+  
+
+
+
+  .extrasPanel {
+    margin-top: 18px;
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+  }
+  
+  .extrasPanel button {
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    font-weight: bold;
+  }
+  
+  .wicketBtn {
+    background: #e11d48;
+    color: white;
+  }
+  
+  /* ROWS */
+.runRow, .eventRow {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+/* RUN BUTTONS */
+.runBtn {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: bold;
+  background: #00ff88;
+  color: black;
+  border: none;
+  transition: 0.2s;
+}
+
+.runBtn:hover {
+  transform: scale(1.1);
+}
+
+/* EVENT BUTTONS */
+.eventBtn {
+  padding: 14px 24px;
+  border-radius: 10px;
+  font-weight: bold;
+  border: none;
+  font-size: 14px;
+}
+
+/* COLORS */
+.bye { background: #ffd600; color: black; }
+.wide { background: #ffd600; color: black; }
+.noBall { background: #ff2d2d; color: white; }
+.wicket { background: linear-gradient(45deg,#ff0000,#990000); color: white; }
+
+.ball {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid #00ff88;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.NB, .WD {
+  color: #ffd000;
+  border-color: #ffd000;
+}
+
+.W {
+  color: #ff3333;
+  border-color: #ff3333;
+}
+
+.FH {
+  color: #ffae00;
+}
