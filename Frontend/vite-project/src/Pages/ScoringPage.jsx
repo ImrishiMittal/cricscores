@@ -1,7 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import BrandTitle from "../Components/BrandTitle";
-
 import ScoreHeader from "../Components/Scoring/ScoreHeader";
 import InfoStrip from "../Components/Scoring/InfoStrip";
 import OverBalls from "../Components/Scoring/OverBalls";
@@ -21,8 +20,18 @@ function ScoringPage() {
   const totalOvers = matchData.isTestMatch
     ? Number(matchData.oversPerDay) || 90
     : Number(matchData.overs) || 10;
-
   const totalBalls = totalOvers * 6;
+
+  // ================= MATCH STATE =================
+  const [innings, setInnings] = useState(1);
+  const [target, setTarget] = useState(null);
+  const [matchOver, setMatchOver] = useState(false);
+  const [winner, setWinner] = useState("");
+
+  const maxWickets =
+    innings === 1
+      ? Number(matchData.teamAPlayers || 11) - 1
+      : Number(matchData.teamBPlayers || 11) - 1;
 
   // ================= SCORE =================
   const [score, setScore] = useState(0);
@@ -30,15 +39,6 @@ function ScoringPage() {
   const [balls, setBalls] = useState(0);
   const [overs, setOvers] = useState(0);
   const [ballHistory, setBallHistory] = useState([]);
-
-  // ================= INNINGS =================
-  const [innings, setInnings] = useState(1);
-  const [target, setTarget] = useState(null);
-
-  const maxWickets =
-    innings === 1
-      ? Number(matchData.teamAPlayers || 11) - 1
-      : Number(matchData.teamBPlayers || 11) - 1;
 
   // ================= PLAYERS =================
   const [players, setPlayers] = useState([]);
@@ -59,17 +59,12 @@ function ScoringPage() {
   const [partnershipRuns, setPartnershipRuns] = useState(0);
   const [partnershipBalls, setPartnershipBalls] = useState(0);
 
-  // ================= FREE HIT =================
+  //==================FreeHit=====================
   const [isFreeHit, setIsFreeHit] = useState(false);
 
   const formatOvers = () => `${overs}.${balls}`;
-
-  const calculateRunRate = () => {
-    const totalOversBowled = overs + balls / 6;
-    return totalOversBowled === 0
-      ? "0.00"
-      : (score / totalOversBowled).toFixed(2);
-  };
+  const calculateRunRate = () =>
+    overs + balls / 6 === 0 ? "0.00" : (score / (overs + balls / 6)).toFixed(2);
 
   const swapStrike = () => {
     setStrikerIndex((prev) => {
@@ -78,12 +73,25 @@ function ScoringPage() {
     });
   };
 
+  //==================InningEnd==================
+  const [inningsEnded, setInningsEnded] = useState(false);
+
+
+  // ================= END MATCH =================
+  const endMatch = (type) => {
+    setMatchOver(true);
+    setWinner(type === "batting" ? matchData.battingFirst : "Bowling Team");
+  };
+
   // ================= END INNINGS =================
   const endInnings = () => {
+    if (inningsEnded) return; 
+    setInningsEnded(true);
+  
     if (innings === 1) {
       setTarget(score + 1);
       setInnings(2);
-
+  
       setScore(0);
       setWickets(0);
       setBalls(0);
@@ -92,31 +100,23 @@ function ScoringPage() {
       setPartnershipRuns(0);
       setPartnershipBalls(0);
       setIsFreeHit(false);
-
+  
       setShowDialog(true);
     } else {
       alert("Match Over");
     }
   };
-
-  // ================= AUTO END ENGINE (MAIN FIX) =================
-  useEffect(() => {
-    if (showDialog) return;
-
-    const ballsBowled = overs * 6 + balls;
-
-    if (wickets >= maxWickets || ballsBowled >= totalBalls) {
-      endInnings();
-    }
-  }, [overs, balls, wickets]);
+  
 
   // ================= RUN =================
   const handleRun = (runs) => {
+    if (matchOver) return;
     if (isFreeHit) setIsFreeHit(false);
 
-    setScore((prev) => prev + runs);
-    setPartnershipRuns((prev) => prev + runs);
-    setPartnershipBalls((prev) => prev + 1);
+    const newScore = score + runs;
+    setScore(newScore);
+    setPartnershipRuns((p) => p + runs);
+    setPartnershipBalls((p) => p + 1);
 
     setPlayers((prev) => {
       const updated = [...prev];
@@ -131,79 +131,100 @@ function ScoringPage() {
     if (runs % 2 === 1) swapStrike();
 
     if (nextBalls === 6) {
-      nextOvers = overs + 1;
+      nextOvers++;
       nextBalls = 0;
       swapStrike();
-      setIsNewBowlerPending(true);
+    
+      const ballsBowled = nextOvers * 6;
+    
+      // wickets didn't change in run, so safe
+      if (ballsBowled < totalBalls && wickets < maxWickets) {
+        setIsNewBowlerPending(true);
+      }
     }
+    
 
     setBalls(nextBalls);
     setOvers(nextOvers);
-
     setBallHistory((prev) => [...prev, { runs }]);
+
+    const ballsBowled = nextOvers * 6 + nextBalls;
+    const nextWickets = wickets;
+
+    if (innings === 2 && newScore >= target) return endMatch("batting");
+    if (nextWickets >= maxWickets || ballsBowled >= totalBalls) {
+      endInnings();
+    }
   };
 
   // ================= WICKET =================
   const handleWicket = () => {
+    if (matchOver) return;
     if (isFreeHit) {
       setBallHistory((prev) => [...prev, { type: "FH" }]);
       setIsFreeHit(false);
       return;
     }
 
-    setWickets((prev) => prev + 1);
-    setOutBatsman(strikerIndex);
-    setIsWicketPending(true);
-    setPartnershipRuns(0);
-    setPartnershipBalls(0);
-
+    const nextWickets = wickets + 1;
     let nextBalls = balls + 1;
     let nextOvers = overs;
 
     if (nextBalls === 6) {
-      nextOvers = overs + 1;
+      nextOvers++;
       nextBalls = 0;
       swapStrike();
-      setIsNewBowlerPending(true);
+
+      const ballsBowled = nextOvers * 6 + nextBalls;
+
+      // ONLY ask new bowler if innings still alive
+      if (ballsBowled < totalBalls && wickets < maxWickets) {
+        setIsNewBowlerPending(true);
+      }
     }
+
+    const ballsBowled = nextOvers * 6 + nextBalls;
 
     setBalls(nextBalls);
     setOvers(nextOvers);
-
+    setWickets(nextWickets);
+    setPartnershipRuns(0);
+    setPartnershipBalls(0);
     setBallHistory((prev) => [...prev, { type: "W" }]);
+
+    if (nextWickets >= maxWickets || ballsBowled >= totalBalls) {
+      endInnings();
+      return; // stop further logic
+    }
+
+    setOutBatsman(strikerIndex);
+    setIsWicketPending(true);
   };
 
-  // ================= EXTRAS =================
   const handleWide = () => {
-    if (!rules.wide) return;
-    setScore((prev) => prev + 1);
+    if (!rules.wide || matchOver) return;
+    const newScore = score + 1;
+    setScore(newScore);
     setBallHistory((prev) => [...prev, { type: "WD" }]);
+    if (innings === 2 && newScore >= target) endMatch("batting");
   };
 
   const handleNoBall = () => {
-    if (!rules.noBall) return;
-    setScore((prev) => prev + 1);
+    if (!rules.noBall || matchOver) return;
+    const newScore = score + 1;
+    setScore(newScore);
     setIsFreeHit(true);
     setBallHistory((prev) => [...prev, { type: "NB" }]);
+    if (innings === 2 && newScore >= target) endMatch("batting");
   };
 
-  // ================= NEW BATSMAN =================
-  const handleNewBatsman = (name) => {
-    const updated = [...players];
-    updated[outBatsman] = { name, runs: 0, balls: 0 };
-    setPlayers(updated);
-    setIsWicketPending(false);
-  };
-
-  // ================= NEW BOWLER =================
-  const handleNewBowler = (name) => {
-    setBowlers((prev) => [
-      ...prev,
-      { name, overs: 0, balls: 0, runs: 0, wickets: 0 },
-    ]);
-    setCurrentBowlerIndex((prev) => prev + 1);
-    setIsNewBowlerPending(false);
-  };
+  const ballsBowled = overs * 6 + balls;
+  const ballsLeft = innings === 2 ? totalBalls - ballsBowled : 0;
+  const runsNeeded = innings === 2 && target ? target - score : 0;
+  const requiredRR =
+    innings === 2 && ballsLeft > 0
+      ? ((runsNeeded / ballsLeft) * 6).toFixed(2)
+      : "0.00";
 
   return (
     <div className={styles.container}>
@@ -216,6 +237,7 @@ function ScoringPage() {
             ]);
             setBowlers([{ name: b, overs: 0, balls: 0, runs: 0, wickets: 0 }]);
             setShowDialog(false);
+            setInningsEnded(false);
           }}
         />
       )}
@@ -223,17 +245,35 @@ function ScoringPage() {
       {!showDialog && (
         <>
           <BrandTitle size="small" />
-          <ScoreHeader team={matchData.battingFirst} score={score} wickets={wickets} />
-
+          <ScoreHeader
+            team={matchData.battingFirst}
+            score={score}
+            wickets={wickets}
+          />
           <InfoStrip
             overs={formatOvers()}
-            bowler={`${bowlers[currentBowlerIndex]?.name}`}
+            bowler={bowlers[currentBowlerIndex]?.name}
             runRate={calculateRunRate()}
             isFreeHit={isFreeHit}
           />
+          {innings === 2 && !matchOver && (
+            <div className={styles.chaseBox}>
+              <div>
+                <strong>TARGET:</strong> {target}
+              </div>
+              <div>
+                <strong>NEED:</strong> {runsNeeded} runs
+              </div>
+              <div>
+                <strong>BALLS LEFT:</strong> {ballsLeft}
+              </div>
+              <div>
+                <strong>RRR:</strong> {requiredRR}
+              </div>
+            </div>
+          )}
 
           <OverBalls history={ballHistory} />
-
           {players.length >= 2 && (
             <BatsmenRow
               striker={players[strikerIndex]}
@@ -243,18 +283,45 @@ function ScoringPage() {
             />
           )}
 
-          <RunControls
-            onRun={handleRun}
-            onWide={handleWide}
-            onNoBall={handleNoBall}
-            onWicket={handleWicket}
-            disabled={isWicketPending}
-          />
+          {!matchOver && (
+            <RunControls
+              onRun={handleRun}
+              onWide={handleWide}
+              onNoBall={handleNoBall}
+              onWicket={handleWicket}
+              disabled={isWicketPending}
+            />
+          )}
+
+          {matchOver && (
+            <div className={styles.resultBox}>🏆 {winner} WON THE MATCH</div>
+          )}
         </>
       )}
 
-      {isWicketPending && <NewBatsmanModal onConfirm={handleNewBatsman} />}
-      {isNewBowlerPending && <NewBowlerModal onConfirm={handleNewBowler} />}
+      {isWicketPending && (
+        <NewBatsmanModal
+          onConfirm={(name) => {
+            const updated = [...players];
+            updated[outBatsman] = { name, runs: 0, balls: 0 };
+            setPlayers(updated);
+            setIsWicketPending(false);
+          }}
+        />
+      )}
+
+      {isNewBowlerPending && (
+        <NewBowlerModal
+          onConfirm={(name) => {
+            setBowlers((prev) => [
+              ...prev,
+              { name, overs: 0, balls: 0, runs: 0, wickets: 0 },
+            ]);
+            setCurrentBowlerIndex((prev) => prev + 1);
+            setIsNewBowlerPending(false);
+          }}
+        />
+      )}
     </div>
   );
 }
