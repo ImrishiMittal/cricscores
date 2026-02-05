@@ -1,5 +1,5 @@
 import { useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import BrandTitle from "../Components/BrandTitle";
 
 import ScoreHeader from "../Components/Scoring/ScoreHeader";
@@ -17,40 +17,58 @@ function ScoringPage() {
   const matchData = location.state || {};
   const rules = matchData.rules || {};
 
-  // ---------------- SCORE STATE ----------------
+  // ================= MATCH CONFIG =================
+  const totalOvers = matchData.isTestMatch
+    ? Number(matchData.oversPerDay) || 90
+    : Number(matchData.overs) || 10;
+
+  const totalBalls = totalOvers * 6;
+
+  // ================= SCORE =================
   const [score, setScore] = useState(0);
   const [wickets, setWickets] = useState(0);
   const [balls, setBalls] = useState(0);
   const [overs, setOvers] = useState(0);
   const [ballHistory, setBallHistory] = useState([]);
 
-  // ---------------- PLAYERS ----------------
+  // ================= INNINGS =================
+  const [innings, setInnings] = useState(1);
+  const [target, setTarget] = useState(null);
+
+  const maxWickets =
+    innings === 1
+      ? Number(matchData.teamAPlayers || 11) - 1
+      : Number(matchData.teamBPlayers || 11) - 1;
+
+  // ================= PLAYERS =================
   const [players, setPlayers] = useState([]);
   const [strikerIndex, setStrikerIndex] = useState(0);
   const [nonStrikerIndex, setNonStrikerIndex] = useState(1);
 
-  // ---------------- BOWLERS ----------------
+  // ================= BOWLERS =================
   const [bowlers, setBowlers] = useState([]);
   const [currentBowlerIndex, setCurrentBowlerIndex] = useState(0);
   const [isNewBowlerPending, setIsNewBowlerPending] = useState(false);
 
-  // ---------------- MODALS ----------------
+  // ================= MODALS =================
   const [showDialog, setShowDialog] = useState(true);
   const [isWicketPending, setIsWicketPending] = useState(false);
   const [outBatsman, setOutBatsman] = useState(null);
 
-  // ---------------- PARTNERSHIP ----------------
+  // ================= PARTNERSHIP =================
   const [partnershipRuns, setPartnershipRuns] = useState(0);
   const [partnershipBalls, setPartnershipBalls] = useState(0);
 
-  // ---------------- FREE HIT ----------------
+  // ================= FREE HIT =================
   const [isFreeHit, setIsFreeHit] = useState(false);
 
   const formatOvers = () => `${overs}.${balls}`;
 
   const calculateRunRate = () => {
-    const totalOvers = overs + balls / 6;
-    return totalOvers === 0 ? "0.00" : (score / totalOvers).toFixed(2);
+    const totalOversBowled = overs + balls / 6;
+    return totalOversBowled === 0
+      ? "0.00"
+      : (score / totalOversBowled).toFixed(2);
   };
 
   const swapStrike = () => {
@@ -60,7 +78,39 @@ function ScoringPage() {
     });
   };
 
-  // ================= RUN HANDLER =================
+  // ================= END INNINGS =================
+  const endInnings = () => {
+    if (innings === 1) {
+      setTarget(score + 1);
+      setInnings(2);
+
+      setScore(0);
+      setWickets(0);
+      setBalls(0);
+      setOvers(0);
+      setBallHistory([]);
+      setPartnershipRuns(0);
+      setPartnershipBalls(0);
+      setIsFreeHit(false);
+
+      setShowDialog(true);
+    } else {
+      alert("Match Over");
+    }
+  };
+
+  // ================= AUTO END ENGINE (MAIN FIX) =================
+  useEffect(() => {
+    if (showDialog) return;
+
+    const ballsBowled = overs * 6 + balls;
+
+    if (wickets >= maxWickets || ballsBowled >= totalBalls) {
+      endInnings();
+    }
+  }, [overs, balls, wickets]);
+
+  // ================= RUN =================
   const handleRun = (runs) => {
     if (isFreeHit) setIsFreeHit(false);
 
@@ -75,31 +125,25 @@ function ScoringPage() {
       return updated;
     });
 
-    let newBall = balls + 1;
+    let nextBalls = balls + 1;
+    let nextOvers = overs;
 
     if (runs % 2 === 1) swapStrike();
 
-    if (newBall === 6) {
-      setOvers((prev) => prev + 1);
-      setBalls(0);
+    if (nextBalls === 6) {
+      nextOvers = overs + 1;
+      nextBalls = 0;
       swapStrike();
       setIsNewBowlerPending(true);
-    } else {
-      setBalls(newBall);
     }
 
-    setBallHistory((prev) => [...prev, { runs }]);
+    setBalls(nextBalls);
+    setOvers(nextOvers);
 
-    // Bowler stats
-    setBowlers((prev) => {
-      const updated = [...prev];
-      updated[currentBowlerIndex].runs += runs;
-      updated[currentBowlerIndex].balls += 1;
-      return updated;
-    });
+    setBallHistory((prev) => [...prev, { runs }]);
   };
 
-  // ================= WICKET HANDLER =================
+  // ================= WICKET =================
   const handleWicket = () => {
     if (isFreeHit) {
       setBallHistory((prev) => [...prev, { type: "FH" }]);
@@ -113,24 +157,20 @@ function ScoringPage() {
     setPartnershipRuns(0);
     setPartnershipBalls(0);
 
-    let newBall = balls + 1;
+    let nextBalls = balls + 1;
+    let nextOvers = overs;
 
-    if (newBall === 6) {
-      setOvers((prev) => prev + 1);
-      setBalls(0);
+    if (nextBalls === 6) {
+      nextOvers = overs + 1;
+      nextBalls = 0;
       swapStrike();
       setIsNewBowlerPending(true);
-    } else {
-      setBalls(newBall);
     }
 
-    setBallHistory((prev) => [...prev, { type: "W" }]);
+    setBalls(nextBalls);
+    setOvers(nextOvers);
 
-    setBowlers((prev) => {
-      const updated = [...prev];
-      updated[currentBowlerIndex].wickets += 1;
-      return updated;
-    });
+    setBallHistory((prev) => [...prev, { type: "W" }]);
   };
 
   // ================= EXTRAS =================
@@ -187,7 +227,7 @@ function ScoringPage() {
 
           <InfoStrip
             overs={formatOvers()}
-            bowler={`${bowlers[currentBowlerIndex]?.name} ${bowlers[currentBowlerIndex]?.wickets}-${bowlers[currentBowlerIndex]?.runs}`}
+            bowler={`${bowlers[currentBowlerIndex]?.name}`}
             runRate={calculateRunRate()}
             isFreeHit={isFreeHit}
           />
@@ -207,7 +247,7 @@ function ScoringPage() {
             onRun={handleRun}
             onWide={handleWide}
             onNoBall={handleNoBall}
-            onWicket={handleWicket} 
+            onWicket={handleWicket}
             disabled={isWicketPending}
           />
         </>
