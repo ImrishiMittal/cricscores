@@ -10,6 +10,7 @@ import styles from "../Components/Scoring/scoring.module.css";
 import StartInningsModal from "../Components/Scoring/StartInningsModal";
 import NewBatsmanModal from "../Components/Scoring/NewBatsmanModal";
 import NewBowlerModal from "../Components/Scoring/NewBowlerModal";
+import PartnershipHistory from "../Components/Scoring/PartnershipHistory";
 
 function ScoringPage() {
   const location = useLocation();
@@ -17,8 +18,10 @@ function ScoringPage() {
   const rules = matchData.rules || {};
   const teamA = matchData.teamA || "Team 1";
   const teamB = matchData.teamB || "Team 2";
-  const firstBattingTeam = matchData.battingFirst;
-  const secondBattingTeam = firstBattingTeam === teamA ? teamB : teamA;
+  const firstBattingTeam = matchData.battingFirst || teamA;
+const secondBattingTeam =
+  firstBattingTeam === teamA ? teamB : teamA;
+
 
   /* ================= MATCH CONFIG ================= */
   const totalOvers = Number(matchData.overs) || 10;
@@ -61,6 +64,17 @@ function ScoringPage() {
   /* ================= PARTNERSHIP ================= */
   const [partnershipRuns, setPartnershipRuns] = useState(0);
   const [partnershipBalls, setPartnershipBalls] = useState(0);
+
+// ✅ NEW: Track individual batsman contributions in current partnership
+const [striker1Contribution, setStriker1Contribution] = useState(0);
+const [striker2Contribution, setStriker2Contribution] = useState(0);
+const [currentPartnershipBatsmen, setCurrentPartnershipBatsmen] = useState([]);
+
+  /*==============NEW: Partnership History===================*/
+const [partnershipHistory, setPartnershipHistory] = useState([]);
+const [showPartnershipHistory, setShowPartnershipHistory] = useState(false);
+
+
 
   const [isFreeHit, setIsFreeHit] = useState(false);
 
@@ -169,6 +183,12 @@ const handleRun = (runs) => {
   setPartnershipRuns((p) => p + runs);
   setPartnershipBalls((p) => p + 1);
 
+  if (strikerIndex === 0) {
+    setStriker1Contribution((prev) => prev + runs);
+  } else {
+    setStriker2Contribution((prev) => prev + runs);
+  }
+
   setPlayers((prev) => {
     const updated = [...prev];
     updated[strikerIndex].runs += runs;
@@ -209,35 +229,52 @@ const handleRun = (runs) => {
   const handleWicket = () => {
     if (matchOver) return;
     if (isFreeHit) {
-      // ✅ FIXED: Add to both histories
-      setCurrentOver((prev) => [...prev, { type: "W" }]);
-      setCompleteHistory((prev) => [...prev, { type: "W" }]);
+      setCurrentOver((prev) => [...prev, { type: "FH" }]);
+      setCompleteHistory((prev) => [...prev, { type: "FH" }]);
       setIsFreeHit(false);
       return;
     }
-
+  
     const nextWickets = wickets + 1;
     let nextBalls = balls + 1;
     let nextOvers = overs;
-
+  
     if (nextBalls === 6) {
       nextOvers++;
       nextBalls = 0;
       swapStrike();
-      setCurrentOver([]);  // ✅ Clear current over
     }
-
+  
     setBalls(nextBalls);
     setOvers(nextOvers);
     setWickets(nextWickets);
     
-    // ✅ FIXED: Add to both histories
     setCurrentOver((prev) => [...prev, { type: "W" }]);
     setCompleteHistory((prev) => [...prev, { type: "W" }]);
-    
+  
+    // ✅ NEW: Save partnership before resetting
+    if (partnershipRuns > 0 || partnershipBalls > 0) {
+      const partnershipData = {
+        batsman1: currentPartnershipBatsmen[0],
+        batsman1Runs: striker1Contribution,
+        batsman2: currentPartnershipBatsmen[1],
+        batsman2Runs: striker2Contribution,
+        totalRuns: partnershipRuns,
+        totalBalls: partnershipBalls,
+        scoreWhenBroke: score,
+        wicketNumber: nextWickets,
+      };
+      
+      setPartnershipHistory((prev) => [...prev, partnershipData]);
+    }
+  
     setPartnershipRuns(0);
     setPartnershipBalls(0);
-
+    
+    // ✅ NEW: Reset contributions
+    setStriker1Contribution(0);
+    setStriker2Contribution(0);
+  
     if (!checkMatchStatus(score, nextWickets, nextBalls, nextOvers)) {
       setOutBatsman(strikerIndex);
       setIsWicketPending(true);
@@ -283,6 +320,9 @@ const handleRun = (runs) => {
               { name: ns, runs: 0, balls: 0 },
             ]);
             setBowlers([{ name: b, overs: 0, balls: 0, runs: 0, wickets: 0 }]);
+            setCurrentPartnershipBatsmen([s, ns]);
+      setStriker1Contribution(0);
+      setStriker2Contribution(0);
             setShowDialog(false);
           }}
         />
@@ -312,13 +352,25 @@ const handleRun = (runs) => {
 
           <OverBalls history={currentOver} />
           {players.length >= 2 && (
-            <BatsmenRow
-              striker={players[strikerIndex]}
-              nonStriker={players[nonStrikerIndex]}
-              partnershipRuns={partnershipRuns}
-              partnershipBalls={partnershipBalls}
-            />
-          )}
+  <>
+    <BatsmenRow
+      striker={players[strikerIndex]}
+      nonStriker={players[nonStrikerIndex]}
+      partnershipRuns={partnershipRuns}
+      partnershipBalls={partnershipBalls}
+    />
+    
+    {/* ✅ NEW: Previous Partnerships Button */}
+    {partnershipHistory.length > 0 && (
+      <button 
+        className={styles.partnershipHistoryBtn}
+        onClick={() => setShowPartnershipHistory(true)}
+      >
+        📊 Previous Partnerships ({partnershipHistory.length})
+      </button>
+    )}
+  </>
+)}
 
           {!matchOver && (
             <RunControls
@@ -336,16 +388,25 @@ const handleRun = (runs) => {
         </>
       )}
 
-      {isWicketPending && (
-        <NewBatsmanModal
-          onConfirm={(name) => {
-            const updated = [...players];
-            updated[outBatsman] = { name, runs: 0, balls: 0 };
-            setPlayers(updated);
-            setIsWicketPending(false);
-          }}
-        />
-      )}
+{isWicketPending && (
+  <NewBatsmanModal
+    onConfirm={(name) => {
+      const updated = [...players];
+      updated[outBatsman] = { name, runs: 0, balls: 0 };
+      setPlayers(updated);
+      
+      // ✅ NEW: Update partnership batsmen
+      const newPartnership = [...players];
+      newPartnership[outBatsman] = { name, runs: 0, balls: 0 };
+      setCurrentPartnershipBatsmen([
+        newPartnership[0].name,
+        newPartnership[1].name
+      ]);
+      
+      setIsWicketPending(false);
+    }}
+  />
+)}
 
       {isNewBowlerPending && (
         <NewBowlerModal
@@ -360,6 +421,13 @@ const handleRun = (runs) => {
           }}
         />
       )}
+
+{showPartnershipHistory && (
+  <PartnershipHistory
+    history={partnershipHistory}
+    onClose={() => setShowPartnershipHistory(false)}
+  />
+)}
     </div>
   );
 }

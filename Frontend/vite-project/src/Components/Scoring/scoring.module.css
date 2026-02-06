@@ -445,3 +445,125 @@
   font-weight: 600;
   max-width: 800px; 
 }
+
+/* Partnership History Button */
+.partnershipHistoryBtn {
+  margin: 12px auto;
+  padding: 10px 20px;
+  background: linear-gradient(145deg, #1a472a, #22543d);
+  border: 1px solid #00ff88;
+  border-radius: 10px;
+  color: #00ff88;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+  display: block;
+}
+
+.partnershipHistoryBtn:hover {
+  background: linear-gradient(145deg, #22543d, #2d6a4f);
+  box-shadow: 0 0 12px #00ff88;
+  transform: scale(1.05);
+}
+
+/* Partnership History Modal */
+.partnershipHistoryBox {
+  background: #1a1a1a;
+  padding: 24px;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 0 25px rgba(0,255,120,0.3);
+  animation: popIn 0.25s ease-out;
+}
+
+.partnershipList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.partnershipCard {
+  background: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.partnershipHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.wicketBadge {
+  background: #dc2626;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.scoreBadge {
+  background: #374151;
+  color: #00ff88;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.partnershipTotal {
+  font-size: 20px;
+  font-weight: bold;
+  color: #00ff88;
+  text-align: center;
+  margin: 8px 0;
+}
+
+.batsmenContribution {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.batsmanRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #1a1a1a;
+  border-radius: 6px;
+}
+
+.batsmanName {
+  color: #aaa;
+  font-size: 14px;
+}
+
+.batsmanRuns {
+  color: #00ff88;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.closeBtn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  background: #00ff88;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.closeBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 12px #00ff88;
+}
