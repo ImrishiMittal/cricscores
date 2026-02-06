@@ -15,9 +15,8 @@ function ScoringPage() {
   const location = useLocation();
   const matchData = location.state || {};
   const rules = matchData.rules || {};
-  // ============= FIX: Correct property names =============
-  const teamA = matchData.teamA || "Team 1"; // ✅ Changed from teamAName
-  const teamB = matchData.teamB || "Team 2"; // ✅ Changed from teamBName
+  const teamA = matchData.teamA || "Team 1";
+  const teamB = matchData.teamB || "Team 2";
   const firstBattingTeam = matchData.battingFirst;
   const secondBattingTeam = firstBattingTeam === teamA ? teamB : teamA;
 
@@ -41,7 +40,8 @@ function ScoringPage() {
   const [wickets, setWickets] = useState(0);
   const [balls, setBalls] = useState(0);
   const [overs, setOvers] = useState(0);
-  const [ballHistory, setBallHistory] = useState([]);
+  const [currentOver, setCurrentOver] = useState([]);      // ✅ Last 6 balls only
+  const [completeHistory, setCompleteHistory] = useState([]); // ✅ Full innings data
 
   /* ================= PLAYERS ================= */
   const [players, setPlayers] = useState([]);
@@ -94,7 +94,8 @@ function ScoringPage() {
       setWickets(0);
       setBalls(0);
       setOvers(0);
-      setBallHistory([]);
+      setCurrentOver([]);        // ✅ Reset current over
+      setCompleteHistory([]);    // ✅ Reset complete history
       setPartnershipRuns(0);
       setPartnershipBalls(0);
       setIsFreeHit(false);
@@ -158,50 +159,59 @@ function ScoringPage() {
   }, [overs, balls, wickets, score]);
 
   /* ================= RUN ================= */
-  const handleRun = (runs) => {
-    if (matchOver) return;
-    if (isFreeHit) setIsFreeHit(false);
+  /* ================= RUN ================= */
+const handleRun = (runs) => {
+  if (matchOver) return;
+  if (isFreeHit) setIsFreeHit(false);
 
-    const newScore = score + runs;
-    setScore(newScore);
-    setPartnershipRuns((p) => p + runs);
-    setPartnershipBalls((p) => p + 1);
+  const newScore = score + runs;
+  setScore(newScore);
+  setPartnershipRuns((p) => p + runs);
+  setPartnershipBalls((p) => p + 1);
 
-    setPlayers((prev) => {
-      const updated = [...prev];
-      updated[strikerIndex].runs += runs;
-      updated[strikerIndex].balls += 1;
-      return updated;
-    });
+  setPlayers((prev) => {
+    const updated = [...prev];
+    updated[strikerIndex].runs += runs;
+    updated[strikerIndex].balls += 1;
+    return updated;
+  });
 
-    let nextBalls = balls + 1;
-    let nextOvers = overs;
+  let nextBalls = balls + 1;
+  let nextOvers = overs;
 
-    if (runs % 2 === 1) swapStrike();
+  if (runs % 2 === 1) swapStrike();
 
-    if (nextBalls === 6) {
-      nextOvers++;
-      nextBalls = 0;
-      swapStrike();
+  // ✅ ADD BALL FIRST (before checking if over is complete)
+  setCurrentOver((prev) => [...prev, { runs }]);
+  setCompleteHistory((prev) => [...prev, { runs }]);
 
-      // Ask new bowler ONLY if innings still alive
-      if (nextOvers * 6 < totalBalls && wickets < maxWickets) {
-        setIsNewBowlerPending(true);
-      }
+  // ✅ THEN check if over is complete
+  if (nextBalls === 6) {
+    nextOvers++;
+    nextBalls = 0;
+    swapStrike();
+    
+    // ✅ Clear current over AFTER adding the 6th ball
+    setTimeout(() => setCurrentOver([]), 100); // Small delay so user sees the 6th ball
+
+    // Ask new bowler ONLY if innings still alive
+    if (nextOvers * 6 < totalBalls && wickets < maxWickets) {
+      setIsNewBowlerPending(true);
     }
+  }
 
-    setBalls(nextBalls);
-    setOvers(nextOvers);
-    setBallHistory((prev) => [...prev, { runs }]);
+  setBalls(nextBalls);
+  setOvers(nextOvers);
 
-    checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
-  };
-
+  checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
+};
   /* ================= WICKET ================= */
   const handleWicket = () => {
     if (matchOver) return;
     if (isFreeHit) {
-      setBallHistory((prev) => [...prev, { type: "FH" }]);
+      // ✅ FIXED: Add to both histories
+      setCurrentOver((prev) => [...prev, { type: "W" }]);
+      setCompleteHistory((prev) => [...prev, { type: "W" }]);
       setIsFreeHit(false);
       return;
     }
@@ -214,12 +224,17 @@ function ScoringPage() {
       nextOvers++;
       nextBalls = 0;
       swapStrike();
+      setCurrentOver([]);  // ✅ Clear current over
     }
 
     setBalls(nextBalls);
     setOvers(nextOvers);
     setWickets(nextWickets);
-    setBallHistory((prev) => [...prev, { type: "W" }]);
+    
+    // ✅ FIXED: Add to both histories
+    setCurrentOver((prev) => [...prev, { type: "W" }]);
+    setCompleteHistory((prev) => [...prev, { type: "W" }]);
+    
     setPartnershipRuns(0);
     setPartnershipBalls(0);
 
@@ -229,17 +244,25 @@ function ScoringPage() {
     }
   };
 
+  /* ================= WIDE ================= */
   const handleWide = () => {
     if (!rules.wide || matchOver) return;
     setScore((prev) => prev + 1);
-    setBallHistory((prev) => [...prev, { type: "WD" }]);
+    
+    // ✅ FIXED: Add to both histories
+    setCurrentOver((prev) => [...prev, { type: "WD" }]);
+    setCompleteHistory((prev) => [...prev, { type: "WD" }]);
   };
 
+  /* ================= NO BALL ================= */
   const handleNoBall = () => {
     if (!rules.noBall || matchOver) return;
     setScore((prev) => prev + 1);
     setIsFreeHit(true);
-    setBallHistory((prev) => [...prev, { type: "NB" }]);
+    
+    // ✅ FIXED: Add to both histories
+    setCurrentOver((prev) => [...prev, { type: "NB" }]);
+    setCompleteHistory((prev) => [...prev, { type: "NB" }]);
   };
 
   const ballsBowled = overs * 6 + balls;
@@ -287,7 +310,7 @@ function ScoringPage() {
             </div>
           )}
 
-          <OverBalls history={ballHistory} />
+          <OverBalls history={currentOver} />
           {players.length >= 2 && (
             <BatsmenRow
               striker={players[strikerIndex]}
@@ -333,6 +356,7 @@ function ScoringPage() {
             ]);
             setCurrentBowlerIndex((prev) => prev + 1);
             setIsNewBowlerPending(false);
+            setCurrentOver([]);
           }}
         />
       )}
