@@ -19,9 +19,7 @@ function ScoringPage() {
   const teamA = matchData.teamA || "Team 1";
   const teamB = matchData.teamB || "Team 2";
   const firstBattingTeam = matchData.battingFirst || teamA;
-const secondBattingTeam =
-  firstBattingTeam === teamA ? teamB : teamA;
-
+  const secondBattingTeam = firstBattingTeam === teamA ? teamB : teamA;
 
   /* ================= MATCH CONFIG ================= */
   const totalOvers = Number(matchData.overs) || 10;
@@ -43,7 +41,7 @@ const secondBattingTeam =
   const [wickets, setWickets] = useState(0);
   const [balls, setBalls] = useState(0);
   const [overs, setOvers] = useState(0);
-  const [currentOver, setCurrentOver] = useState([]);      // ✅ Last 6 balls only
+  const [currentOver, setCurrentOver] = useState([]); // ✅ Last 6 balls only
   const [completeHistory, setCompleteHistory] = useState([]); // ✅ Full innings data
 
   /* ================= PLAYERS ================= */
@@ -65,16 +63,16 @@ const secondBattingTeam =
   const [partnershipRuns, setPartnershipRuns] = useState(0);
   const [partnershipBalls, setPartnershipBalls] = useState(0);
 
-// ✅ NEW: Track individual batsman contributions in current partnership
-const [striker1Contribution, setStriker1Contribution] = useState(0);
-const [striker2Contribution, setStriker2Contribution] = useState(0);
-const [currentPartnershipBatsmen, setCurrentPartnershipBatsmen] = useState([]);
+  // ✅ NEW: Track individual batsman contributions in current partnership
+  const [striker1Contribution, setStriker1Contribution] = useState(0);
+  const [striker2Contribution, setStriker2Contribution] = useState(0);
+  const [currentPartnershipBatsmen, setCurrentPartnershipBatsmen] = useState(
+    []
+  );
 
   /*==============NEW: Partnership History===================*/
-const [partnershipHistory, setPartnershipHistory] = useState([]);
-const [showPartnershipHistory, setShowPartnershipHistory] = useState(false);
-
-
+  const [partnershipHistory, setPartnershipHistory] = useState([]);
+  const [showPartnershipHistory, setShowPartnershipHistory] = useState(false);
 
   const [isFreeHit, setIsFreeHit] = useState(false);
 
@@ -99,25 +97,47 @@ const [showPartnershipHistory, setShowPartnershipHistory] = useState(false);
 
   /* ================= END INNINGS ================= */
   const endInnings = () => {
+
+    // ✅ Save final partnership (even 0 runs)
+    if (partnershipBalls > 0) {
+      setPartnershipHistory((prev) => [
+        ...prev,
+        {
+          batsman1: currentPartnershipBatsmen[0],
+          batsman1Runs: striker1Contribution,
+          batsman2: currentPartnershipBatsmen[1],
+          batsman2Runs: striker2Contribution,
+          totalRuns: partnershipRuns,
+          totalBalls: partnershipBalls,
+          scoreWhenBroke: score,
+          wicketNumber: wickets,
+        },
+      ]);
+    }
+  
     if (innings === 1) {
       setTarget(score + 1);
       setInnings(2);
-
-      // Reset only scoring, NOT teams
+  
+      // Reset scoring only
       setScore(0);
       setWickets(0);
       setBalls(0);
       setOvers(0);
-      setCurrentOver([]);        // ✅ Reset current over
-      setCompleteHistory([]);    // ✅ Reset complete history
+      setCurrentOver([]);
       setPartnershipRuns(0);
       setPartnershipBalls(0);
       setIsFreeHit(false);
-
-      setShowDialog(true); // ask new batsmen + bowler
+  
+      // Reset partnership tracking (NOT history)
+      setCurrentPartnershipBatsmen([]);
+      setStriker1Contribution(0);
+      setStriker2Contribution(0);
+  
+      setShowDialog(true);
     }
   };
-
+  
   const checkMatchStatus = (newScore, nextWickets, nextBalls, nextOvers) => {
     const ballsBowled = nextOvers * 6 + nextBalls;
 
@@ -173,61 +193,65 @@ const [showPartnershipHistory, setShowPartnershipHistory] = useState(false);
   }, [overs, balls, wickets, score]);
 
   /* ================= RUN ================= */
-  /* ================= RUN ================= */
-const handleRun = (runs) => {
-  if (matchOver) return;
-  if (isFreeHit) setIsFreeHit(false);
+  const handleRun = (runs) => {
+    if (matchOver) return;
+    if (isFreeHit) setIsFreeHit(false);
 
-  const newScore = score + runs;
-  setScore(newScore);
-  setPartnershipRuns((p) => p + runs);
-  setPartnershipBalls((p) => p + 1);
+    const newScore = score + runs;
+    setScore(newScore);
+    setPartnershipRuns((p) => p + runs);
+    setPartnershipBalls((p) => p + 1);
 
-  if (strikerIndex === 0) {
-    setStriker1Contribution((prev) => prev + runs);
-  } else {
-    setStriker2Contribution((prev) => prev + runs);
-  }
+    const strikerName = players[strikerIndex].name;
 
-  setPlayers((prev) => {
-    const updated = [...prev];
-    updated[strikerIndex].runs += runs;
-    updated[strikerIndex].balls += 1;
-    return updated;
-  });
-
-  let nextBalls = balls + 1;
-  let nextOvers = overs;
-
-  if (runs % 2 === 1) swapStrike();
-
-  // ✅ ADD BALL FIRST (before checking if over is complete)
-  setCurrentOver((prev) => [...prev, { runs }]);
-  setCompleteHistory((prev) => [...prev, { runs }]);
-
-  // ✅ THEN check if over is complete
-  if (nextBalls === 6) {
-    nextOvers++;
-    nextBalls = 0;
-    swapStrike();
-    
-    // ✅ Clear current over AFTER adding the 6th ball
-    setTimeout(() => setCurrentOver([]), 100); // Small delay so user sees the 6th ball
-
-    // Ask new bowler ONLY if innings still alive
-    if (nextOvers * 6 < totalBalls && wickets < maxWickets) {
-      setIsNewBowlerPending(true);
+    if (strikerName === currentPartnershipBatsmen[0]) {
+      setStriker1Contribution((prev) => prev + runs);
+    } else {
+      setStriker2Contribution((prev) => prev + runs);
     }
-  }
 
-  setBalls(nextBalls);
-  setOvers(nextOvers);
+    setPlayers((prev) => {
+      const updated = [...prev];
+      updated[strikerIndex].runs += runs;
+      updated[strikerIndex].balls += 1;
+      return updated;
+    });
 
-  checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
-};
+    let nextBalls = balls + 1;
+    let nextOvers = overs;
+
+    if (runs % 2 === 1) swapStrike();
+
+    // ✅ ADD BALL FIRST (before checking if over is complete)
+    setCurrentOver((prev) => [...prev, { runs }]);
+    setCompleteHistory((prev) => [...prev, { runs }]);
+
+    // ✅ THEN check if over is complete
+    if (nextBalls === 6) {
+      nextOvers++;
+      nextBalls = 0;
+      swapStrike();
+
+      // ✅ Clear current over AFTER adding the 6th ball
+      setCurrentOver([]);
+      // Small delay so user sees the 6th ball
+
+      // Ask new bowler ONLY if innings still alive
+      if (nextOvers * 6 < totalBalls && wickets < maxWickets) {
+        setIsNewBowlerPending(true);
+      }
+    }
+
+    setBalls(nextBalls);
+    setOvers(nextOvers);
+
+    checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
+  };
   /* ================= WICKET ================= */
   const handleWicket = () => {
     if (matchOver) return;
+  
+    // 🟡 Free hit wicket doesn't count
     if (isFreeHit) {
       setCurrentOver((prev) => [...prev, { type: "FH" }]);
       setCompleteHistory((prev) => [...prev, { type: "FH" }]);
@@ -239,68 +263,53 @@ const handleRun = (runs) => {
     let nextBalls = balls + 1;
     let nextOvers = overs;
   
+    // ✅ Count wicket ball in partnership (local calc to avoid async bug)
+    const updatedPartnershipBalls = partnershipBalls + 1;
+  
+    // Over complete?
     if (nextBalls === 6) {
       nextOvers++;
       nextBalls = 0;
       swapStrike();
     }
   
+    // Update match state
     setBalls(nextBalls);
     setOvers(nextOvers);
     setWickets(nextWickets);
-    
+  
     setCurrentOver((prev) => [...prev, { type: "W" }]);
     setCompleteHistory((prev) => [...prev, { type: "W" }]);
   
-    // ✅ NEW: Save partnership before resetting
-    if (partnershipRuns > 0 || partnershipBalls > 0) {
+    // 🧠 SAVE PARTNERSHIP (even 0 runs, 1 ball)
+    if (updatedPartnershipBalls > 0) {
       const partnershipData = {
         batsman1: currentPartnershipBatsmen[0],
         batsman1Runs: striker1Contribution,
         batsman2: currentPartnershipBatsmen[1],
         batsman2Runs: striker2Contribution,
         totalRuns: partnershipRuns,
-        totalBalls: partnershipBalls,
+        totalBalls: updatedPartnershipBalls,
         scoreWhenBroke: score,
         wicketNumber: nextWickets,
       };
-      
+  
       setPartnershipHistory((prev) => [...prev, partnershipData]);
     }
   
+    // Reset partnership tracking
     setPartnershipRuns(0);
     setPartnershipBalls(0);
-    
-    // ✅ NEW: Reset contributions
     setStriker1Contribution(0);
     setStriker2Contribution(0);
   
+    // Ask for new batsman if innings still alive
     if (!checkMatchStatus(score, nextWickets, nextBalls, nextOvers)) {
       setOutBatsman(strikerIndex);
       setIsWicketPending(true);
     }
   };
-
-  /* ================= WIDE ================= */
-  const handleWide = () => {
-    if (!rules.wide || matchOver) return;
-    setScore((prev) => prev + 1);
-    
-    // ✅ FIXED: Add to both histories
-    setCurrentOver((prev) => [...prev, { type: "WD" }]);
-    setCompleteHistory((prev) => [...prev, { type: "WD" }]);
-  };
-
-  /* ================= NO BALL ================= */
-  const handleNoBall = () => {
-    if (!rules.noBall || matchOver) return;
-    setScore((prev) => prev + 1);
-    setIsFreeHit(true);
-    
-    // ✅ FIXED: Add to both histories
-    setCurrentOver((prev) => [...prev, { type: "NB" }]);
-    setCompleteHistory((prev) => [...prev, { type: "NB" }]);
-  };
+  
 
   const ballsBowled = overs * 6 + balls;
   const ballsLeft = innings === 2 ? totalBalls - ballsBowled : 0;
@@ -309,6 +318,58 @@ const handleRun = (runs) => {
     innings === 2 && ballsLeft > 0
       ? ((runsNeeded / ballsLeft) * 6).toFixed(2)
       : "0.00";
+
+
+/* ============ WIDE ================= */
+const handleWide = () => {
+  if (!rules.wide || matchOver) return;
+
+  setScore(prev => prev + 1);
+  setPartnershipRuns(prev => prev + 1);  
+  setCurrentOver(prev => [...prev, { type: "WD" }]);
+  setCompleteHistory(prev => [...prev, { type: "WD" }]);
+};
+
+
+/* ================== BYE ================ */
+const handleBye = (runs = 1) => {
+  if (!rules.byes || matchOver) return;
+
+  setScore(prev => prev + runs);
+  setPartnershipRuns(prev => prev + runs);   // ✅ FIX
+  setPartnershipBalls(prev => prev + 1);
+
+  let nextBalls = balls + 1;
+  let nextOvers = overs;
+
+  if (runs % 2 === 1) swapStrike();
+
+  if (nextBalls === 6) {
+    nextOvers++;
+    nextBalls = 0;
+    swapStrike();
+  }
+
+  setBalls(nextBalls);
+  setOvers(nextOvers);
+
+  setCurrentOver(prev => [...prev, { type: "BYE", runs }]);
+  setCompleteHistory(prev => [...prev, { type: "BYE", runs }]);
+};
+
+const handleNoBall = () => {
+  if (!rules.noBall || matchOver) return;
+
+  setScore(prev => prev + 1);               // team score
+  setPartnershipRuns(prev => prev + 1);     // partnership includes extras
+  setIsFreeHit(true);
+
+  setCurrentOver(prev => [...prev, { type: "NB" }]);
+  setCompleteHistory(prev => [...prev, { type: "NB" }]);
+};
+
+
+
 
   return (
     <div className={styles.container}>
@@ -321,9 +382,10 @@ const handleRun = (runs) => {
             ]);
             setBowlers([{ name: b, overs: 0, balls: 0, runs: 0, wickets: 0 }]);
             setCurrentPartnershipBatsmen([s, ns]);
-      setStriker1Contribution(0);
-      setStriker2Contribution(0);
+            setStriker1Contribution(0);
+            setStriker2Contribution(0);
             setShowDialog(false);
+            setPartnershipHistory([]);
           }}
         />
       )}
@@ -352,25 +414,25 @@ const handleRun = (runs) => {
 
           <OverBalls history={currentOver} />
           {players.length >= 2 && (
-  <>
-    <BatsmenRow
-      striker={players[strikerIndex]}
-      nonStriker={players[nonStrikerIndex]}
-      partnershipRuns={partnershipRuns}
-      partnershipBalls={partnershipBalls}
-    />
-    
-    {/* ✅ NEW: Previous Partnerships Button */}
-    {partnershipHistory.length > 0 && (
-      <button 
-        className={styles.partnershipHistoryBtn}
-        onClick={() => setShowPartnershipHistory(true)}
-      >
-        📊 Previous Partnerships ({partnershipHistory.length})
-      </button>
-    )}
-  </>
-)}
+            <>
+              <BatsmenRow
+                striker={players[strikerIndex]}
+                nonStriker={players[nonStrikerIndex]}
+                partnershipRuns={partnershipRuns}
+                partnershipBalls={partnershipBalls}
+              />
+
+              {/* ✅ NEW: Previous Partnerships Button */}
+              {partnershipHistory.length > 0 && (
+                <button
+                  className={styles.partnershipHistoryBtn}
+                  onClick={() => setShowPartnershipHistory(true)}
+                >
+                  📊 Previous Partnerships ({partnershipHistory.length})
+                </button>
+              )}
+            </>
+          )}
 
           {!matchOver && (
             <RunControls
@@ -378,6 +440,8 @@ const handleRun = (runs) => {
               onWide={handleWide}
               onNoBall={handleNoBall}
               onWicket={handleWicket}
+              onBye={handleBye}   
+              onSwapStrike={swapStrike}
               disabled={isWicketPending}
             />
           )}
@@ -388,25 +452,25 @@ const handleRun = (runs) => {
         </>
       )}
 
-{isWicketPending && (
-  <NewBatsmanModal
-    onConfirm={(name) => {
-      const updated = [...players];
-      updated[outBatsman] = { name, runs: 0, balls: 0 };
-      setPlayers(updated);
-      
-      // ✅ NEW: Update partnership batsmen
-      const newPartnership = [...players];
-      newPartnership[outBatsman] = { name, runs: 0, balls: 0 };
-      setCurrentPartnershipBatsmen([
-        newPartnership[0].name,
-        newPartnership[1].name
-      ]);
-      
-      setIsWicketPending(false);
-    }}
-  />
-)}
+      {isWicketPending && (
+        <NewBatsmanModal
+          onConfirm={(name) => {
+            const updated = [...players];
+            updated[outBatsman] = { name, runs: 0, balls: 0 };
+            setPlayers(updated);
+
+            // ✅ NEW: Update partnership batsmen
+            const newPartnership = [...players];
+            newPartnership[outBatsman] = { name, runs: 0, balls: 0 };
+            setCurrentPartnershipBatsmen([
+              newPartnership[0].name,
+              newPartnership[1].name,
+            ]);
+
+            setIsWicketPending(false);
+          }}
+        />
+      )}
 
       {isNewBowlerPending && (
         <NewBowlerModal
@@ -422,12 +486,12 @@ const handleRun = (runs) => {
         />
       )}
 
-{showPartnershipHistory && (
-  <PartnershipHistory
-    history={partnershipHistory}
-    onClose={() => setShowPartnershipHistory(false)}
-  />
-)}
+      {showPartnershipHistory && (
+        <PartnershipHistory
+          history={partnershipHistory}
+          onClose={() => setShowPartnershipHistory(false)}
+        />
+      )}
     </div>
   );
 }

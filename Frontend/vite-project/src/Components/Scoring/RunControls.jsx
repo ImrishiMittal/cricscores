@@ -6,6 +6,7 @@ function RunControls({
   onNoBall,
   onBye,
   onWicket,
+  onSwapStrike,
   disabled
 }) {
   return (
@@ -24,6 +25,9 @@ function RunControls({
   <button className={`${styles.eventBtn} ${styles.wide}`} onClick={onWide}>WIDE</button>
   <button className={`${styles.eventBtn} ${styles.noBall}`} onClick={onNoBall}>NO BALL</button>
   <button className={`${styles.eventBtn} ${styles.wicket}`} onClick={onWicket}>WICKET</button>
+  <button className={`${styles.eventBtn} ${styles.swap}`} onClick={onSwapStrike}>
+    SWAP
+  </button>
 </div>
 
     </>

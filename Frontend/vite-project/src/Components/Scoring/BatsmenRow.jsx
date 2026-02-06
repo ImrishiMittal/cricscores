@@ -1,6 +1,6 @@
 import styles from "./scoring.module.css";
 
-function BatsmenRow({ striker, nonStriker, partnershipRuns, partnershipBalls }) {
+function BatsmenRow({ striker, nonStriker, partnershipRuns, partnershipBalls}) {
   if (!striker || !nonStriker) return null;
 
   return (
@@ -22,6 +22,7 @@ function BatsmenRow({ striker, nonStriker, partnershipRuns, partnershipBalls }) 
     <h3>{nonStriker.name}</h3>
     <p>{nonStriker.runs} ({nonStriker.balls})</p>
   </div>
+  
 
 </div>
 
