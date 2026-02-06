@@ -1,6 +1,11 @@
 import styles from "./scoring.module.css";
 
 function OverBalls({ history }) {
+  // ✅ ADD THIS: Don't render anything if no balls bowled yet
+  if (!history || history.length === 0) {
+    return null;
+  }
+
   return (
     <div className={styles.overBalls}>
       {history.map((ball, i) => {
@@ -23,4 +28,3 @@ function OverBalls({ history }) {
 }
 
 export default OverBalls;
-
