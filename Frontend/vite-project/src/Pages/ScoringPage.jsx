@@ -15,14 +15,17 @@ function ScoringPage() {
   const location = useLocation();
   const matchData = location.state || {};
   const rules = matchData.rules || {};
+  // ============= FIX: Correct property names =============
+  const teamA = matchData.teamA || "Team 1"; // ✅ Changed from teamAName
+  const teamB = matchData.teamB || "Team 2"; // ✅ Changed from teamBName
+  const firstBattingTeam = matchData.battingFirst;
+  const secondBattingTeam = firstBattingTeam === teamA ? teamB : teamA;
 
-  // ================= MATCH CONFIG =================
-  const totalOvers = matchData.isTestMatch
-    ? Number(matchData.oversPerDay) || 90
-    : Number(matchData.overs) || 10;
+  /* ================= MATCH CONFIG ================= */
+  const totalOvers = Number(matchData.overs) || 10;
   const totalBalls = totalOvers * 6;
 
-  // ================= MATCH STATE =================
+  /* ================= MATCH STATE ================= */
   const [innings, setInnings] = useState(1);
   const [target, setTarget] = useState(null);
   const [matchOver, setMatchOver] = useState(false);
@@ -33,33 +36,32 @@ function ScoringPage() {
       ? Number(matchData.teamAPlayers || 11) - 1
       : Number(matchData.teamBPlayers || 11) - 1;
 
-  // ================= SCORE =================
+  /* ================= SCORE ================= */
   const [score, setScore] = useState(0);
   const [wickets, setWickets] = useState(0);
   const [balls, setBalls] = useState(0);
   const [overs, setOvers] = useState(0);
   const [ballHistory, setBallHistory] = useState([]);
 
-  // ================= PLAYERS =================
+  /* ================= PLAYERS ================= */
   const [players, setPlayers] = useState([]);
   const [strikerIndex, setStrikerIndex] = useState(0);
   const [nonStrikerIndex, setNonStrikerIndex] = useState(1);
 
-  // ================= BOWLERS =================
+  /* ================= BOWLERS ================= */
   const [bowlers, setBowlers] = useState([]);
   const [currentBowlerIndex, setCurrentBowlerIndex] = useState(0);
   const [isNewBowlerPending, setIsNewBowlerPending] = useState(false);
 
-  // ================= MODALS =================
+  /* ================= MODALS ================= */
   const [showDialog, setShowDialog] = useState(true);
   const [isWicketPending, setIsWicketPending] = useState(false);
   const [outBatsman, setOutBatsman] = useState(null);
 
-  // ================= PARTNERSHIP =================
+  /* ================= PARTNERSHIP ================= */
   const [partnershipRuns, setPartnershipRuns] = useState(0);
   const [partnershipBalls, setPartnershipBalls] = useState(0);
 
-  //==================FreeHit=====================
   const [isFreeHit, setIsFreeHit] = useState(false);
 
   const formatOvers = () => `${overs}.${balls}`;
@@ -73,25 +75,21 @@ function ScoringPage() {
     });
   };
 
-  //==================InningEnd==================
-  const [inningsEnded, setInningsEnded] = useState(false);
-
-
-  // ================= END MATCH =================
-  const endMatch = (type) => {
+  /* ================= END MATCH ================= */
+  const endMatch = (winningTeam) => {
     setMatchOver(true);
-    setWinner(type === "batting" ? matchData.battingFirst : "Bowling Team");
+    setWinner(winningTeam);
+    setIsNewBowlerPending(false);
+    setIsWicketPending(false);
   };
 
-  // ================= END INNINGS =================
+  /* ================= END INNINGS ================= */
   const endInnings = () => {
-    if (inningsEnded) return; 
-    setInningsEnded(true);
-  
     if (innings === 1) {
       setTarget(score + 1);
       setInnings(2);
-  
+
+      // Reset only scoring, NOT teams
       setScore(0);
       setWickets(0);
       setBalls(0);
@@ -100,15 +98,66 @@ function ScoringPage() {
       setPartnershipRuns(0);
       setPartnershipBalls(0);
       setIsFreeHit(false);
-  
-      setShowDialog(true);
-    } else {
-      alert("Match Over");
+
+      setShowDialog(true); // ask new batsmen + bowler
     }
   };
-  
 
-  // ================= RUN =================
+  const checkMatchStatus = (newScore, nextWickets, nextBalls, nextOvers) => {
+    const ballsBowled = nextOvers * 6 + nextBalls;
+
+    // 🎯 CHASE WON
+    if (innings === 2 && newScore >= target) {
+      endMatch(secondBattingTeam);
+      return true;
+    }
+
+    // ❌ ALL OUT
+    if (nextWickets >= maxWickets) {
+      if (innings === 2) {
+        endMatch(firstBattingTeam);
+      } else {
+        endInnings();
+      }
+      return true;
+    }
+
+    // ⏳ OVERS FINISHED
+    if (ballsBowled >= totalBalls) {
+      if (innings === 2) {
+        // Failed to chase
+        endMatch(firstBattingTeam);
+      } else {
+        endInnings();
+      }
+      return true;
+    }
+
+    return false;
+  };
+
+  /* ================= MASTER MATCH ENGINE ================= */
+  useEffect(() => {
+    if (matchOver || showDialog) return;
+
+    const ballsBowled = overs * 6 + balls;
+
+    if (innings === 2 && score >= target) {
+      endMatch(secondBattingTeam);
+      return;
+    }
+
+    if (innings === 2 && (wickets >= maxWickets || ballsBowled >= totalBalls)) {
+      endMatch(firstBattingTeam);
+      return;
+    }
+
+    if (innings === 1 && (wickets >= maxWickets || ballsBowled >= totalBalls)) {
+      endInnings();
+    }
+  }, [overs, balls, wickets, score]);
+
+  /* ================= RUN ================= */
   const handleRun = (runs) => {
     if (matchOver) return;
     if (isFreeHit) setIsFreeHit(false);
@@ -134,30 +183,21 @@ function ScoringPage() {
       nextOvers++;
       nextBalls = 0;
       swapStrike();
-    
-      const ballsBowled = nextOvers * 6;
-    
-      // wickets didn't change in run, so safe
-      if (ballsBowled < totalBalls && wickets < maxWickets) {
+
+      // Ask new bowler ONLY if innings still alive
+      if (nextOvers * 6 < totalBalls && wickets < maxWickets) {
         setIsNewBowlerPending(true);
       }
     }
-    
 
     setBalls(nextBalls);
     setOvers(nextOvers);
     setBallHistory((prev) => [...prev, { runs }]);
 
-    const ballsBowled = nextOvers * 6 + nextBalls;
-    const nextWickets = wickets;
-
-    if (innings === 2 && newScore >= target) return endMatch("batting");
-    if (nextWickets >= maxWickets || ballsBowled >= totalBalls) {
-      endInnings();
-    }
+    checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
   };
 
-  // ================= WICKET =================
+  /* ================= WICKET ================= */
   const handleWicket = () => {
     if (matchOver) return;
     if (isFreeHit) {
@@ -174,48 +214,32 @@ function ScoringPage() {
       nextOvers++;
       nextBalls = 0;
       swapStrike();
-
-      const ballsBowled = nextOvers * 6 + nextBalls;
-
-      // ONLY ask new bowler if innings still alive
-      if (ballsBowled < totalBalls && wickets < maxWickets) {
-        setIsNewBowlerPending(true);
-      }
     }
-
-    const ballsBowled = nextOvers * 6 + nextBalls;
 
     setBalls(nextBalls);
     setOvers(nextOvers);
     setWickets(nextWickets);
+    setBallHistory((prev) => [...prev, { type: "W" }]);
     setPartnershipRuns(0);
     setPartnershipBalls(0);
-    setBallHistory((prev) => [...prev, { type: "W" }]);
 
-    if (nextWickets >= maxWickets || ballsBowled >= totalBalls) {
-      endInnings();
-      return; // stop further logic
+    if (!checkMatchStatus(score, nextWickets, nextBalls, nextOvers)) {
+      setOutBatsman(strikerIndex);
+      setIsWicketPending(true);
     }
-
-    setOutBatsman(strikerIndex);
-    setIsWicketPending(true);
   };
 
   const handleWide = () => {
     if (!rules.wide || matchOver) return;
-    const newScore = score + 1;
-    setScore(newScore);
+    setScore((prev) => prev + 1);
     setBallHistory((prev) => [...prev, { type: "WD" }]);
-    if (innings === 2 && newScore >= target) endMatch("batting");
   };
 
   const handleNoBall = () => {
     if (!rules.noBall || matchOver) return;
-    const newScore = score + 1;
-    setScore(newScore);
+    setScore((prev) => prev + 1);
     setIsFreeHit(true);
     setBallHistory((prev) => [...prev, { type: "NB" }]);
-    if (innings === 2 && newScore >= target) endMatch("batting");
   };
 
   const ballsBowled = overs * 6 + balls;
@@ -237,7 +261,6 @@ function ScoringPage() {
             ]);
             setBowlers([{ name: b, overs: 0, balls: 0, runs: 0, wickets: 0 }]);
             setShowDialog(false);
-            setInningsEnded(false);
           }}
         />
       )}
@@ -246,7 +269,7 @@ function ScoringPage() {
         <>
           <BrandTitle size="small" />
           <ScoreHeader
-            team={matchData.battingFirst}
+            team={innings === 1 ? firstBattingTeam : secondBattingTeam}
             score={score}
             wickets={wickets}
           />
@@ -256,20 +279,11 @@ function ScoringPage() {
             runRate={calculateRunRate()}
             isFreeHit={isFreeHit}
           />
+
           {innings === 2 && !matchOver && (
             <div className={styles.chaseBox}>
-              <div>
-                <strong>TARGET:</strong> {target}
-              </div>
-              <div>
-                <strong>NEED:</strong> {runsNeeded} runs
-              </div>
-              <div>
-                <strong>BALLS LEFT:</strong> {ballsLeft}
-              </div>
-              <div>
-                <strong>RRR:</strong> {requiredRR}
-              </div>
+              TARGET: {target} | NEED: {runsNeeded} | BALLS LEFT: {ballsLeft} |
+              RRR: {requiredRR}
             </div>
           )}
 
