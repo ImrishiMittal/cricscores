@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import BrandTitle from "../Components/BrandTitle";
 import ScoreHeader from "../Components/Scoring/ScoreHeader";
@@ -30,15 +30,18 @@ function ScoringPage() {
     players, strikerIndex, nonStrikerIndex, bowlers,
     currentBowlerIndex, isWicketPending, isNewBowlerPending,
     startInnings, swapStrike, addRunsToStriker,
-    registerWicket, confirmNewBatsman, confirmNewBowler
+    registerWicket, confirmNewBatsman, confirmNewBowler,
+    requestNewBowler, restorePlayersState,
+    setOutBatsman, setIsWicketPending
   } = playersHook;
 
   const {
     partnershipRuns, partnershipBalls, partnershipHistory,
     showPartnershipHistory, setShowPartnershipHistory,
+    striker1Contribution, striker2Contribution,
     startPartnership, addRunsToPartnership,
     addExtraToPartnership, addBallToPartnership,
-    savePartnership, resetPartnership
+    savePartnership, resetPartnership, restorePartnershipState
   } = partnershipsHook;
 
   const engine = useMatchEngine(matchData, swapStrike);
@@ -48,7 +51,9 @@ function ScoringPage() {
     currentOver, completeHistory,
     matchOver, winner, target, innings, isFreeHit,
     handleRun, handleWicket, handleWide,
-    handleNoBall, handleBye, restoreState
+    handleNoBall, handleBye, restoreState,
+    wicketEvent, setWicketEvent,
+    overCompleteEvent, setOverCompleteEvent
   } = engine;
 
   /* ================= UI STATE ================= */
@@ -56,22 +61,101 @@ function ScoringPage() {
   const [showSummary, setShowSummary] = useState(false);
   const [showInningsHistory, setShowInningsHistory] = useState(false);
   const [historyStack, setHistoryStack] = useState([]);
+  
+  // ✅ Track if we should save snapshot
+  const shouldSaveSnapshot = useRef(false);
 
-  /* ================= UNDO SYSTEM ================= */
-  const saveSnapshot = () => {
-    setHistoryStack(prev => [...prev, {
-      score, wickets, balls, overs,
-      currentOver: [...currentOver]
-    }]);
-  };
+  /* ================= SAVE INITIAL STATE ================= */
+  useEffect(() => {
+    // Save initial state when match starts (after modal closes)
+    if (!showStartModal && historyStack.length === 0 && players.length > 0) {
+      const initialSnapshot = {
+        score: 0,
+        wickets: 0,
+        balls: 0,
+        overs: 0,
+        currentOver: [],
+        players: JSON.parse(JSON.stringify(players)),
+        strikerIndex: 0,
+        nonStrikerIndex: 1,
+        partnershipRuns: 0,
+        partnershipBalls: 0,
+        striker1Contribution: 0,
+        striker2Contribution: 0,
+      };
+      
+      setHistoryStack([initialSnapshot]);
+    }
+  }, [showStartModal, players]);
 
+  /* ================= AUTO-SAVE SNAPSHOT AFTER STATE UPDATES ================= */
+  useEffect(() => {
+    if (shouldSaveSnapshot.current && !showStartModal) {
+      const snapshot = {
+        // Engine state
+        score, 
+        wickets, 
+        balls, 
+        overs,
+        currentOver: [...currentOver],
+        
+        // Players state
+        players: JSON.parse(JSON.stringify(players)),
+        strikerIndex,
+        nonStrikerIndex,
+        
+        // Partnership state
+        partnershipRuns,
+        partnershipBalls,
+        striker1Contribution,
+        striker2Contribution,
+      };
+      
+      setHistoryStack(prev => [...prev, snapshot]);
+      shouldSaveSnapshot.current = false;
+    }
+  }, [score, wickets, balls, overs, players, strikerIndex, nonStrikerIndex, partnershipRuns, partnershipBalls, striker1Contribution, striker2Contribution]);
+
+  /* ================= UNDO ================= */
   const undoLastBall = () => {
-    if (historyStack.length === 0) return;
+    if (historyStack.length === 0) {
+      alert("No balls to undo!");
+      return;
+    }
+    
     const last = historyStack[historyStack.length - 1];
     setHistoryStack(prev => prev.slice(0, -1));
+    
+    // ✅ Restore ALL state
     restoreState(last);
+    restorePlayersState(last);
+    restorePartnershipState(last);
   };
 
+  /* ================= HANDLE WICKET EVENT ================= */
+  useEffect(() => {
+    if (wicketEvent) {
+      setOutBatsman(strikerIndex);
+      setIsWicketPending(true);
+      setWicketEvent(null);
+    }
+  }, [wicketEvent]);
+
+  /* ================= HANDLE OVER COMPLETE ================= */
+  useEffect(() => {
+    if (overCompleteEvent && !matchOver) {
+      const maxWickets = innings === 1
+        ? Number(matchData.teamAPlayers || 11) - 1
+        : Number(matchData.teamBPlayers || 11) - 1;
+        
+      if (wickets < maxWickets) {
+        requestNewBowler();
+      }
+      setOverCompleteEvent(null);
+    }
+  }, [overCompleteEvent]);
+
+  /* ================= SHOW SUMMARY ON MATCH END ================= */
   useEffect(() => {
     if (matchOver) setShowSummary(true);
   }, [matchOver]);
@@ -101,7 +185,11 @@ function ScoringPage() {
         wickets={wickets}
       />
 
-      <InfoStrip overs={`${overs}.${balls}`} bowler={bowlers[currentBowlerIndex]?.name} isFreeHit={isFreeHit} />
+      <InfoStrip 
+        overs={`${overs}.${balls}`} 
+        bowler={bowlers[currentBowlerIndex]?.name} 
+        isFreeHit={isFreeHit} 
+      />
 
       <OverBalls history={currentOver} />
 
@@ -116,13 +204,35 @@ function ScoringPage() {
 
       {!matchOver && (
         <RunControls
-          onRun={(r) => { saveSnapshot(); addRunsToStriker(r); addRunsToPartnership(r, players[strikerIndex].name); handleRun(r); }}
-          onWide={() => { saveSnapshot(); addExtraToPartnership(1); handleWide(); }}
-          onNoBall={() => { saveSnapshot(); addExtraToPartnership(1); handleNoBall(); }}
-          onBye={(r) => { saveSnapshot(); addExtraToPartnership(r); addBallToPartnership(); handleBye(r); }}
+          onRun={(r) => { 
+            shouldSaveSnapshot.current = true;
+            addRunsToStriker(r); 
+            addRunsToPartnership(r, players[strikerIndex].name); 
+            handleRun(r); 
+          }}
+          onWide={() => { 
+            shouldSaveSnapshot.current = true;
+            addExtraToPartnership(1); 
+            handleWide(); 
+          }}
+          onNoBall={() => { 
+            shouldSaveSnapshot.current = true;
+            addExtraToPartnership(1); 
+            handleNoBall(); 
+          }}
+          onBye={(r) => { 
+            shouldSaveSnapshot.current = true;
+            addExtraToPartnership(r); 
+            addBallToPartnership(); 
+            handleBye(r); 
+          }}
           onWicket={() => {
-            if (isFreeHit) { handleWicket(); return; }
-            saveSnapshot();
+            if (isFreeHit) { 
+              handleWicket(); 
+              return; 
+            }
+            
+            shouldSaveSnapshot.current = true;
             savePartnership(score, wickets + 1);
             resetPartnership();
             registerWicket();
@@ -133,8 +243,20 @@ function ScoringPage() {
         />
       )}
 
-      <button className={styles.inningsHistoryBtn} onClick={() => setShowInningsHistory(true)}>
-        Innings History
+      {partnershipHistory.length > 0 && (
+        <button
+          className={styles.partnershipHistoryBtn}
+          onClick={() => setShowPartnershipHistory(true)}
+        >
+          📊 Previous Partnerships ({partnershipHistory.length})
+        </button>
+      )}
+
+      <button 
+        className={styles.inningsHistoryBtn} 
+        onClick={() => setShowInningsHistory(true)}
+      >
+        📋 Innings History
       </button>
 
       {isWicketPending && (
@@ -149,7 +271,10 @@ function ScoringPage() {
       {isNewBowlerPending && <NewBowlerModal onConfirm={confirmNewBowler} />}
 
       {showPartnershipHistory && (
-        <PartnershipHistory history={partnershipHistory} onClose={() => setShowPartnershipHistory(false)} />
+        <PartnershipHistory 
+          history={partnershipHistory} 
+          onClose={() => setShowPartnershipHistory(false)} 
+        />
       )}
 
       {showSummary && (
@@ -162,7 +287,10 @@ function ScoringPage() {
       )}
 
       {showInningsHistory && (
-        <InningsHistory history={completeHistory} onClose={() => setShowInningsHistory(false)} />
+        <InningsHistory 
+          history={completeHistory} 
+          onClose={() => setShowInningsHistory(false)} 
+        />
       )}
 
     </div>

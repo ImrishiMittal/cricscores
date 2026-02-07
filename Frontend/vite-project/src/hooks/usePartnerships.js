@@ -68,17 +68,28 @@ export default function usePartnerships() {
     setStriker2Contribution(0);
   };
 
+  /* ================= RESTORE (FOR UNDO) ================= */
+  const restorePartnershipState = (snap) => {
+    setPartnershipRuns(snap.partnershipRuns);
+    setPartnershipBalls(snap.partnershipBalls);
+    setStriker1Contribution(snap.striker1Contribution);
+    setStriker2Contribution(snap.striker2Contribution);
+  };
+
   return {
     partnershipRuns,
     partnershipBalls,
     partnershipHistory,
     showPartnershipHistory,
     setShowPartnershipHistory,
+    striker1Contribution,      // ✅ ADDED
+    striker2Contribution,      // ✅ ADDED
     startPartnership,
     addRunsToPartnership,
     addExtraToPartnership,
     addBallToPartnership,
     savePartnership,
     resetPartnership,
+    restorePartnershipState,
   };
 }
