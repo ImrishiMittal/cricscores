@@ -27,33 +27,67 @@ function ScoringPage() {
   const partnershipsHook = usePartnerships();
 
   const {
-    players, strikerIndex, nonStrikerIndex, bowlers,
-    currentBowlerIndex, isWicketPending, isNewBowlerPending,
-    startInnings, swapStrike, addRunsToStriker,
-    registerWicket, confirmNewBatsman, confirmNewBowler,
-    requestNewBowler, restorePlayersState, restoreBowlersState,
-    setOutBatsman, setIsWicketPending
+    players,
+    strikerIndex,
+    nonStrikerIndex,
+    bowlers,
+    currentBowlerIndex,
+    isWicketPending,
+    isNewBowlerPending,
+    startInnings,
+    swapStrike,
+    addRunsToStriker,
+    registerWicket,
+    confirmNewBatsman,
+    confirmNewBowler,
+    requestNewBowler,
+    restorePlayersState,
+    restoreBowlersState,
+    setOutBatsman,
+    setIsWicketPending,
   } = playersHook;
 
   const {
-    partnershipRuns, partnershipBalls, partnershipHistory,
-    showPartnershipHistory, setShowPartnershipHistory,
-    striker1Contribution, striker2Contribution,
-    startPartnership, addRunsToPartnership,
-    addExtraToPartnership, addBallToPartnership,
-    savePartnership, resetPartnership, restorePartnershipState
+    partnershipRuns,
+    partnershipBalls,
+    partnershipHistory,
+    showPartnershipHistory,
+    setShowPartnershipHistory,
+    striker1Contribution,
+    striker2Contribution,
+    startPartnership,
+    addRunsToPartnership,
+    addExtraToPartnership,
+    addBallToPartnership,
+    savePartnership,
+    resetPartnership,
+    restorePartnershipState,
   } = partnershipsHook;
 
   const engine = useMatchEngine(matchData, swapStrike);
 
   const {
-    score, wickets, balls, overs,
-    currentOver, completeHistory,
-    matchOver, winner, target, innings, isFreeHit,
-    handleRun, handleWicket, handleWide,
-    handleNoBall, handleBye, restoreState,
-    wicketEvent, setWicketEvent,
-    overCompleteEvent, setOverCompleteEvent
+    score,
+    wickets,
+    balls,
+    overs,
+    currentOver,
+    completeHistory,
+    matchOver,
+    winner,
+    target,
+    innings,
+    isFreeHit,
+    handleRun,
+    handleWicket,
+    handleWide,
+    handleNoBall,
+    handleBye,
+    restoreState,
+    wicketEvent,
+    setWicketEvent,
+    overCompleteEvent,
+    setOverCompleteEvent,
   } = engine;
 
   /* ================= UI STATE ================= */
@@ -61,87 +95,101 @@ function ScoringPage() {
   const [showSummary, setShowSummary] = useState(false);
   const [showInningsHistory, setShowInningsHistory] = useState(false);
   const [historyStack, setHistoryStack] = useState([]);
-  
+
   // ✅ Track if we should save snapshot
   const shouldSaveSnapshot = useRef(false);
 
   /* ================= SAVE INITIAL STATE ================= */
   /* ================= SAVE INITIAL STATE ================= */
-useEffect(() => {
-  // Save initial state when match starts (after modal closes)
-  if (!showStartModal && historyStack.length === 0 && players.length > 0) {
-    const initialSnapshot = {
-      score: 0,
-      wickets: 0,
-      balls: 0,
-      overs: 0,
-      currentOver: [],
-      players: JSON.parse(JSON.stringify(players)),
-      strikerIndex: 0,
-      nonStrikerIndex: 1,
-      partnershipRuns: 0,
-      partnershipBalls: 0,
-      striker1Contribution: 0,
-      striker2Contribution: 0,
-      bowlers: JSON.parse(JSON.stringify(bowlers)),         
-      currentBowlerIndex: 0,
-      partnershipHistory: [],
-      isWicketPending: false,         
-    };
-    
-    setHistoryStack([initialSnapshot]);
-  }
-}, [showStartModal, players, bowlers]);  // ✅ ADD bowlers dependency
+  useEffect(() => {
+    // Save initial state when match starts (after modal closes)
+    if (!showStartModal && historyStack.length === 0 && players.length > 0) {
+      const initialSnapshot = {
+        score: 0,
+        wickets: 0,
+        balls: 0,
+        overs: 0,
+        currentOver: [],
+        players: JSON.parse(JSON.stringify(players)),
+        strikerIndex: 0,
+        nonStrikerIndex: 1,
+        partnershipRuns: 0,
+        partnershipBalls: 0,
+        striker1Contribution: 0,
+        striker2Contribution: 0,
+        bowlers: JSON.parse(JSON.stringify(bowlers)),
+        currentBowlerIndex: 0,
+        partnershipHistory: [],
+        isWicketPending: false,
+      };
 
-/* ================= AUTO-SAVE SNAPSHOT AFTER STATE UPDATES ================= */
-useEffect(() => {
-  if (shouldSaveSnapshot.current && !showStartModal) {
-    const snapshot = {
-      // Engine state
-      score, 
-      wickets, 
-      balls, 
-      overs,
-      currentOver: [...currentOver],
-      
-      // Players state
-      players: JSON.parse(JSON.stringify(players)),
-      strikerIndex,
-      nonStrikerIndex,
-      isWicketPending, 
-      
-      // Partnership state
-      partnershipRuns,
-      partnershipBalls,
-      striker1Contribution,
-      striker2Contribution,
-      partnershipHistory: JSON.parse(JSON.stringify(partnershipHistory)),
-      // Bowler state ✅ ADD THESE
-      bowlers: JSON.parse(JSON.stringify(bowlers)),
-      currentBowlerIndex,
-    };
-    
-    setHistoryStack(prev => [...prev, snapshot]);
-    shouldSaveSnapshot.current = false;
-  }
-}, [score, wickets, balls, overs, players, strikerIndex, nonStrikerIndex, partnershipRuns, partnershipBalls, striker1Contribution, striker2Contribution, bowlers, currentBowlerIndex]);  // ✅ ADD dependencies
+      setHistoryStack([initialSnapshot]);
+    }
+  }, [showStartModal, players, bowlers]); // ✅ ADD bowlers dependency
 
-/* ================= UNDO ================= */
-const undoLastBall = () => {
-  if (historyStack.length === 0) {
-    alert("No balls to undo!");
-    return;
-  }
-  
-  const last = historyStack[historyStack.length - 1];
-  setHistoryStack(prev => prev.slice(0, -1));
-  
-  // ✅ Restore ALL state including bowlers
-  restoreState(last);
-  restorePlayersState(last);
-  restorePartnershipState(last);
-  restoreBowlersState(last);  // ✅ ADD THIS
-};
+  /* ================= AUTO-SAVE SNAPSHOT AFTER STATE UPDATES ================= */
+  useEffect(() => {
+    if (shouldSaveSnapshot.current && !showStartModal) {
+      const snapshot = {
+        // Engine state
+        score,
+        wickets,
+        balls,
+        overs,
+        currentOver: [...currentOver],
+
+        // Players state
+        players: JSON.parse(JSON.stringify(players)),
+        strikerIndex,
+        nonStrikerIndex,
+        isWicketPending,
+
+        // Partnership state
+        partnershipRuns,
+        partnershipBalls,
+        striker1Contribution,
+        striker2Contribution,
+        partnershipHistory: JSON.parse(JSON.stringify(partnershipHistory)),
+        // Bowler state ✅ ADD THESE
+        bowlers: JSON.parse(JSON.stringify(bowlers)),
+        currentBowlerIndex,
+      };
+
+      setHistoryStack((prev) => [...prev, snapshot]);
+      shouldSaveSnapshot.current = false;
+    }
+  }, [
+    score,
+    wickets,
+    balls,
+    overs,
+    players,
+    strikerIndex,
+    nonStrikerIndex,
+    partnershipRuns,
+    partnershipBalls,
+    striker1Contribution,
+    striker2Contribution,
+    bowlers,
+    currentBowlerIndex,
+  ]); // ✅ ADD dependencies
+
+  /* ================= UNDO ================= */
+  const undoLastBall = () => {
+    if (historyStack.length === 0) {
+      alert("No balls to undo!");
+      return;
+    }
+
+    const last = historyStack[historyStack.length - 1];
+    setHistoryStack((prev) => prev.slice(0, -1));
+
+    // ✅ Restore ALL state including bowlers
+    restoreState(last);
+    restorePlayersState(last);
+    restorePartnershipState(last);
+    restoreBowlersState(last); // ✅ ADD THIS
+  };
   /* ================= HANDLE WICKET EVENT ================= */
   useEffect(() => {
     if (wicketEvent) {
@@ -154,10 +202,11 @@ const undoLastBall = () => {
   /* ================= HANDLE OVER COMPLETE ================= */
   useEffect(() => {
     if (overCompleteEvent && !matchOver) {
-      const maxWickets = innings === 1
-        ? Number(matchData.teamAPlayers || 11) - 1
-        : Number(matchData.teamBPlayers || 11) - 1;
-        
+      const maxWickets =
+        innings === 1
+          ? Number(matchData.teamAPlayers || 11) - 1
+          : Number(matchData.teamBPlayers || 11) - 1;
+
       if (wickets < maxWickets) {
         requestNewBowler();
       }
@@ -176,7 +225,6 @@ const undoLastBall = () => {
 
   return (
     <div className={styles.container}>
-
       {showStartModal && (
         <StartInningsModal
           onStart={(s, ns, b) => {
@@ -195,10 +243,10 @@ const undoLastBall = () => {
         wickets={wickets}
       />
 
-      <InfoStrip 
-        overs={`${overs}.${balls}`} 
-        bowler={bowlers[currentBowlerIndex]?.name} 
-        isFreeHit={isFreeHit} 
+      <InfoStrip
+        overs={`${overs}.${balls}`}
+        bowler={bowlers[currentBowlerIndex]?.name}
+        isFreeHit={isFreeHit}
       />
 
       <OverBalls history={currentOver} />
@@ -214,35 +262,38 @@ const undoLastBall = () => {
 
       {!matchOver && (
         <RunControls
-          onRun={(r) => { 
+          onRun={(r) => {
             shouldSaveSnapshot.current = true;
-            addRunsToStriker(r); 
-            addRunsToPartnership(r, players[strikerIndex].name); 
-            handleRun(r); 
+            addRunsToStriker(r);
+            addRunsToPartnership(r, players[strikerIndex].name);
+            handleRun(r);
           }}
-          onWide={() => { 
+          onWide={() => {
             shouldSaveSnapshot.current = true;
-            addExtraToPartnership(1); 
-            handleWide(); 
+            addExtraToPartnership(1);
+            handleWide();
           }}
-          onNoBall={() => { 
+          onNoBall={() => {
             shouldSaveSnapshot.current = true;
-            addExtraToPartnership(1); 
-            handleNoBall(); 
+            addExtraToPartnership(1);
+            handleNoBall();
           }}
-          onBye={(r) => { 
+          onBye={(r) => {
             shouldSaveSnapshot.current = true;
-            addExtraToPartnership(r); 
-            addBallToPartnership(); 
-            handleBye(r); 
+            addExtraToPartnership(r);
+            addBallToPartnership();
+            handleBye(r);
           }}
           onWicket={() => {
-            if (isFreeHit) { 
-              handleWicket(); 
-              return; 
+            if (isFreeHit) {
+              handleWicket();
+              return;
             }
-            
-            
+
+            // shouldSaveSnapshot.current = true;
+
+            addBallToPartnership();
+
             savePartnership(score, wickets + 1);
             resetPartnership();
             registerWicket();
@@ -262,8 +313,8 @@ const undoLastBall = () => {
         </button>
       )}
 
-      <button 
-        className={styles.inningsHistoryBtn} 
+      <button
+        className={styles.inningsHistoryBtn}
         onClick={() => setShowInningsHistory(true)}
       >
         📋 Innings History
@@ -282,9 +333,9 @@ const undoLastBall = () => {
       {isNewBowlerPending && <NewBowlerModal onConfirm={confirmNewBowler} />}
 
       {showPartnershipHistory && (
-        <PartnershipHistory 
-          history={partnershipHistory} 
-          onClose={() => setShowPartnershipHistory(false)} 
+        <PartnershipHistory
+          history={partnershipHistory}
+          onClose={() => setShowPartnershipHistory(false)}
         />
       )}
 
@@ -298,12 +349,11 @@ const undoLastBall = () => {
       )}
 
       {showInningsHistory && (
-        <InningsHistory 
-          history={completeHistory} 
-          onClose={() => setShowInningsHistory(false)} 
+        <InningsHistory
+          history={completeHistory}
+          onClose={() => setShowInningsHistory(false)}
         />
       )}
-
     </div>
   );
 }
