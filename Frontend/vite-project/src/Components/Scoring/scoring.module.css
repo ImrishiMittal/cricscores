@@ -603,3 +603,28 @@
   box-shadow: 0 0 12px #3b82f6;
   transform: scale(1.05);
 }
+
+
+.utilityRow {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.utilityBtn {
+  padding: 10px 22px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #0f0f0f, #1c1c1c);
+  border: 1px solid #00ff99;
+  color: #00ff99;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.utilityBtn:hover {
+  background: linear-gradient(145deg, #00ff99, #00cc77);
+  color: black;
+  transform: scale(1.05);
+}

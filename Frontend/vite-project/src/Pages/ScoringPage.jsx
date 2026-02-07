@@ -308,21 +308,29 @@ function ScoringPage() {
         />
       )}
 
-      {partnershipHistory.length > 0 && (
-        <button
-          className={styles.partnershipHistoryBtn}
-          onClick={() => setShowPartnershipHistory(true)}
-        >
-          📊 Previous Partnerships ({partnershipHistory.length})
-        </button>
-      )}
+<div className={styles.utilityRow}>
+  {partnershipHistory.length > 0 && (
+    <button
+      className={styles.utilityBtn}
+      onClick={() => setShowPartnershipHistory(true)}
+    >
+      📊 Previous Partnerships ({partnershipHistory.length})
+    </button>
+  )}
 
-      <button
-        className={styles.inningsHistoryBtn}
-        onClick={() => setShowInningsHistory(true)}
-      >
-        📋 Innings History
-      </button>
+  <button
+    className={styles.utilityBtn}
+    onClick={() => setShowInningsHistory(true)}
+  >
+    📋 Innings History
+  </button>
+
+  {/* 🔮 FUTURE BUTTONS */}
+  {/* <button className={styles.utilityBtn}>DLS</button> */}
+  {/* <button className={styles.utilityBtn}>Declare</button> */}
+  {/* <button className={styles.utilityBtn}>Comparison Graph</button> */}
+</div>
+
 
       {isWicketPending && (
         <NewBatsmanModal
