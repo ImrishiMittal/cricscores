@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
+export default function useMatchEngine(matchData, swapStrike) {
   const rules = matchData.rules || {};
   const totalOvers = Number(matchData.overs) || 10;
   const totalBalls = totalOvers * 6;
@@ -23,6 +23,7 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
   const [completeHistory, setCompleteHistory] = useState([]);
   const [isFreeHit, setIsFreeHit] = useState(false);
   const [wicketEvent, setWicketEvent] = useState(null);
+  const [overCompleteEvent, setOverCompleteEvent] = useState(null); // ✅ NEW
 
   const maxWickets =
     innings === 1
@@ -35,7 +36,7 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
     setWickets(snap.wickets);
     setBalls(snap.balls);
     setOvers(snap.overs);
-    setCurrentOver(snap.currentOver);
+    setCurrentOver([...snap.currentOver]);
   };
 
   /* ================= END MATCH ================= */
@@ -54,6 +55,7 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
       setBalls(0);
       setOvers(0);
       setCurrentOver([]);
+      setCompleteHistory([]);
       setIsFreeHit(false);
     }
   };
@@ -62,11 +64,22 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
   const checkMatchStatus = (newScore, nextWickets, nextBalls, nextOvers) => {
     const ballsBowled = nextOvers * 6 + nextBalls;
 
-    if (innings === 2 && newScore >= target) return endMatch(secondBattingTeam);
-    if (nextWickets >= maxWickets)
-      return innings === 2 ? endMatch(firstBattingTeam) : endInnings();
-    if (ballsBowled >= totalBalls)
-      return innings === 2 ? endMatch(firstBattingTeam) : endInnings();
+    if (innings === 2 && newScore >= target) {
+      endMatch(secondBattingTeam);
+      return true;
+    }
+
+    if (nextWickets >= maxWickets) {
+      innings === 2 ? endMatch(firstBattingTeam) : endInnings();
+      return true;
+    }
+
+    if (ballsBowled >= totalBalls) {
+      innings === 2 ? endMatch(firstBattingTeam) : endInnings();
+      return true;
+    }
+
+    return false;
   };
 
   /* ================= MASTER ENGINE ================= */
@@ -96,13 +109,19 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
     if (runs % 2 === 1) swapStrike();
 
     setCurrentOver(prev => [...prev, { runs }]);
-    setCompleteHistory(prev => [...prev, { event: "RUN", runs }]);
+    setCompleteHistory(prev => [...prev, { event: "RUN", runs, over: overs, ball: balls }]);
 
     if (nextBalls === 6) {
       nextOvers++;
       nextBalls = 0;
       swapStrike();
       setCurrentOver([]);
+      
+      // ✅ CHECK: Should we ask for new bowler?
+      const ballsBowled = nextOvers * 6;
+      if (ballsBowled < totalBalls && wickets < maxWickets) {
+        setOverCompleteEvent({ overNumber: nextOvers });
+      }
     }
 
     setBalls(nextBalls);
@@ -117,7 +136,7 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
 
     if (isFreeHit) {
       setCurrentOver(prev => [...prev, { type: "FH" }]);
-      setCompleteHistory(prev => [...prev, { event: "FREE_HIT" }]);
+      setCompleteHistory(prev => [...prev, { event: "FREE_HIT", over: overs, ball: balls }]);
 
       let nextBalls = balls + 1;
       let nextOvers = overs;
@@ -126,6 +145,13 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
         nextOvers++;
         nextBalls = 0;
         swapStrike();
+        setCurrentOver([]);
+        
+        // ✅ Check for new bowler after free hit over
+        const ballsBowled = nextOvers * 6;
+        if (ballsBowled < totalBalls && wickets < maxWickets) {
+          setOverCompleteEvent({ overNumber: nextOvers });
+        }
       }
 
       setBalls(nextBalls);
@@ -133,8 +159,6 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
       setIsFreeHit(false);
       return;
     }
-
-    setCompleteHistory(prev => [...prev, { event: "WICKET" }]);
 
     const nextWickets = wickets + 1;
     let nextBalls = balls + 1;
@@ -144,6 +168,14 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
       nextOvers++;
       nextBalls = 0;
       swapStrike();
+      setCurrentOver([]);
+      
+      // ✅ Check for new bowler after wicket over
+      const ballsBowled = nextOvers * 6;
+      const isMatchStillOn = !checkMatchStatus(score, nextWickets, nextBalls, nextOvers);
+      if (ballsBowled < totalBalls && nextWickets < maxWickets && isMatchStillOn) {
+        setOverCompleteEvent({ overNumber: nextOvers });
+      }
     }
 
     setBalls(nextBalls);
@@ -151,6 +183,8 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
     setWickets(nextWickets);
 
     setCurrentOver(prev => [...prev, { type: "W" }]);
+    setCompleteHistory(prev => [...prev, { event: "WICKET", over: overs, ball: balls }]);
+    
     setWicketEvent({ out: true });
 
     checkMatchStatus(score, nextWickets, nextBalls, nextOvers);
@@ -161,7 +195,7 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
     if (!rules.wide || matchOver) return;
     setScore(prev => prev + 1);
     setCurrentOver(prev => [...prev, { type: "WD" }]);
-    setCompleteHistory(prev => [...prev, { event: "WD" }]);
+    setCompleteHistory(prev => [...prev, { event: "WD", over: overs, ball: balls }]);
   };
 
   /* ================= NO BALL ================= */
@@ -170,7 +204,7 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
     setScore(prev => prev + 1);
     setIsFreeHit(true);
     setCurrentOver(prev => [...prev, { type: "NB" }]);
-    setCompleteHistory(prev => [...prev, { event: "NB" }]);
+    setCompleteHistory(prev => [...prev, { event: "NB", over: overs, ball: balls }]);
   };
 
   /* ================= BYE ================= */
@@ -188,13 +222,20 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
       nextOvers++;
       nextBalls = 0;
       swapStrike();
+      setCurrentOver([]);
+      
+      // ✅ Check for new bowler
+      const ballsBowled = nextOvers * 6;
+      if (ballsBowled < totalBalls && wickets < maxWickets) {
+        setOverCompleteEvent({ overNumber: nextOvers });
+      }
     }
 
     setBalls(nextBalls);
     setOvers(nextOvers);
 
     setCurrentOver(prev => [...prev, { type: "BYE", runs }]);
-    setCompleteHistory(prev => [...prev, { event: "BYE", runs }]);
+    setCompleteHistory(prev => [...prev, { event: "BYE", runs, over: overs, ball: balls }]);
   };
 
   return {
@@ -216,6 +257,8 @@ export default function useMatchEngine(matchData, swapStrike, strikerIndex) {
     handleBye,
     wicketEvent,
     setWicketEvent,
-    restoreState, // ⭐ REQUIRED FOR UNDO
+    restoreState,
+    overCompleteEvent,      // ✅ NEW
+    setOverCompleteEvent,   // ✅ NEW
   };
 }
