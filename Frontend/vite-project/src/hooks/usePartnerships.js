@@ -44,7 +44,6 @@ export default function usePartnerships() {
 
   /* ================= SAVE PARTNERSHIP ================= */
   const savePartnership = (score, wicketNumber) => {
-    if (partnershipBalls === 0) return;
 
     const data = {
       batsman1: currentPartnershipBatsmen[0],
