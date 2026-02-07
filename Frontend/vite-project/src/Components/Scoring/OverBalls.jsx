@@ -1,7 +1,6 @@
 import styles from "./scoring.module.css";
 
 function OverBalls({ history }) {
-  // ✅ ADD THIS: Don't render anything if no balls bowled yet
   if (!history || history.length === 0) {
     return null;
   }
@@ -16,6 +15,7 @@ function OverBalls({ history }) {
         else if (ball.type === "WD") label = "WD";
         else if (ball.type === "W") label = "W";
         else if (ball.type === "FH") label = "FH";
+        else if (ball.type === "FH-W") label = "FH"; // ✅ ADD THIS LINE
 
         return (
           <div key={i} className={`${styles.ball} ${styles[label] || ""}`}>
