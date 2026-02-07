@@ -31,7 +31,7 @@ function ScoringPage() {
     currentBowlerIndex, isWicketPending, isNewBowlerPending,
     startInnings, swapStrike, addRunsToStriker,
     registerWicket, confirmNewBatsman, confirmNewBowler,
-    requestNewBowler, restorePlayersState,
+    requestNewBowler, restorePlayersState, restoreBowlersState,
     setOutBatsman, setIsWicketPending
   } = playersHook;
 
@@ -66,72 +66,82 @@ function ScoringPage() {
   const shouldSaveSnapshot = useRef(false);
 
   /* ================= SAVE INITIAL STATE ================= */
-  useEffect(() => {
-    // Save initial state when match starts (after modal closes)
-    if (!showStartModal && historyStack.length === 0 && players.length > 0) {
-      const initialSnapshot = {
-        score: 0,
-        wickets: 0,
-        balls: 0,
-        overs: 0,
-        currentOver: [],
-        players: JSON.parse(JSON.stringify(players)),
-        strikerIndex: 0,
-        nonStrikerIndex: 1,
-        partnershipRuns: 0,
-        partnershipBalls: 0,
-        striker1Contribution: 0,
-        striker2Contribution: 0,
-      };
-      
-      setHistoryStack([initialSnapshot]);
-    }
-  }, [showStartModal, players]);
-
-  /* ================= AUTO-SAVE SNAPSHOT AFTER STATE UPDATES ================= */
-  useEffect(() => {
-    if (shouldSaveSnapshot.current && !showStartModal) {
-      const snapshot = {
-        // Engine state
-        score, 
-        wickets, 
-        balls, 
-        overs,
-        currentOver: [...currentOver],
-        
-        // Players state
-        players: JSON.parse(JSON.stringify(players)),
-        strikerIndex,
-        nonStrikerIndex,
-        
-        // Partnership state
-        partnershipRuns,
-        partnershipBalls,
-        striker1Contribution,
-        striker2Contribution,
-      };
-      
-      setHistoryStack(prev => [...prev, snapshot]);
-      shouldSaveSnapshot.current = false;
-    }
-  }, [score, wickets, balls, overs, players, strikerIndex, nonStrikerIndex, partnershipRuns, partnershipBalls, striker1Contribution, striker2Contribution]);
-
-  /* ================= UNDO ================= */
-  const undoLastBall = () => {
-    if (historyStack.length === 0) {
-      alert("No balls to undo!");
-      return;
-    }
+  /* ================= SAVE INITIAL STATE ================= */
+useEffect(() => {
+  // Save initial state when match starts (after modal closes)
+  if (!showStartModal && historyStack.length === 0 && players.length > 0) {
+    const initialSnapshot = {
+      score: 0,
+      wickets: 0,
+      balls: 0,
+      overs: 0,
+      currentOver: [],
+      players: JSON.parse(JSON.stringify(players)),
+      strikerIndex: 0,
+      nonStrikerIndex: 1,
+      partnershipRuns: 0,
+      partnershipBalls: 0,
+      striker1Contribution: 0,
+      striker2Contribution: 0,
+      bowlers: JSON.parse(JSON.stringify(bowlers)),         
+      currentBowlerIndex: 0,
+      partnershipHistory: [],
+      isWicketPending: false,         
+    };
     
-    const last = historyStack[historyStack.length - 1];
-    setHistoryStack(prev => prev.slice(0, -1));
-    
-    // ✅ Restore ALL state
-    restoreState(last);
-    restorePlayersState(last);
-    restorePartnershipState(last);
-  };
+    setHistoryStack([initialSnapshot]);
+  }
+}, [showStartModal, players, bowlers]);  // ✅ ADD bowlers dependency
 
+/* ================= AUTO-SAVE SNAPSHOT AFTER STATE UPDATES ================= */
+useEffect(() => {
+  if (shouldSaveSnapshot.current && !showStartModal) {
+    const snapshot = {
+      // Engine state
+      score, 
+      wickets, 
+      balls, 
+      overs,
+      currentOver: [...currentOver],
+      
+      // Players state
+      players: JSON.parse(JSON.stringify(players)),
+      strikerIndex,
+      nonStrikerIndex,
+      isWicketPending, 
+      
+      // Partnership state
+      partnershipRuns,
+      partnershipBalls,
+      striker1Contribution,
+      striker2Contribution,
+      partnershipHistory: JSON.parse(JSON.stringify(partnershipHistory)),
+      // Bowler state ✅ ADD THESE
+      bowlers: JSON.parse(JSON.stringify(bowlers)),
+      currentBowlerIndex,
+    };
+    
+    setHistoryStack(prev => [...prev, snapshot]);
+    shouldSaveSnapshot.current = false;
+  }
+}, [score, wickets, balls, overs, players, strikerIndex, nonStrikerIndex, partnershipRuns, partnershipBalls, striker1Contribution, striker2Contribution, bowlers, currentBowlerIndex]);  // ✅ ADD dependencies
+
+/* ================= UNDO ================= */
+const undoLastBall = () => {
+  if (historyStack.length === 0) {
+    alert("No balls to undo!");
+    return;
+  }
+  
+  const last = historyStack[historyStack.length - 1];
+  setHistoryStack(prev => prev.slice(0, -1));
+  
+  // ✅ Restore ALL state including bowlers
+  restoreState(last);
+  restorePlayersState(last);
+  restorePartnershipState(last);
+  restoreBowlersState(last);  // ✅ ADD THIS
+};
   /* ================= HANDLE WICKET EVENT ================= */
   useEffect(() => {
     if (wicketEvent) {
@@ -232,7 +242,7 @@ function ScoringPage() {
               return; 
             }
             
-            shouldSaveSnapshot.current = true;
+            
             savePartnership(score, wickets + 1);
             resetPartnership();
             registerWicket();
@@ -264,6 +274,7 @@ function ScoringPage() {
           onConfirm={(name) => {
             confirmNewBatsman(name);
             startPartnership(players[0].name, players[1].name);
+            shouldSaveSnapshot.current = true;
           }}
         />
       )}
