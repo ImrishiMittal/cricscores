@@ -595,3 +595,11 @@
   transform: scale(1.05);
 }
 
+.undo {
+  background: linear-gradient(145deg, #0151ff, #000066);
+  color: white;
+}
+.undo:hover {
+  box-shadow: 0 0 12px #3b82f6;
+  transform: scale(1.05);
+}

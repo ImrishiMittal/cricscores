@@ -7,7 +7,7 @@ function RunControls({
   onBye,
   onWicket,
   onSwapStrike,
-  disabled
+  onUndo
 }) {
   return (
     <>
@@ -28,6 +28,13 @@ function RunControls({
   <button className={`${styles.eventBtn} ${styles.swap}`} onClick={onSwapStrike}>
     SWAP
   </button>
+  <button
+  className={`${styles.eventBtn} ${styles.swap}`}
+  onClick={onUndo}
+>
+  UNDO
+</button>
+
 </div>
 
     </>

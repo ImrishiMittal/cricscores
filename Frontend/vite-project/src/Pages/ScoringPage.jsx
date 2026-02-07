@@ -10,6 +10,8 @@ import StartInningsModal from "../Components/Scoring/StartInningsModal";
 import NewBatsmanModal from "../Components/Scoring/NewBatsmanModal";
 import NewBowlerModal from "../Components/Scoring/NewBowlerModal";
 import PartnershipHistory from "../Components/Scoring/PartnershipHistory";
+import MatchSummary from "../Components/Scoring/MatchSummary";
+import InningsHistory from "../Components/Scoring/InningsHistory";
 import styles from "../Components/Scoring/scoring.module.css";
 
 import useMatchEngine from "../hooks/useMatchEngine";
@@ -20,101 +22,76 @@ function ScoringPage() {
   const location = useLocation();
   const matchData = location.state || {};
 
-  /* 🧠 Hooks */
+  /* ================= HOOKS ================= */
   const playersHook = usePlayersAndBowlers();
   const partnershipsHook = usePartnerships();
-  const [showStartModal, setShowStartModal] = useState(true);
-
-  const engine = useMatchEngine(
-    matchData,
-    playersHook.players,
-    playersHook.strikerIndex,
-    playersHook.swapStrike
-  );
 
   const {
-    players,
-    strikerIndex,
-    nonStrikerIndex,
-    bowlers,
-    currentBowlerIndex,
-    isWicketPending,
-    isNewBowlerPending,
-    outBatsman,
-    startInnings,
-    swapStrike,
-    addRunsToStriker,
-    registerWicket,
-    confirmNewBatsman,
-    requestNewBowler,
-    confirmNewBowler,
+    players, strikerIndex, nonStrikerIndex, bowlers,
+    currentBowlerIndex, isWicketPending, isNewBowlerPending,
+    startInnings, swapStrike, addRunsToStriker,
+    registerWicket, confirmNewBatsman, confirmNewBowler
   } = playersHook;
 
   const {
-    partnershipRuns,
-    partnershipBalls,
-    partnershipHistory,
-    showPartnershipHistory,
-    setShowPartnershipHistory,
-    startPartnership,
-    addRunsToPartnership,
-    addExtraToPartnership,
-    addBallToPartnership,
-    savePartnership,
-    resetPartnership,
+    partnershipRuns, partnershipBalls, partnershipHistory,
+    showPartnershipHistory, setShowPartnershipHistory,
+    startPartnership, addRunsToPartnership,
+    addExtraToPartnership, addBallToPartnership,
+    savePartnership, resetPartnership
   } = partnershipsHook;
 
-  const {
-    score,
-    wickets,
-    balls,
-    overs,
-    currentOver,
-    completeHistory,
-    matchOver,
-    winner,
-    target,
-    innings,
-    isFreeHit,
-    handleRun,
-    handleWicket,
-    handleWide,
-    handleNoBall,
-    handleBye,
-    wicketEvent,
-    setWicketEvent
-  } = useMatchEngine(matchData, swapStrike)
+  const engine = useMatchEngine(matchData, swapStrike);
 
-  
+  const {
+    score, wickets, balls, overs,
+    currentOver, completeHistory,
+    matchOver, winner, target, innings, isFreeHit,
+    handleRun, handleWicket, handleWide,
+    handleNoBall, handleBye, restoreState
+  } = engine;
+
+  /* ================= UI STATE ================= */
+  const [showStartModal, setShowStartModal] = useState(true);
+  const [showSummary, setShowSummary] = useState(false);
+  const [showInningsHistory, setShowInningsHistory] = useState(false);
+  const [historyStack, setHistoryStack] = useState([]);
+
+  /* ================= UNDO SYSTEM ================= */
+  const saveSnapshot = () => {
+    setHistoryStack(prev => [...prev, {
+      score, wickets, balls, overs,
+      currentOver: [...currentOver]
+    }]);
+  };
+
+  const undoLastBall = () => {
+    if (historyStack.length === 0) return;
+    const last = historyStack[historyStack.length - 1];
+    setHistoryStack(prev => prev.slice(0, -1));
+    restoreState(last);
+  };
+
+  useEffect(() => {
+    if (matchOver) setShowSummary(true);
+  }, [matchOver]);
 
   const firstBattingTeam = matchData.battingFirst || matchData.teamA;
   const secondBattingTeam =
     firstBattingTeam === matchData.teamA ? matchData.teamB : matchData.teamA;
 
-  const formatOvers = () => `${overs}.${balls}`;
-  const calculateRunRate = () =>
-    overs + balls / 6 === 0 ? "0.00" : (score / (overs + balls / 6)).toFixed(2);
-
-    useEffect(() => {
-      if (wicketEvent) {
-        setOutBatsman(strikerIndex); // UI knows striker
-        setIsWicketPending(true);
-      }
-    }, [wicketEvent]);
-    
-
   return (
     <div className={styles.container}>
-      {showStartModal && (
-  <StartInningsModal
-    onStart={(s, ns, b) => {
-      startInnings(s, ns, b);
-      startPartnership(s, ns);
-      setShowStartModal(false);  // 🔥 this closes the popup
-    }}
-  />
-)}
 
+      {showStartModal && (
+        <StartInningsModal
+          onStart={(s, ns, b) => {
+            startInnings(s, ns, b);
+            startPartnership(s, ns);
+            setShowStartModal(false);
+          }}
+        />
+      )}
 
       <BrandTitle size="small" />
 
@@ -124,103 +101,70 @@ function ScoringPage() {
         wickets={wickets}
       />
 
-      <InfoStrip
-        overs={formatOvers()}
-        bowler={bowlers[currentBowlerIndex]?.name}
-        runRate={calculateRunRate()}
-        isFreeHit={isFreeHit}
-      />
-
-      {innings === 2 && !matchOver && (
-        <div className={styles.chaseBox}>TARGET: {target}</div>
-      )}
+      <InfoStrip overs={`${overs}.${balls}`} bowler={bowlers[currentBowlerIndex]?.name} isFreeHit={isFreeHit} />
 
       <OverBalls history={currentOver} />
 
       {players.length >= 2 && (
-        <>
-          <BatsmenRow
-            striker={players[strikerIndex]}
-            nonStriker={players[nonStrikerIndex]}
-            partnershipRuns={partnershipRuns}
-            partnershipBalls={partnershipBalls}
-          />
-
-          {partnershipHistory.length > 0 && (
-            <button
-              className={styles.partnershipHistoryBtn}
-              onClick={() => setShowPartnershipHistory(true)}
-            >
-              📊 Previous Partnerships ({partnershipHistory.length})
-            </button>
-          )}
-        </>
-      )}
-
-{!matchOver && (
-  <RunControls
-    onRun={(r) => {
-      addRunsToStriker(r);
-      addRunsToPartnership(r, players[strikerIndex].name);
-      handleRun(r);
-    }}
-    onWide={() => {
-      addExtraToPartnership(1);
-      handleWide();
-    }}
-    onNoBall={() => {
-      addExtraToPartnership(1);
-      handleNoBall();
-    }}
-    onBye={(r) => {
-      addExtraToPartnership(r);
-      addBallToPartnership();
-      handleBye(r);
-    }}
-    onWicket={() => {
-      // ✅ FIX: Check free hit FIRST
-      if (isFreeHit) {
-        handleWicket(); // Engine handles it properly
-        return;
-      }
-
-      // 🔴 Real wicket - do everything
-      savePartnership(score, wickets + 1);
-      resetPartnership();
-      registerWicket();
-      handleWicket();
-    }}
-    onSwapStrike={swapStrike}
-  />
-)}
-
-      {matchOver && (
-        <div className={styles.resultBox}>🏆 {winner} WON THE MATCH</div>
-      )}
-
-{isWicketPending && (
-  <NewBatsmanModal
-    onConfirm={(name) => {
-      confirmNewBatsman(name);      // replaces batsman
-      startPartnership(players[0].name, players[1].name);
-
-      setIsWicketPending(false);    // close modal
-      setWicketEvent(null);         // 🔥 tell UI wicket handled
-    }}
-  />
-)}
-
-
-      {isNewBowlerPending && (
-        <NewBowlerModal onConfirm={confirmNewBowler} />
-      )}
-
-      {showPartnershipHistory && (
-        <PartnershipHistory
-          history={partnershipHistory}
-          onClose={() => setShowPartnershipHistory(false)}
+        <BatsmenRow
+          striker={players[strikerIndex]}
+          nonStriker={players[nonStrikerIndex]}
+          partnershipRuns={partnershipRuns}
+          partnershipBalls={partnershipBalls}
         />
       )}
+
+      {!matchOver && (
+        <RunControls
+          onRun={(r) => { saveSnapshot(); addRunsToStriker(r); addRunsToPartnership(r, players[strikerIndex].name); handleRun(r); }}
+          onWide={() => { saveSnapshot(); addExtraToPartnership(1); handleWide(); }}
+          onNoBall={() => { saveSnapshot(); addExtraToPartnership(1); handleNoBall(); }}
+          onBye={(r) => { saveSnapshot(); addExtraToPartnership(r); addBallToPartnership(); handleBye(r); }}
+          onWicket={() => {
+            if (isFreeHit) { handleWicket(); return; }
+            saveSnapshot();
+            savePartnership(score, wickets + 1);
+            resetPartnership();
+            registerWicket();
+            handleWicket();
+          }}
+          onSwapStrike={swapStrike}
+          onUndo={undoLastBall}
+        />
+      )}
+
+      <button className={styles.inningsHistoryBtn} onClick={() => setShowInningsHistory(true)}>
+        Innings History
+      </button>
+
+      {isWicketPending && (
+        <NewBatsmanModal
+          onConfirm={(name) => {
+            confirmNewBatsman(name);
+            startPartnership(players[0].name, players[1].name);
+          }}
+        />
+      )}
+
+      {isNewBowlerPending && <NewBowlerModal onConfirm={confirmNewBowler} />}
+
+      {showPartnershipHistory && (
+        <PartnershipHistory history={partnershipHistory} onClose={() => setShowPartnershipHistory(false)} />
+      )}
+
+      {showSummary && (
+        <MatchSummary
+          team1={firstBattingTeam}
+          team2={secondBattingTeam}
+          winner={winner}
+          onClose={() => setShowSummary(false)}
+        />
+      )}
+
+      {showInningsHistory && (
+        <InningsHistory history={completeHistory} onClose={() => setShowInningsHistory(false)} />
+      )}
+
     </div>
   );
 }
