@@ -195,6 +195,7 @@ function ScoringPage() {
     if (wicketEvent) {
       setOutBatsman(strikerIndex);
       setIsWicketPending(true);
+      shouldSaveSnapshot.current = true;
       setWicketEvent(null);
     }
   }, [wicketEvent]);
@@ -289,15 +290,18 @@ function ScoringPage() {
               handleWicket();
               return;
             }
-
-            // shouldSaveSnapshot.current = true;
-
+          
             addBallToPartnership();
-
+          
             savePartnership(score, wickets + 1);
             resetPartnership();
             registerWicket();
             handleWicket();
+            
+            // ✅ Save snapshot AFTER wicket is processed but BEFORE modal
+            setTimeout(() => {
+              shouldSaveSnapshot.current = true;
+            }, 0);
           }}
           onSwapStrike={swapStrike}
           onUndo={undoLastBall}
@@ -325,7 +329,6 @@ function ScoringPage() {
           onConfirm={(name) => {
             confirmNewBatsman(name);
             startPartnership(players[0].name, players[1].name);
-            shouldSaveSnapshot.current = true;
           }}
         />
       )}

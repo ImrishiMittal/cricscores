@@ -133,63 +133,63 @@ export default function useMatchEngine(matchData, swapStrike) {
   /* ================= WICKET ================= */
   const handleWicket = () => {
     if (matchOver) return;
-
+  
     if (isFreeHit) {
       setCurrentOver(prev => [...prev, { type: "FH" }]);
       setCompleteHistory(prev => [...prev, { event: "FREE_HIT", over: overs, ball: balls }]);
-
+  
       let nextBalls = balls + 1;
       let nextOvers = overs;
-
+  
       if (nextBalls === 6) {
         nextOvers++;
         nextBalls = 0;
         swapStrike();
         setCurrentOver([]);
         
-        // ✅ Check for new bowler after free hit over
         const ballsBowled = nextOvers * 6;
         if (ballsBowled < totalBalls && wickets < maxWickets) {
           setOverCompleteEvent({ overNumber: nextOvers });
         }
       }
-
+  
       setBalls(nextBalls);
       setOvers(nextOvers);
       setIsFreeHit(false);
       return;
     }
-
+  
+    // ✅ LOG WICKET FIRST with current over/ball (BEFORE any updates)
+    setCurrentOver(prev => [...prev, { type: "W" }]);
+    setCompleteHistory(prev => [...prev, { event: "WICKET", over: overs, ball: balls }]);
+    
+    setWicketEvent({ out: true });
+  
+    // ✅ THEN calculate next values
     const nextWickets = wickets + 1;
     let nextBalls = balls + 1;
     let nextOvers = overs;
-
+  
     if (nextBalls === 6) {
       nextOvers++;
       nextBalls = 0;
       swapStrike();
       setCurrentOver([]);
       
-      // ✅ Check for new bowler after wicket over
       const ballsBowled = nextOvers * 6;
       const isMatchStillOn = !checkMatchStatus(score, nextWickets, nextBalls, nextOvers);
       if (ballsBowled < totalBalls && nextWickets < maxWickets && isMatchStillOn) {
         setOverCompleteEvent({ overNumber: nextOvers });
       }
     }
-
+  
+    // ✅ Update state
     setBalls(nextBalls);
     setOvers(nextOvers);
     setWickets(nextWickets);
-
-    setCurrentOver(prev => [...prev, { type: "W" }]);
-    setCompleteHistory(prev => [...prev, { event: "WICKET", over: overs, ball: balls }]);
-    
-    setWicketEvent({ out: true });
-
+  
     checkMatchStatus(score, nextWickets, nextBalls, nextOvers);
   };
-
   /* ================= WIDE ================= */
   const handleWide = () => {
     if (!rules.wide || matchOver) return;
