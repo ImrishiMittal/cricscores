@@ -77,6 +77,12 @@ export default function usePlayersAndBowlers() {
     setPlayers(JSON.parse(JSON.stringify(snap.players)));
     setStrikerIndex(snap.strikerIndex);
     setNonStrikerIndex(snap.nonStrikerIndex);
+    setIsWicketPending(snap.isWicketPending || false);
+  };
+
+  const restoreBowlersState = (snap) => {
+    setBowlers(JSON.parse(JSON.stringify(snap.bowlers)));
+    setCurrentBowlerIndex(snap.currentBowlerIndex);
   };
 
   return {
@@ -88,8 +94,8 @@ export default function usePlayersAndBowlers() {
     isWicketPending,
     isNewBowlerPending,
     outBatsman,
-    setOutBatsman,           // ✅ ADDED (needed for wicket handling)
-    setIsWicketPending,      // ✅ ADDED (needed for wicket handling)
+    setOutBatsman,
+    setIsWicketPending,
     startInnings,
     swapStrike,
     addRunsToStriker,
@@ -97,6 +103,7 @@ export default function usePlayersAndBowlers() {
     confirmNewBatsman,
     requestNewBowler,
     confirmNewBowler,
-    restorePlayersState,     // ✅ NEW (for undo)
+    restorePlayersState,
+    restoreBowlersState,
   };
 }

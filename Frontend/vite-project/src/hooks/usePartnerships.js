@@ -69,13 +69,13 @@ export default function usePartnerships() {
   };
 
   /* ================= RESTORE (FOR UNDO) ================= */
-  const restorePartnershipState = (snap) => {
-    setPartnershipRuns(snap.partnershipRuns);
-    setPartnershipBalls(snap.partnershipBalls);
-    setStriker1Contribution(snap.striker1Contribution);
-    setStriker2Contribution(snap.striker2Contribution);
-  };
-
+const restorePartnershipState = (snap) => {
+  setPartnershipRuns(snap.partnershipRuns);
+  setPartnershipBalls(snap.partnershipBalls);
+  setStriker1Contribution(snap.striker1Contribution);
+  setStriker2Contribution(snap.striker2Contribution);
+  setPartnershipHistory(JSON.parse(JSON.stringify(snap.partnershipHistory || [])));  // ✅ ADD
+};
   return {
     partnershipRuns,
     partnershipBalls,
