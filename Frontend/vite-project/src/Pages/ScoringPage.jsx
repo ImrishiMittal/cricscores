@@ -88,6 +88,8 @@ function ScoringPage() {
     setWicketEvent,
     overCompleteEvent,
     setOverCompleteEvent,
+    inningsChangeEvent,
+    setInningsChangeEvent
   } = engine;
 
   /* ================= UI STATE ================= */
@@ -224,6 +226,41 @@ function ScoringPage() {
   const secondBattingTeam =
     firstBattingTeam === matchData.teamA ? matchData.teamB : matchData.teamA;
 
+    useEffect(() => {
+      if (inningsChangeEvent) {
+        // 🧠 Reset all UI state for new innings
+    
+        // Clear players
+        restorePlayersState({
+          players: [],
+          strikerIndex: 0,
+          nonStrikerIndex: 1,
+          isWicketPending: false
+        });
+    
+        // Clear bowlers
+        restoreBowlersState({
+          bowlers: [],
+          currentBowlerIndex: 0
+        });
+    
+        // Clear partnership
+        restorePartnershipState({
+          partnershipRuns: 0,
+          partnershipBalls: 0,
+          striker1Contribution: 0,
+          striker2Contribution: 0,
+          partnershipHistory: []
+        });
+    
+        // 🚨 OPEN START INNINGS MODAL AGAIN
+        setShowStartModal(true);
+    
+        setInningsChangeEvent(null);
+      }
+    }, [inningsChangeEvent]);
+    
+
   return (
     <div className={styles.container}>
       {showStartModal && (
@@ -239,16 +276,22 @@ function ScoringPage() {
       <BrandTitle size="small" />
 
       <ScoreHeader
+      innings = {innings}
         team={innings === 1 ? firstBattingTeam : secondBattingTeam}
         score={score}
         wickets={wickets}
       />
 
-      <InfoStrip
-        overs={`${overs}.${balls}`}
-        bowler={bowlers[currentBowlerIndex]?.name}
-        isFreeHit={isFreeHit}
-      />
+<InfoStrip
+  overs={overs}  
+  balls={balls} 
+  bowler={bowlers[currentBowlerIndex]?.name}
+  isFreeHit={isFreeHit}
+  target={target}
+  innings={innings}
+  score={score}              // ✅ Already there
+  totalOvers={matchData.overs}  // ✅ ADD THIS
+/>
 
       <OverBalls history={currentOver} />
 
