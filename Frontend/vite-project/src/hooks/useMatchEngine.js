@@ -45,10 +45,15 @@ export default function useMatchEngine(matchData, swapStrike) {
     setWinner(winningTeam);
   };
 
+
+  const [inningsChangeEvent, setInningsChangeEvent] = useState(null);
   /* ================= END INNINGS ================= */
   const endInnings = () => {
     if (innings === 1) {
-      setTarget(score + 1);
+  
+      const newTarget = score + 1;   // ✅ DEFINE IT FIRST
+  
+      setTarget(newTarget);
       setInnings(2);
       setScore(0);
       setWickets(0);
@@ -57,8 +62,12 @@ export default function useMatchEngine(matchData, swapStrike) {
       setCurrentOver([]);
       setCompleteHistory([]);
       setIsFreeHit(false);
+  
+      // 🔥 Tell UI innings changed
+      setInningsChangeEvent({ target: newTarget });
     }
   };
+  
 
   /* ================= MATCH STATUS ================= */
   const checkMatchStatus = (newScore, nextWickets, nextBalls, nextOvers) => {
@@ -260,5 +269,7 @@ export default function useMatchEngine(matchData, swapStrike) {
     restoreState,
     overCompleteEvent,      // ✅ NEW
     setOverCompleteEvent,   // ✅ NEW
+    inningsChangeEvent,
+    setInningsChangeEvent
   };
 }
