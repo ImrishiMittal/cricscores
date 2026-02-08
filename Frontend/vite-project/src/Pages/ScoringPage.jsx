@@ -89,7 +89,7 @@ function ScoringPage() {
     overCompleteEvent,
     setOverCompleteEvent,
     inningsChangeEvent,
-    setInningsChangeEvent
+    setInningsChangeEvent,
   } = engine;
 
   /* ================= UI STATE ================= */
@@ -225,41 +225,40 @@ function ScoringPage() {
   const firstBattingTeam = matchData.battingFirst || matchData.teamA;
   const secondBattingTeam =
     firstBattingTeam === matchData.teamA ? matchData.teamB : matchData.teamA;
+  const currentBattingTeam = innings === 1 ? firstBattingTeam : secondBattingTeam;
+  useEffect(() => {
+    if (inningsChangeEvent) {
+      // 🧠 Reset all UI state for new innings
 
-    useEffect(() => {
-      if (inningsChangeEvent) {
-        // 🧠 Reset all UI state for new innings
-    
-        // Clear players
-        restorePlayersState({
-          players: [],
-          strikerIndex: 0,
-          nonStrikerIndex: 1,
-          isWicketPending: false
-        });
-    
-        // Clear bowlers
-        restoreBowlersState({
-          bowlers: [],
-          currentBowlerIndex: 0
-        });
-    
-        // Clear partnership
-        restorePartnershipState({
-          partnershipRuns: 0,
-          partnershipBalls: 0,
-          striker1Contribution: 0,
-          striker2Contribution: 0,
-          partnershipHistory: []
-        });
-    
-        // 🚨 OPEN START INNINGS MODAL AGAIN
-        setShowStartModal(true);
-    
-        setInningsChangeEvent(null);
-      }
-    }, [inningsChangeEvent]);
-    
+      // Clear players
+      restorePlayersState({
+        players: [],
+        strikerIndex: 0,
+        nonStrikerIndex: 1,
+        isWicketPending: false,
+      });
+
+      // Clear bowlers
+      restoreBowlersState({
+        bowlers: [],
+        currentBowlerIndex: 0,
+      });
+
+      // Clear partnership
+      restorePartnershipState({
+        partnershipRuns: 0,
+        partnershipBalls: 0,
+        striker1Contribution: 0,
+        striker2Contribution: 0,
+        partnershipHistory: [],
+      });
+
+      // 🚨 OPEN START INNINGS MODAL AGAIN
+      setShowStartModal(true);
+
+      setInningsChangeEvent(null);
+    }
+  }, [inningsChangeEvent]);
 
   return (
     <div className={styles.container}>
@@ -276,22 +275,24 @@ function ScoringPage() {
       <BrandTitle size="small" />
 
       <ScoreHeader
-      innings = {innings}
+        innings={innings}
         team={innings === 1 ? firstBattingTeam : secondBattingTeam}
         score={score}
         wickets={wickets}
       />
 
-<InfoStrip
-  overs={overs}  
-  balls={balls} 
-  bowler={bowlers[currentBowlerIndex]?.name}
-  isFreeHit={isFreeHit}
-  target={target}
-  innings={innings}
-  score={score}              // ✅ Already there
-  totalOvers={matchData.overs}  // ✅ ADD THIS
-/>
+<InfoStrip 
+      overs={overs}
+      balls={balls}
+      bowler={bowlers[currentBowlerIndex]?.name}
+      score={score}
+      target={target}
+      innings={innings}
+      totalOvers={matchData.overs}
+      isFreeHit={isFreeHit}
+      matchData={matchData} 
+      currentTeam={currentBattingTeam} 
+    />
 
       <OverBalls history={currentOver} />
 
@@ -301,6 +302,8 @@ function ScoringPage() {
           nonStriker={players[nonStrikerIndex]}
           partnershipRuns={partnershipRuns}
           partnershipBalls={partnershipBalls}
+          matchData={matchData}
+          currentTeam={currentBattingTeam}
         />
       )}
 
@@ -333,14 +336,14 @@ function ScoringPage() {
               handleWicket();
               return;
             }
-          
+
             addBallToPartnership();
-          
+
             savePartnership(score, wickets + 1);
             resetPartnership();
             registerWicket();
             handleWicket();
-            
+
             // ✅ Save snapshot AFTER wicket is processed but BEFORE modal
             setTimeout(() => {
               shouldSaveSnapshot.current = true;
@@ -351,29 +354,28 @@ function ScoringPage() {
         />
       )}
 
-<div className={styles.utilityRow}>
-  {partnershipHistory.length > 0 && (
-    <button
-      className={styles.utilityBtn}
-      onClick={() => setShowPartnershipHistory(true)}
-    >
-      📊 Previous Partnerships ({partnershipHistory.length})
-    </button>
-  )}
+      <div className={styles.utilityRow}>
+        {partnershipHistory.length > 0 && (
+          <button
+            className={styles.utilityBtn}
+            onClick={() => setShowPartnershipHistory(true)}
+          >
+            📊 Previous Partnerships ({partnershipHistory.length})
+          </button>
+        )}
 
-  <button
-    className={styles.utilityBtn}
-    onClick={() => setShowInningsHistory(true)}
-  >
-    📋 Innings History
-  </button>
+        <button
+          className={styles.utilityBtn}
+          onClick={() => setShowInningsHistory(true)}
+        >
+          📋 Innings History
+        </button>
 
-  {/* 🔮 FUTURE BUTTONS */}
-  {/* <button className={styles.utilityBtn}>DLS</button> */}
-  {/* <button className={styles.utilityBtn}>Declare</button> */}
-  {/* <button className={styles.utilityBtn}>Comparison Graph</button> */}
-</div>
-
+        {/* 🔮 FUTURE BUTTONS */}
+        {/* <button className={styles.utilityBtn}>DLS</button> */}
+        {/* <button className={styles.utilityBtn}>Declare</button> */}
+        {/* <button className={styles.utilityBtn}>Comparison Graph</button> */}
+      </div>
 
       {isWicketPending && (
         <NewBatsmanModal
@@ -390,6 +392,8 @@ function ScoringPage() {
         <PartnershipHistory
           history={partnershipHistory}
           onClose={() => setShowPartnershipHistory(false)}
+          matchData={matchData}
+          battingTeam={currentBattingTeam}
         />
       )}
 
