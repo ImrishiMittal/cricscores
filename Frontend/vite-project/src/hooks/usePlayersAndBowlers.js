@@ -43,6 +43,53 @@ export default function usePlayersAndBowlers() {
     });
   };
 
+  /* ================= UPDATE BOWLER STATS ================= */
+  const addRunsToBowler = (runs) => {
+    setBowlers((prev) => {
+      const updated = [...prev];
+      const currentBowler = updated[currentBowlerIndex];
+      if (currentBowler) {
+        currentBowler.runs += runs;
+      }
+      return updated;
+    });
+  };
+
+  const addBallToBowler = () => {
+    setBowlers((prev) => {
+      const updated = [...prev];
+      const currentBowler = updated[currentBowlerIndex];
+      
+      if (!currentBowler) return prev;
+
+      currentBowler.balls += 1;
+      if (currentBowler.balls === 6) {
+        currentBowler.overs += 1;
+        currentBowler.balls = 0;
+      }
+
+      return updated;
+    });
+  };
+
+  const addWicketToBowler = () => {
+    setBowlers((prev) => {
+      const updated = [...prev];
+      const currentBowler = updated[currentBowlerIndex];
+      
+      if (!currentBowler) return prev;
+
+      currentBowler.wickets += 1;
+      currentBowler.balls += 1;
+      if (currentBowler.balls === 6) {
+        currentBowler.overs += 1;
+        currentBowler.balls = 0;
+      }
+
+      return updated;
+    });
+  };
+
   /* ================= WICKET FLOW ================= */
   const registerWicket = () => {
     setOutBatsman(strikerIndex);
@@ -99,6 +146,9 @@ export default function usePlayersAndBowlers() {
     startInnings,
     swapStrike,
     addRunsToStriker,
+    addRunsToBowler,      // ✅ NEW
+    addBallToBowler,      // ✅ NEW
+    addWicketToBowler,    // ✅ NEW
     registerWicket,
     confirmNewBatsman,
     requestNewBowler,
