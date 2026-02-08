@@ -1,3 +1,4 @@
+import { addCaptainTag } from "../../utils/captainHelper";
 import styles from "./scoring.module.css";
 
 function InfoStrip({
@@ -9,8 +10,10 @@ function InfoStrip({
   innings,
   totalOvers,
   isFreeHit,
+  matchData,      // ✅ ADD THIS
+  currentTeam,    // ✅ ADD THIS
 }) {
-  const ballsBowled = overs * 6 + balls;  // ✅ This should work now
+  const ballsBowled = overs * 6 + balls;
   const totalBalls = Number(totalOvers) * 6;
   const ballsRemaining = totalBalls - ballsBowled;
 
@@ -20,6 +23,8 @@ function InfoStrip({
     innings === 2 && ballsRemaining > 0
       ? ((target - score) / (ballsRemaining / 6)).toFixed(2)
       : null;
+
+  const bowlerDisplay = addCaptainTag(bowler, matchData, currentTeam);
 
   return (
     <div className={styles.infoStrip}>
@@ -57,7 +62,7 @@ function InfoStrip({
 
       <div>
         <span className={styles.label}>BOWLER</span>
-        <span className={styles.value}>{bowler}</span>
+        <span className={styles.value}>{bowlerDisplay}</span>
       </div>
 
       {isFreeHit && (
@@ -71,5 +76,3 @@ function InfoStrip({
 }
 
 export default InfoStrip;
-
-
