@@ -465,38 +465,118 @@
   box-shadow: 0 0 12px #00ff88;
   transform: scale(1.05);
 }
-
-/* Partnership History Modal */
+/* ========================================
+   PARTNERSHIP HISTORY MODAL
+======================================== */
 .partnershipHistoryBox {
-  background: #1a1a1a;
-  padding: 24px;
+  background: linear-gradient(145deg, #1b1b1b, #141414);
+  padding: 28px;
   border-radius: 16px;
   width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
+  max-width: 600px;
+  max-height: 85vh;
   overflow-y: auto;
-  box-shadow: 0 0 25px rgba(0,255,120,0.3);
+  box-shadow: 0 0 30px rgba(0, 255, 120, 0.25);
+  border: 1px solid #00ff8840;
   animation: popIn 0.25s ease-out;
 }
 
 .partnershipList {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin: 16px 0;
+  gap: 18px;
+  margin-top: 0;
 }
 
 .partnershipCard {
   background: #0f0f0f;
-  border: 1px solid #333;
-  border-radius: 12px;
-  padding: 14px;
+  border: 1px solid #00ff8830;
+  border-radius: 14px;
+  padding: 18px;
+  transition: 0.2s;
+}
+
+.partnershipCard:hover {
+  border-color: #00ff88;
+  box-shadow: 0 0 12px rgba(0, 255, 120, 0.15);
+  transform: translateY(-2px);
 }
 
 .partnershipHeader {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.wicketBadge {
+  background: linear-gradient(145deg, #dc2626, #991b1b);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.scoreBadge {
+  background: linear-gradient(145deg, #374151, #1f2937);
+  color: #00ff88;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid #00ff8840;
+}
+
+.partnershipTotal {
+  font-size: 24px;
+  font-weight: 900;
+  color: #00ff88;
+  text-align: center;
+  margin: 16px 0;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.batsmenContribution {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #333;
+}
+
+.partnershipBatsmanRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, #1a1a1a, #0f0f0f);
+  border-radius: 10px;
+  border-left: 4px solid #00ff88;
+  transition: 0.2s;
+}
+
+.partnershipBatsmanRow:hover {
+  background: linear-gradient(90deg, #222, #111);
+  border-left-width: 6px;
+  padding-left: 14px;
+}
+
+.partnershipBatsmanName {
+  color: #e0e0e0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.partnershipBatsmanRuns {
+  color: #00ff88;
+  font-weight: 800;
+  font-size: 17px;
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
 }
 
 .wicketBadge {
@@ -627,4 +707,281 @@
   background: linear-gradient(145deg, #00ff99, #00cc77);
   color: black;
   transform: scale(1.05);
+}
+
+/* Partnership History Box */
+.partnershipHistoryBox {
+  background: linear-gradient(145deg, #1b1b1b, #141414);
+  padding: 28px;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 550px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 0 30px rgba(0,255,120,0.25);
+  border: 1px solid #00ff8840;
+  animation: popIn 0.25s ease-out;
+}
+
+.partnershipList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.partnershipCard {
+  background: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 16px;
+  transition: 0.2s;
+}
+
+.partnershipCard:hover {
+  border-color: #00ff88;
+  box-shadow: 0 0 12px rgba(0,255,120,0.15);
+}
+
+.partnershipHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wicketBadge {
+  background: linear-gradient(145deg, #dc2626, #991b1b);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.scoreBadge {
+  background: #374151;
+  color: #00ff88;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.partnershipTotal {
+  font-size: 22px;
+  font-weight: bold;
+  color: #00ff88;
+  text-align: center;
+  margin: 14px 0;
+}
+
+.batsmenContribution {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.batsmanRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  border-left: 3px solid #00ff88;
+}
+
+.batsmanName {
+  color: #ccc;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.batsmanRuns {
+  color: #00ff88;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+/* Innings Content */
+.inningsContent {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.overBlock {
+  background: #0f0f0f;
+  border: 1px solid #00ff8830;
+  border-radius: 14px;
+  padding: 16px;
+  transition: 0.2s;
+}
+
+.overBlock:hover {
+  border-color: #00ff88;
+  box-shadow: 0 0 12px rgba(0,255,120,0.15);
+}
+
+.overHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.overHeader span:first-child {
+  color: #00ff88;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.overHeader span:last-child {
+  color: #aaa;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ballRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Default ball style */
+.ballHistory {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid #00ff88;
+  background: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 15px;
+  color: #00ff88;
+  transition: 0.2s;
+}
+
+.ballHistory:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 12px currentColor;
+}
+
+/* Specific ball type colors - using data attributes or classes */
+
+/* Wide balls - Yellow/Gold */
+.ballHistory:is([data-type="WD"]) {
+  border-color: #ffd600;
+  color: #ffd600;
+  background: #ffd60015;
+}
+
+/* No balls - Red/Orange */
+.ballHistory:is([data-type="NB"]) {
+  border-color: #ff6b00;
+  color: #ff6b00;
+  background: #ff6b0015;
+}
+
+/* Wickets - Red */
+.ballHistory:is([data-type="W"]) {
+  border-color: #ff3333;
+  color: #ff3333;
+  background: #ff333315;
+  font-weight: 900;
+}
+
+/* Byes - Purple */
+.ballHistory:is([data-type="BYE"]) {
+  border-color: #a855f7;
+  color: #a855f7;
+  background: #a855f715;
+}
+
+/* Free Hit - Orange glow */
+.ballHistory:is([data-type="FH"]) {
+  border-color: #ffae00;
+  color: #ffae00;
+  background: #ffae0015;
+  animation: pulse 0.8s infinite alternate;
+}
+
+/* Dots (0 runs) - Gray */
+.ballHistory:is([data-type="0"]) {
+  border-color: #666;
+  color: #666;
+  background: #66660815;
+}
+
+/* Boundaries - Special styling */
+.ballHistory:is([data-type="4"]) {
+  border-color: #00d9ff;
+  color: #00d9ff;
+  background: #00d9ff15;
+  font-weight: 900;
+}
+
+.ballHistory:is([data-type="6"]) {
+  border-color: #ff00ff;
+  color: #ff00ff;
+  background: #ff00ff15;
+  font-weight: 900;
+  animation: pulse 0.8s infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
+}
+
+/* ========================================
+   MODAL HEADER (SHARED)
+======================================== */
+.modalHeader {
+  display: flex;                          /* ✅ Make sure this is here */
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #00ff8820;
+}
+
+.modalHeader h2 {
+  color: #00ff88;
+  margin: 0;                              /* ✅ Remove default margin */
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.modalHeaderCloseBtn {
+  background: transparent;
+  border: 2px solid #00ff88;
+  border-radius: 8px;
+  color: #00ff88;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-weight: bold;
+  flex-shrink: 0;                         /* ✅ Prevent button from shrinking */
+}
+
+.modalHeaderCloseBtn:hover {
+  background: #ff4444;
+  border-color: #ff4444;
+  color: white;
+  transform: scale(1.1);
 }
