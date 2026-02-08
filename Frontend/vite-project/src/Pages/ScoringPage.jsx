@@ -12,6 +12,7 @@ import NewBowlerModal from "../Components/Scoring/NewBowlerModal";
 import PartnershipHistory from "../Components/Scoring/PartnershipHistory";
 import MatchSummary from "../Components/Scoring/MatchSummary";
 import InningsHistory from "../Components/Scoring/InningsHistory";
+import ComparisonGraph from "../Components/Scoring/ComparisonGraph";
 import styles from "../Components/Scoring/scoring.module.css";
 
 import useMatchEngine from "../hooks/useMatchEngine";
@@ -104,9 +105,14 @@ function ScoringPage() {
   const [showSummary, setShowSummary] = useState(false);
   const [showInningsHistory, setShowInningsHistory] = useState(false);
   const [historyStack, setHistoryStack] = useState([]);
+  const [showComparisonGraph, setShowComparisonGraph] = useState(false);
+
+  // Ball-by-ball tracking for each innings
+  const [inn1BallByBall, setInn1BallByBall] = useState([]);
+  const [inn2BallByBall, setInn2BallByBall] = useState([]);
+  const currentBallByBall = useRef(innings === 1 ? inn1BallByBall : inn2BallByBall);
 
   const shouldSaveSnapshot = useRef(false);
-  const innings2DataRef = useRef(null); // ✅ Store innings 2 data before match ends
 
   /* ================= HELPER: CAPTURE CURRENT INNINGS DATA ================= */
   const captureCurrentInningsData = () => {
@@ -128,37 +134,98 @@ function ScoringPage() {
     };
   };
 
-  /* ================= INNINGS CHANGE HANDLER ================= */
-  useEffect(() => {
-    if (inningsChangeEvent) {
-      // 1. Capture 1st Innings Stats immediately
-      const data = captureCurrentInningsData();
-      setInnings1Data(data);
+  /* ================= TRACK BALL-BY-BALL PROGRESSION ================= */
+  const recordBall = (runsOnBall, isWicket = false, isBye = false, isExtra = false) => {
+    const ballData = {
+      over: overs,
+      ball: balls,
+      totalOvers: overs + balls / 6,
+      score,
+      wickets,
+      runsOnBall,
+      isWicket,
+      isBye,
+      isExtra,
+    };
 
-      // 2. Reset everything for 2nd Innings
+    if (innings === 1) {
+      setInn1BallByBall((prev) => [...prev, ballData]);
+    } else {
+      setInn2BallByBall((prev) => [...prev, ballData]);
+    }
+  };
+
+  /* ================= UNIFIED INNINGS CHANGE HANDLER ================= */
+  useEffect(() => {
+    if (!inningsChangeEvent) return;
+
+    console.log("📋 Innings Change Event:", inningsChangeEvent);
+
+    // ================= MATCH END (2nd innings finished) =================
+    if (inningsChangeEvent.matchEnd) {
+      console.log("🏁 Match ended — capturing 2nd innings");
+      const inn2Data = captureCurrentInningsData();
+      setInnings2Data(inn2Data);
+
       setTimeout(() => {
-        restorePlayersState({ players: [], strikerIndex: 0, nonStrikerIndex: 1 });
-        restoreBowlersState({ bowlers: [], currentBowlerIndex: 0 });
-        restorePartnershipState({
-          partnershipRuns: 0,
-          partnershipBalls: 0,
-          striker1Contribution: 0,
-          striker2Contribution: 0,
-          partnershipHistory: [],
-        });
-        setShowStartModal(true);
+        setShowSummary(true);
         setInningsChangeEvent(null);
       }, 50);
+
+      return;
     }
+
+    // ================= INNINGS 1 END (transition to Innings 2) =================
+    console.log("🔄 Innings 1 ending — capturing data and resetting for Innings 2");
+
+    // Capture 1st Innings Stats IMMEDIATELY
+    const inn1Data = captureCurrentInningsData();
+    console.log("📊 Innings 1 Data Captured:", inn1Data);
+    setInnings1Data(inn1Data);
+
+    // Reset everything for 2nd Innings
+    setTimeout(() => {
+      console.log("🔧 Resetting players and bowlers for Innings 2");
+      restorePlayersState({
+        players: [],
+        strikerIndex: 0,
+        nonStrikerIndex: 1,
+        isWicketPending: false,
+      });
+
+      restoreBowlersState({
+        bowlers: [],
+        currentBowlerIndex: 0,
+      });
+
+      restorePartnershipState({
+        partnershipRuns: 0,
+        partnershipBalls: 0,
+        striker1Contribution: 0,
+        striker2Contribution: 0,
+        partnershipHistory: [],
+      });
+
+      setShowStartModal(true);
+      setInningsChangeEvent(null);
+    }, 50);
   }, [inningsChangeEvent]);
 
   /* ================= SHOW SUMMARY ON MATCH END ================= */
   useEffect(() => {
     if (matchOver && !showSummary) {
-      // Capture 2nd innings stats one last time
-      const inn2Data = captureCurrentInningsData();
-      setInnings2Data(inn2Data);
-      setShowSummary(true);
+      console.log("🏁 Match Over - Showing Summary");
+      console.log("Innings 1 Data:", innings1Data);
+      console.log("Innings 2 Data:", innings2Data);
+
+      if (!innings2Data) {
+        const inn2Data = captureCurrentInningsData();
+        setInnings2Data(inn2Data);
+      }
+
+      setTimeout(() => {
+        setShowSummary(true);
+      }, 100);
     }
   }, [matchOver]);
 
@@ -243,6 +310,13 @@ function ScoringPage() {
     restorePlayersState(last);
     restorePartnershipState(last);
     restoreBowlersState(last);
+
+    // Remove last ball from ball-by-ball
+    if (innings === 1) {
+      setInn1BallByBall((prev) => prev.slice(0, -1));
+    } else {
+      setInn2BallByBall((prev) => prev.slice(0, -1));
+    }
   };
 
   /* ================= HANDLE WICKET EVENT ================= */
@@ -277,81 +351,6 @@ function ScoringPage() {
   const currentBattingTeam =
     innings === 1 ? firstBattingTeam : secondBattingTeam;
 
-  /* ================= INNINGS CHANGE HANDLER ================= */
-  useEffect(() => {
-    if (!inningsChangeEvent) return;
-  
-    // ================= MATCH END (2nd innings finished) =================
-    if (inningsChangeEvent.matchEnd) {
-      console.log("🏁 Match ended — capturing 2nd innings");
-  
-      const inn2Data = captureCurrentInningsData();
-      setInnings2Data(inn2Data);
-  
-      setTimeout(() => {
-        setShowSummary(true);
-        setInningsChangeEvent(null);
-      }, 50);
-  
-      return; // 🚫 Stop here so reset code below doesn't run
-    }
-  
-    // ================= INNINGS 1 END =================
-    console.log("🔄 Innings 1 ending — capturing data");
-  
-    const inn1Data = captureCurrentInningsData();
-    setInnings1Data(inn1Data);
-  
-    setTimeout(() => {
-      restorePlayersState({
-        players: [],
-        strikerIndex: 0,
-        nonStrikerIndex: 1,
-        isWicketPending: false,
-      });
-  
-      restoreBowlersState({
-        bowlers: [],
-        currentBowlerIndex: 0,
-      });
-  
-      restorePartnershipState({
-        partnershipRuns: 0,
-        partnershipBalls: 0,
-        striker1Contribution: 0,
-        striker2Contribution: 0,
-        partnershipHistory: [],
-      });
-  
-      setShowStartModal(true);
-      setInningsChangeEvent(null);
-    }, 50);
-  
-  }, [inningsChangeEvent]);
-  
-
-  /* ================= SHOW SUMMARY ON MATCH END ================= */
-  useEffect(() => {
-    if (matchOver && !showSummary) {
-      console.log("🏁 Match Over");
-
-      // ✅ Use pre-captured data from ref if available
-      if (innings2DataRef.current) {
-        console.log("Using pre-captured innings 2 data:", innings2DataRef.current);
-        setInnings2Data(innings2DataRef.current);
-      } else {
-        console.log("⚠️ No ref data, capturing now (might be empty)");
-        const inn2Data = captureCurrentInningsData();
-        console.log("Innings 2 data:", inn2Data);
-        setInnings2Data(inn2Data);
-      }
-
-      setTimeout(() => {
-        setShowSummary(true);
-      }, 100);
-    }
-  }, [matchOver, showSummary]);
-
   return (
     <div className={styles.container}>
       {showStartModal && (
@@ -366,106 +365,96 @@ function ScoringPage() {
 
       <BrandTitle size="small" />
       {!showSummary && (
-  <>
-      <ScoreHeader
-        innings={innings}
-        team={innings === 1 ? firstBattingTeam : secondBattingTeam}
-        score={score}
-        wickets={wickets}
-      />
+        <>
+          <ScoreHeader
+            innings={innings}
+            team={innings === 1 ? firstBattingTeam : secondBattingTeam}
+            score={score}
+            wickets={wickets}
+          />
 
-      <InfoStrip
-        overs={overs}
-        balls={balls}
-        bowler={bowlers[currentBowlerIndex]?.name}
-        score={score}
-        target={target}
-        innings={innings}
-        totalOvers={matchData.overs}
-        isFreeHit={isFreeHit}
-        matchData={matchData}
-        currentTeam={currentBattingTeam}
-      />
+          <InfoStrip
+            overs={overs}
+            balls={balls}
+            bowler={bowlers[currentBowlerIndex]?.name}
+            score={score}
+            target={target}
+            innings={innings}
+            totalOvers={matchData.overs}
+            isFreeHit={isFreeHit}
+            matchData={matchData}
+            currentTeam={currentBattingTeam}
+          />
 
-      <OverBalls history={currentOver} />
+          <OverBalls history={currentOver} />
 
-      {players.length >= 2 && (
-        <BatsmenRow
-          striker={players[strikerIndex]}
-          nonStriker={players[nonStrikerIndex]}
-          partnershipRuns={partnershipRuns}
-          partnershipBalls={partnershipBalls}
-          matchData={matchData}
-          currentTeam={currentBattingTeam}
-        />
-      )}
+          {players.length >= 2 && (
+            <BatsmenRow
+              striker={players[strikerIndex]}
+              nonStriker={players[nonStrikerIndex]}
+              partnershipRuns={partnershipRuns}
+              partnershipBalls={partnershipBalls}
+              matchData={matchData}
+              currentTeam={currentBattingTeam}
+            />
+          )}
 
-      {!matchOver && (
-        <RunControls
-          onRun={(r) => {
-            // ✅ Capture innings 2 data BEFORE run (in case target is reached)
-            if (innings === 2 && score + r >= target) {
-              const finalData = captureCurrentInningsData();
-              // Manually update the striker/bowler for the final ball before saving
-              finalData.battingStats[strikerIndex].runs += r;
-              finalData.battingStats[strikerIndex].balls += 1;
-              setInnings2Data(finalData);
-           }
+          {!matchOver && (
+            <RunControls
+              onRun={(r) => {
+                recordBall(r);
+                shouldSaveSnapshot.current = true;
+                addRunsToStriker(r);
+                addRunsToBowler(r);
+                addBallToBowler();
+                addRunsToPartnership(r, players[strikerIndex].name);
+                handleRun(r);
+              }}
+              onWide={() => {
+                recordBall(1, false, false, true);
+                shouldSaveSnapshot.current = true;
+                addRunsToBowler(1);
+                addExtraToPartnership(1);
+                handleWide();
+              }}
+              onNoBall={() => {
+                recordBall(1, false, false, true);
+                shouldSaveSnapshot.current = true;
+                addRunsToBowler(1);
+                addExtraToPartnership(1);
+                handleNoBall();
+              }}
+              onBye={(r) => {
+                recordBall(r, false, true, false);
+                shouldSaveSnapshot.current = true;
+                addBallToBowler();
+                addExtraToPartnership(r);
+                addBallToPartnership();
+                handleBye(r);
+              }}
+              onWicket={() => {
+                if (isFreeHit) {
+                  handleWicket();
+                  return;
+                }
 
-            shouldSaveSnapshot.current = true;
-            addRunsToStriker(r);
-            addRunsToBowler(r);
-            addBallToBowler();
-            addRunsToPartnership(r, players[strikerIndex].name);
-            handleRun(r);
-          }}
-          onWide={() => {
-            shouldSaveSnapshot.current = true;
-            addRunsToBowler(1);
-            addExtraToPartnership(1);
-            handleWide();
-          }}
-          onNoBall={() => {
-            shouldSaveSnapshot.current = true;
-            addRunsToBowler(1);
-            addExtraToPartnership(1);
-            handleNoBall();
-          }}
-          onBye={(r) => {
-            shouldSaveSnapshot.current = true;
-            addBallToBowler();
-            addExtraToPartnership(r);
-            addBallToPartnership();
-            handleBye(r);
-          }}
-          onWicket={() => {
-            if (isFreeHit) {
-              handleWicket();
-              return;
-            }
+                recordBall(0, true);
+                addWicketToBowler();
+                addBallToPartnership();
+                savePartnership(score, wickets + 1);
+                resetPartnership();
+                registerWicket();
+                handleWicket();
 
-            // ✅ Capture innings 2 data BEFORE wicket (in case match ends)
-            if (innings === 2) {
-              innings2DataRef.current = captureCurrentInningsData();
-              console.log("📸 Pre-captured innings 2 data (wicket)");
-            }
-
-            addWicketToBowler();
-            addBallToPartnership();
-            savePartnership(score, wickets + 1);
-            resetPartnership();
-            registerWicket();
-            handleWicket();
-
-            setTimeout(() => {
-              shouldSaveSnapshot.current = true;
-            }, 0);
-          }}
-          onSwapStrike={swapStrike}
-          onUndo={undoLastBall}
-        />
-      )}
-      </>
+                setTimeout(() => {
+                  shouldSaveSnapshot.current = true;
+                }, 0);
+              }}
+              onSwapStrike={swapStrike}
+              onUndo={undoLastBall}
+            />
+          )}
+        </>
       )}
 
       <div className={styles.utilityRow}>
@@ -484,6 +473,16 @@ function ScoringPage() {
         >
           📋 Innings History
         </button>
+
+        {/* ✅ Show Comparison Graph button when innings1Data is ready */}
+        {innings === 2 && innings1Data && (
+          <button
+            className={styles.utilityBtn}
+            onClick={() => setShowComparisonGraph(true)}
+          >
+            📈 Comparison Graph
+          </button>
+        )}
       </div>
 
       {isWicketPending && (
@@ -524,6 +523,19 @@ function ScoringPage() {
         <InningsHistory
           history={completeHistory}
           onClose={() => setShowInningsHistory(false)}
+        />
+      )}
+
+      {showComparisonGraph && innings1Data && (
+        <ComparisonGraph
+          team1Name={firstBattingTeam}
+          team2Name={secondBattingTeam}
+          innings1Data={innings1Data}
+          innings2Data={innings2Data}
+          innings1Score={innings1Score}
+          innings2Score={innings2Score}
+          matchData={matchData}
+          onClose={() => setShowComparisonGraph(false)}
         />
       )}
     </div>
