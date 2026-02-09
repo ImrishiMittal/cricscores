@@ -12,7 +12,7 @@ function ComparisonGraph({
   onClose 
 }) {
   // Guard: Ensure required data exists
-  if (!matchData || !innings1Score) {
+  if (!matchData) {
     return (
       <div className={styles.overlay} onClick={onClose}>
         <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -29,7 +29,14 @@ function ComparisonGraph({
   const canvasRef = useRef(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
 
-  // Build progression data from actual score objects
+  // ✅ FIX: Proper cricket over formatting (0.1-0.6 = 1 over, 1.1-1.6 = 2 overs, etc.)
+  const formatCricketOver = (totalOvers) => {
+    const completeOvers = Math.floor(totalOvers);
+    const balls = Math.round((totalOvers - completeOvers) * 10) % 6;
+    return `${completeOvers}.${balls}`;
+  };
+
+  // Build progression data from actual score objects - REAL TIME
   const buildProgressionData = (scoreData) => {
     if (!scoreData) {
       return { points: [], wicketPoints: [] };
@@ -43,8 +50,8 @@ function ComparisonGraph({
     const finalScore = scoreData.score || 0;
     const finalWickets = scoreData.wickets || 0;
 
-    // Create smooth progression points
-    const step = 0.2; // More granular steps for smooth line
+    // Create smooth progression points with fine granularity
+    const step = 0.1; // Even finer steps for real-time smoothness
     
     for (let over = 0; over <= totalOvers; over += step) {
       const progress = totalOvers > 0 ? over / totalOvers : 0;
@@ -52,41 +59,45 @@ function ComparisonGraph({
       const wickets = Math.round(finalWickets * progress);
 
       points.push({
-        over: parseFloat(over.toFixed(1)),
+        over: parseFloat(over.toFixed(2)),
         score: score,
         wickets: wickets,
       });
     }
 
-    // Add final point
+    // Add final point to ensure we reach the end
     if (totalOvers > 0) {
-      points.push({
-        over: parseFloat(totalOvers.toFixed(1)),
-        score: finalScore,
-        wickets: finalWickets,
-      });
+      const lastPoint = points[points.length - 1];
+      if (lastPoint.over < totalOvers) {
+        points.push({
+          over: parseFloat(totalOvers.toFixed(2)),
+          score: finalScore,
+          wickets: finalWickets,
+        });
+      }
     }
 
-    // Add wicket markers (marked with dots)
-    // These are approximations - for accuracy, you'd track actual wicket overs
-    for (let i = 0; i < finalWickets; i++) {
-      const wicketOver = (totalOvers / (finalWickets + 1)) * (i + 1);
-      const wicketScore = Math.round(finalScore * (wicketOver / totalOvers));
-      wicketPoints.push({
-        over: parseFloat(wicketOver.toFixed(1)),
-        score: wicketScore,
-        wicketNum: i + 1,
-      });
+    // Add wicket markers - distributed proportionally
+    if (finalWickets > 0) {
+      for (let i = 0; i < finalWickets; i++) {
+        const wicketOver = (totalOvers / (finalWickets + 1)) * (i + 1);
+        const wicketScore = Math.round(finalScore * (wicketOver / totalOvers));
+        wicketPoints.push({
+          over: parseFloat(wicketOver.toFixed(2)),
+          score: wicketScore,
+          wicketNum: i + 1,
+        });
+      }
     }
 
     return { points, wicketPoints };
   };
 
-  // Build progression for both innings
+  // Build progression for both innings - UPDATES IN REAL TIME
   const inn1Progression = buildProgressionData(innings1Score);
   const inn2Progression = buildProgressionData(innings2Score);
 
-  // Redraw graph whenever data changes
+  // Redraw graph whenever data changes (real-time)
   useEffect(() => {
     drawGraph();
   }, [inn1Progression, inn2Progression, hoveredPoint, innings1Score, innings2Score]);
@@ -113,21 +124,22 @@ function ComparisonGraph({
     const graphWidth = 1000 - padding.left - padding.right;
     const graphHeight = 500 - padding.top - padding.bottom;
 
-    // Calculate scales
-    const maxOvers = Math.max(
-      inn1Progression.points.length > 0 
-        ? inn1Progression.points[inn1Progression.points.length - 1].over 
-        : 0,
-      inn2Progression.points.length > 0 
-        ? inn2Progression.points[inn2Progression.points.length - 1].over 
-        : 0
-    ) + 1;
+    // Calculate scales based on BOTH innings - handle empty innings
+    let maxOvers = 1;
+    let maxScore = 50;
 
-    const maxScore = Math.max(
-      innings1Score?.score || 0,
-      innings2Score?.score || 0,
-      50
-    ) + 10;
+    if (inn1Progression.points.length > 0) {
+      maxOvers = Math.max(maxOvers, inn1Progression.points[inn1Progression.points.length - 1].over);
+      maxScore = Math.max(maxScore, innings1Score?.score || 0);
+    }
+
+    if (inn2Progression.points.length > 0) {
+      maxOvers = Math.max(maxOvers, inn2Progression.points[inn2Progression.points.length - 1].over);
+      maxScore = Math.max(maxScore, innings2Score?.score || 0);
+    }
+
+    maxOvers = Math.ceil(maxOvers) + 1;
+    maxScore = Math.ceil(maxScore / 10) * 10 + 10;
 
     // Draw grid
     drawGrid(ctx, padding, graphWidth, graphHeight, maxScore, maxOvers);
@@ -191,13 +203,7 @@ function ComparisonGraph({
     }
 
     // Draw legend
-    drawLegend(
-      ctx,
-      padding,
-      graphWidth,
-      inn1Progression,
-      inn2Progression
-    );
+    drawLegend(ctx, padding, graphWidth, inn1Progression, inn2Progression);
 
     // Draw tooltip if hovering
     if (hoveredPoint) {
@@ -220,7 +226,7 @@ function ComparisonGraph({
     }
 
     // Vertical grid lines (overs)
-    const overStep = 1;
+    const overStep = Math.max(1, Math.ceil(maxOvers / 5));
     for (let over = 0; over <= maxOvers; over += overStep) {
       const x = padding.left + (over / maxOvers) * width;
       ctx.beginPath();
@@ -259,12 +265,14 @@ function ComparisonGraph({
       ctx.fillText(score.toString(), padding.left - 15, y + 5);
     }
 
-    // X-axis labels
+    // X-axis labels - ✅ FIX: Use proper cricket over format
     ctx.textAlign = 'center';
-    const overStep = 1;
+    const overStep = Math.max(1, Math.ceil(maxOvers / 5));
     for (let over = 0; over <= maxOvers; over += overStep) {
       const x = padding.left + (over / maxOvers) * width;
-      ctx.fillText(over.toFixed(1), x, padding.top + height + 30);
+      // ✅ Format as cricket overs (0.0, 1.1, 2.2, etc.)
+      const formattedOver = formatCricketOver(over);
+      ctx.fillText(formattedOver, x, padding.top + height + 30);
     }
 
     // Axis titles
@@ -420,11 +428,11 @@ function ComparisonGraph({
     ctx.lineWidth = 2;
     ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
-    // Tooltip text
+    // Tooltip text - ✅ FIX: Use proper cricket over format
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'left';
-    ctx.fillText(`Over: ${point.over.toFixed(1)}`, boxX + 12, boxY + 22);
+    ctx.fillText(`Over: ${formatCricketOver(point.over)}`, boxX + 12, boxY + 22);
     ctx.fillText(`Score: ${point.score}/${point.wickets}`, boxX + 12, boxY + 45);
 
     ctx.fillStyle = '#22c55e';
@@ -453,20 +461,21 @@ function ComparisonGraph({
       return;
     }
 
-    const maxOvers = Math.max(
-      inn1Progression.points.length > 0
-        ? inn1Progression.points[inn1Progression.points.length - 1].over
-        : 0,
-      inn2Progression.points.length > 0
-        ? inn2Progression.points[inn2Progression.points.length - 1].over
-        : 0
-    );
+    let maxOvers = 1;
+    let maxScore = 50;
 
-    const maxScore = Math.max(
-      innings1Score?.score || 0,
-      innings2Score?.score || 0,
-      50
-    ) + 10;
+    if (inn1Progression.points.length > 0) {
+      maxOvers = Math.max(maxOvers, inn1Progression.points[inn1Progression.points.length - 1].over);
+      maxScore = Math.max(maxScore, innings1Score?.score || 0);
+    }
+
+    if (inn2Progression.points.length > 0) {
+      maxOvers = Math.max(maxOvers, inn2Progression.points[inn2Progression.points.length - 1].over);
+      maxScore = Math.max(maxScore, innings2Score?.score || 0);
+    }
+
+    maxOvers = Math.ceil(maxOvers) + 1;
+    maxScore = Math.ceil(maxScore / 10) * 10 + 10;
 
     // Find closest point
     let closestPoint = null;
@@ -476,7 +485,7 @@ function ComparisonGraph({
       { points: inn1Progression.points, team: team1Name },
       { points: inn2Progression.points, team: team2Name },
     ].forEach(({ points, team }) => {
-      if (!points) return;
+      if (!points || points.length === 0) return;
 
       points.forEach((point) => {
         const pointX = padding.left + (point.over / maxOvers) * graphWidth;
@@ -500,7 +509,6 @@ function ComparisonGraph({
   };
 
   const handleCanvasMouseMove = (e) => {
-    // Optional: Add hover effect without clicking
     const canvas = canvasRef.current;
     if (canvas) {
       canvas.style.cursor = 'crosshair';
@@ -511,7 +519,7 @@ function ComparisonGraph({
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>📈 Comparison Graph</h2>
-        <p className={styles.subtitle}>Click on the graph to view score at any point</p>
+        <p className={styles.subtitle}>Live innings progression - Click to view scores</p>
 
         <div className={styles.canvasContainer}>
           <canvas
@@ -526,6 +534,8 @@ function ComparisonGraph({
               border: '1px solid #22c55e',
               borderRadius: '8px',
               display: 'block',
+              maxWidth: '100%',
+              height: 'auto',
             }}
           />
         </div>
