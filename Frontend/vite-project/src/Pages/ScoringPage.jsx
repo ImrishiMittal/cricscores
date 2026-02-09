@@ -380,6 +380,8 @@ function ScoringPage() {
             overs={overs}
             balls={balls}
             bowler={bowlers[currentBowlerIndex]?.name}
+            bowlers={bowlers}                    // ✅ ADD THIS
+            currentBowlerIndex={currentBowlerIndex} 
             score={score}
             target={target}
             innings={innings}
