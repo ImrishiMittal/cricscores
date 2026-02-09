@@ -366,11 +366,14 @@ function ScoringPage() {
       <BrandTitle size="small" />
       {!showSummary && (
         <>
+          {/* ✅ FIX #2: Pass bowlers and currentBowlerIndex to ScoreHeader */}
           <ScoreHeader
             innings={innings}
             team={innings === 1 ? firstBattingTeam : secondBattingTeam}
             score={score}
             wickets={wickets}
+            bowlers={bowlers}
+            currentBowlerIndex={currentBowlerIndex}
           />
 
           <InfoStrip
@@ -474,7 +477,6 @@ function ScoringPage() {
           📋 Innings History
         </button>
 
-        {/* ✅ Show Comparison Graph button when innings1Data is ready */}
         {innings === 2 && innings1Data && (
           <button
             className={styles.utilityBtn}
@@ -543,4 +545,3 @@ function ScoringPage() {
 }
 
 export default ScoringPage;
-

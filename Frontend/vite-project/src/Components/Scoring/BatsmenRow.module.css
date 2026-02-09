@@ -1,0 +1,180 @@
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+  background: #111111;
+  border: 2px solid #22c55e;
+  border-radius: 12px;
+  margin: 16px 0;
+}
+
+.batsmanCard {
+  background: #0a0a0a;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  transition: all 0.3s ease;
+}
+
+.batsmanCard:hover {
+  border-color: #22c55e;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
+}
+
+.header {
+  margin-bottom: 12px;
+}
+
+.name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #22c55e;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge {
+  font-size: 12px;
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.stats {
+  margin-bottom: 12px;
+}
+
+.scoreRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.score {
+  font-size: 28px;
+  font-weight: 900;
+  color: #22c55e;
+  text-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+  line-height: 1;
+}
+
+.balls {
+  font-size: 14px;
+  font-weight: 600;
+  color: #aaa;
+}
+
+/* ✅ FIX #3: Strike rate styling - smaller and distinct */
+.strikeRate {
+  font-size: 11px;
+  font-weight: 700;
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: auto;
+}
+
+.partnership {
+  padding: 10px;
+  background: rgba(34, 197, 94, 0.08);
+  border-left: 3px solid #22c55e;
+  border-radius: 6px;
+}
+
+.partnershipText {
+  margin: 0;
+  font-size: 12px;
+  color: #ccc;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.partValue {
+  color: #22c55e;
+  font-weight: 800;
+  margin-left: 4px;
+}
+
+/* ✅ Mobile: Two columns as requested */
+@media (max-width: 768px) {
+  .container {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px;
+    margin: 12px 0;
+  }
+
+  .batsmanCard {
+    padding: 12px;
+  }
+
+  .name {
+    font-size: 14px;
+  }
+
+  .score {
+    font-size: 24px;
+  }
+
+  .balls {
+    font-size: 12px;
+  }
+
+  .strikeRate {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .partnershipText {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px;
+    margin: 10px 0;
+  }
+
+  .batsmanCard {
+    padding: 10px;
+  }
+
+  .name {
+    font-size: 13px;
+  }
+
+  .score {
+    font-size: 20px;
+  }
+
+  .balls {
+    font-size: 11px;
+  }
+
+  .strikeRate {
+    font-size: 9px;
+    padding: 2px 5px;
+  }
+
+  .partnership {
+    padding: 8px;
+  }
+
+  .partnershipText {
+    font-size: 10px;
+  }
+}
