@@ -1,175 +1,194 @@
 import styles from './MatchSummary.module.css';
 
-function MatchSummary({ 
-  team1, 
-  team2, 
-  winner, 
-  innings1Data, 
+function MatchSummary({
+  team1,
+  team2,
+  winner,
+  innings1Data,
   innings2Data,
   innings1Score,
   innings2Score,
   matchData,
-  onClose 
+  onClose,
 }) {
-  
-  console.log("📊 MatchSummary received:");
-  console.log("Innings 1 Data:", innings1Data);
-  console.log("Innings 2 Data:", innings2Data);
-  
-  // ✅ Get top 3 batsmen by runs
-  const getTop3Batsmen = (battingStats) => {
-    if (!battingStats || battingStats.length === 0) return [];
-    return [...battingStats]
-      .filter(b => b.balls > 0) // Only show batsmen who faced balls
-      .sort((a, b) => b.runs - a.runs)
-      .slice(0, 3);
+  // ✅ FIX: Proper cricket over formatting
+  const formatOvers = (overs, balls) => {
+    const completeOvers = Math.floor(overs);
+    const ballsInCurrentOver = balls % 6;
+    return `${completeOvers}.${ballsInCurrentOver}`;
   };
 
-  // ✅ Get top 3 bowlers by wickets (then by economy)
-  const getTop3Bowlers = (bowlingStats) => {
-    if (!bowlingStats || bowlingStats.length === 0) return [];
-    return [...bowlingStats]
-      .filter(b => b.balls > 0 || b.overs > 0) // Only show bowlers who bowled
-      .sort((a, b) => {
-        if (b.wickets !== a.wickets) return b.wickets - a.wickets;
-        return parseFloat(a.economy) - parseFloat(b.economy);
-      })
-      .slice(0, 3);
-  };
+  // Determine match result with tie detection
+  const determineResult = () => {
+    const score1 = innings1Score?.score || 0;
+    const score2 = innings2Score?.score || 0;
 
-  const inn1TopBatsmen = getTop3Batsmen(innings1Data?.battingStats || []);
-  const inn1TopBowlers = getTop3Bowlers(innings1Data?.bowlingStats || []);
-  const inn2TopBatsmen = getTop3Batsmen(innings2Data?.battingStats || []);
-  const inn2TopBowlers = getTop3Bowlers(innings2Data?.bowlingStats || []);
-
-  // ✅ Calculate match result message
-  const getMatchResult = () => {
-    if (!winner) return "Match Drawn";
-    
-    const firstBattingTeam = matchData?.battingFirst || matchData?.teamA;
-    const secondBattingTeam = firstBattingTeam === matchData?.teamA ? matchData?.teamB : matchData?.teamA;
-    
-    if (winner === firstBattingTeam) {
-      const margin = innings1Score?.score - innings2Score?.score;
-      return `${winner} won by ${margin} runs`;
-    } else {
-      const maxWickets = Number(matchData?.teamBPlayers || 11) - 1;
-      const wicketsLeft = maxWickets - innings2Score?.wickets;
-      return `${winner} won by ${wicketsLeft} wickets`;
+    if (score1 === score2) {
+      return {
+        type: 'tie',
+        message: `MATCH IS A TIE`,
+        description: `Both teams scored ${score1} runs`,
+      };
     }
+
+    if (score1 > score2) {
+      return {
+        type: 'win',
+        message: `${team1} WON BY ${score1 - score2} RUNS`,
+        description: `${team1} defeated ${team2}`,
+      };
+    }
+
+    return {
+      type: 'win',
+      message: `${team2} WON BY ${score2 - score1} RUNS`,
+      description: `${team2} defeated ${team1}`,
+    };
   };
+
+  const result = determineResult();
+
+  const team1Score = innings1Score?.score || 0;
+  const team1Wickets = innings1Score?.wickets || 0;
+  // ✅ FIX: Use proper cricket over format
+  const team1OversFormatted = formatOvers(innings1Score?.overs || 0, innings1Score?.balls || 0);
+
+  const team2Score = innings2Score?.score || 0;
+  const team2Wickets = innings2Score?.wickets || 0;
+  // ✅ FIX: Use proper cricket over format
+  const team2OversFormatted = formatOvers(innings2Score?.overs || 0, innings2Score?.balls || 0);
 
   return (
-    <div className={styles.overlay}>
-      <div className={styles.modal}>
-        {/* ================= HEADER ================= */}
-        <h2 className={styles.title}>🏆 Match Summary</h2>
-  
-        {/* ================= SCROLLABLE CONTENT ================= */}
-        <div className={styles.content}>
-          {/* INNINGS 1 */}
-          <div className={styles.inningsBlock}>
-            <div className={styles.inningsHeader}>
-              <span className={styles.teamName}>{team1}</span>
-              <span className={styles.scoreDisplay}>
-                {innings1Score?.score || 0}/{innings1Score?.wickets || 0}
-              </span>
-              <span className={styles.oversDisplay}>
-                ({innings1Score?.overs || 0}.{innings1Score?.balls || 0} overs)
+    <div className={styles.overlay} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        {/* HEADER */}
+        <div className={styles.header}>
+          <h1 className={styles.title}>🏆 MATCH SUMMARY</h1>
+        </div>
+
+        {/* RESULT BOX */}
+        <div className={`${styles.resultBox} ${styles[result.type]}`}>
+          <p className={styles.resultMessage}>{result.message}</p>
+          <p className={styles.resultDescription}>{result.description}</p>
+        </div>
+
+        {/* SCORECARD CONTAINER */}
+        <div className={styles.scorecardContainer}>
+          {/* TEAM 1 SCORECARD */}
+          <div className={styles.scorecard}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.teamNameCard}>{team1}</h2>
+              <span className={styles.oversCard}>
+                OVERS {team1OversFormatted}
               </span>
             </div>
-  
-            <div className={styles.statsGrid}>
-              <div className={styles.statsColumn}>
-                <h4 className={styles.columnTitle}>Batting</h4>
-                {inn1TopBatsmen.length > 0 ? (
-                  inn1TopBatsmen.map((bat, idx) => (
-                    <div key={idx} className={styles.statRow}>
-                      <span className={styles.playerName}>{bat.name}</span>
-                      <span className={styles.statValue}>
-                        {bat.runs} ({bat.balls})
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className={styles.noData}>No batting data</p>
-                )}
-              </div>
-  
-              <div className={styles.statsColumn}>
-                <h4 className={styles.columnTitle}>Bowling</h4>
-                {inn1TopBowlers.length > 0 ? (
-                  inn1TopBowlers.map((bowl, idx) => (
-                    <div key={idx} className={styles.statRow}>
-                      <span className={styles.playerName}>{bowl.name}</span>
-                      <span className={styles.statValue}>
-                        {bowl.wickets}/{bowl.runs} ({bowl.overs}.{bowl.balls})
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className={styles.noData}>No bowling data</p>
-                )}
-              </div>
+
+            <div className={styles.mainScore}>
+              <span className={styles.scoreNumber}>{team1Score}</span>
+              <span className={styles.wicketsNumber}>-{team1Wickets}</span>
             </div>
+
+            {/* BATTING STATS TABLE */}
+            {innings1Data?.battingStats && innings1Data.battingStats.length > 0 ? (
+              <div className={styles.statsTable}>
+                <div className={styles.tableHeader}>
+                  <div className={styles.playerCol}>BATSMAN</div>
+                  <div className={styles.statCol}>R</div>
+                  <div className={styles.statCol}>B</div>
+                  <div className={styles.statCol}>SR</div>
+                </div>
+                {innings1Data.battingStats.map((player, idx) => (
+                  <div key={idx} className={styles.tableRow}>
+                    <div className={styles.playerCol}>{player.name}</div>
+                    <div className={styles.statCol}>{player.runs}</div>
+                    <div className={styles.statCol}>{player.balls}</div>
+                    <div className={styles.statCol}>{player.strikeRate}</div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {/* BOWLING STATS TABLE */}
+            {innings1Data?.bowlingStats && innings1Data.bowlingStats.length > 0 ? (
+              <div className={styles.statsTable}>
+                <div className={styles.tableHeader}>
+                  <div className={styles.playerCol}>BOWLER</div>
+                  <div className={styles.statCol}>O</div>
+                  <div className={styles.statCol}>R</div>
+                  <div className={styles.statCol}>W</div>
+                </div>
+                {innings1Data.bowlingStats.map((bowler, idx) => (
+                  <div key={idx} className={styles.tableRow}>
+                    <div className={styles.playerCol}>{bowler.name}</div>
+                    <div className={styles.statCol}>{bowler.overs}</div>
+                    <div className={styles.statCol}>{bowler.runs}</div>
+                    <div className={styles.statCol}>{bowler.wickets}</div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
-  
-          <div className={styles.divider}></div>
-  
-          {/* INNINGS 2 */}
-          <div className={styles.inningsBlock}>
-            <div className={styles.inningsHeader}>
-              <span className={styles.teamName}>{team2}</span>
-              <span className={styles.scoreDisplay}>
-                {innings2Score?.score || 0}/{innings2Score?.wickets || 0}
-              </span>
-              <span className={styles.oversDisplay}>
-                ({innings2Score?.overs || 0}.{innings2Score?.balls || 0} overs)
+
+          {/* DIVIDER */}
+          <div className={styles.divider} />
+
+          {/* TEAM 2 SCORECARD */}
+          <div className={styles.scorecard}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.teamNameCard}>{team2}</h2>
+              <span className={styles.oversCard}>
+                OVERS {team2OversFormatted}
               </span>
             </div>
-  
-            <div className={styles.statsGrid}>
-              <div className={styles.statsColumn}>
-                <h4 className={styles.columnTitle}>Batting</h4>
-                {inn2TopBatsmen.length > 0 ? (
-                  inn2TopBatsmen.map((bat, idx) => (
-                    <div key={idx} className={styles.statRow}>
-                      <span className={styles.playerName}>{bat.name}</span>
-                      <span className={styles.statValue}>
-                        {bat.runs} ({bat.balls})
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className={styles.noData}>No batting data</p>
-                )}
-              </div>
-  
-              <div className={styles.statsColumn}>
-                <h4 className={styles.columnTitle}>Bowling</h4>
-                {inn2TopBowlers.length > 0 ? (
-                  inn2TopBowlers.map((bowl, idx) => (
-                    <div key={idx} className={styles.statRow}>
-                      <span className={styles.playerName}>{bowl.name}</span>
-                      <span className={styles.statValue}>
-                        {bowl.wickets}/{bowl.runs} ({bowl.overs}.{bowl.balls})
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className={styles.noData}>No bowling data</p>
-                )}
-              </div>
+
+            <div className={styles.mainScore}>
+              <span className={styles.scoreNumber}>{team2Score}</span>
+              <span className={styles.wicketsNumber}>-{team2Wickets}</span>
             </div>
-          </div>
-  
-          {/* MATCH RESULT */}
-          <div className={styles.resultBox}>
-            <p className={styles.resultText}>{getMatchResult()}</p>
+
+            {/* BATTING STATS TABLE */}
+            {innings2Data?.battingStats && innings2Data.battingStats.length > 0 ? (
+              <div className={styles.statsTable}>
+                <div className={styles.tableHeader}>
+                  <div className={styles.playerCol}>BATSMAN</div>
+                  <div className={styles.statCol}>R</div>
+                  <div className={styles.statCol}>B</div>
+                  <div className={styles.statCol}>SR</div>
+                </div>
+                {innings2Data.battingStats.map((player, idx) => (
+                  <div key={idx} className={styles.tableRow}>
+                    <div className={styles.playerCol}>{player.name}</div>
+                    <div className={styles.statCol}>{player.runs}</div>
+                    <div className={styles.statCol}>{player.balls}</div>
+                    <div className={styles.statCol}>{player.strikeRate}</div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {/* BOWLING STATS TABLE */}
+            {innings2Data?.bowlingStats && innings2Data.bowlingStats.length > 0 ? (
+              <div className={styles.statsTable}>
+                <div className={styles.tableHeader}>
+                  <div className={styles.playerCol}>BOWLER</div>
+                  <div className={styles.statCol}>O</div>
+                  <div className={styles.statCol}>R</div>
+                  <div className={styles.statCol}>W</div>
+                </div>
+                {innings2Data.bowlingStats.map((bowler, idx) => (
+                  <div key={idx} className={styles.tableRow}>
+                    <div className={styles.playerCol}>{bowler.name}</div>
+                    <div className={styles.statCol}>{bowler.overs}</div>
+                    <div className={styles.statCol}>{bowler.runs}</div>
+                    <div className={styles.statCol}>{bowler.wickets}</div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
-  
-        {/* ================= CLOSE BUTTON ================= */}
+
+        {/* CLOSE BUTTON */}
         <button className={styles.closeBtn} onClick={onClose}>
           Close
         </button>
@@ -179,5 +198,3 @@ function MatchSummary({
 }
 
 export default MatchSummary;
-
-
