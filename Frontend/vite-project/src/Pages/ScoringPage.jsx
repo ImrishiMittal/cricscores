@@ -110,7 +110,9 @@ function ScoringPage() {
   // Ball-by-ball tracking for each innings
   const [inn1BallByBall, setInn1BallByBall] = useState([]);
   const [inn2BallByBall, setInn2BallByBall] = useState([]);
-  const currentBallByBall = useRef(innings === 1 ? inn1BallByBall : inn2BallByBall);
+  const currentBallByBall = useRef(
+    innings === 1 ? inn1BallByBall : inn2BallByBall
+  );
 
   const shouldSaveSnapshot = useRef(false);
 
@@ -135,7 +137,12 @@ function ScoringPage() {
   };
 
   /* ================= TRACK BALL-BY-BALL PROGRESSION ================= */
-  const recordBall = (runsOnBall, isWicket = false, isBye = false, isExtra = false) => {
+  const recordBall = (
+    runsOnBall,
+    isWicket = false,
+    isBye = false,
+    isExtra = false
+  ) => {
     const ballData = {
       over: overs,
       ball: balls,
@@ -176,7 +183,9 @@ function ScoringPage() {
     }
 
     // ================= INNINGS 1 END (transition to Innings 2) =================
-    console.log("🔄 Innings 1 ending — capturing data and resetting for Innings 2");
+    console.log(
+      "🔄 Innings 1 ending — capturing data and resetting for Innings 2"
+    );
 
     // Capture 1st Innings Stats IMMEDIATELY
     const inn1Data = captureCurrentInningsData();
@@ -372,16 +381,17 @@ function ScoringPage() {
             team={innings === 1 ? firstBattingTeam : secondBattingTeam}
             score={score}
             wickets={wickets}
-            bowlers={bowlers}
-            currentBowlerIndex={currentBowlerIndex}
+            overs={overs} 
+            balls={balls} 
+            totalOvers={matchData.overs} 
           />
 
           <InfoStrip
             overs={overs}
             balls={balls}
             bowler={bowlers[currentBowlerIndex]?.name}
-            bowlers={bowlers}                    // ✅ ADD THIS
-            currentBowlerIndex={currentBowlerIndex} 
+            bowlers={bowlers} 
+            currentBowlerIndex={currentBowlerIndex}
             score={score}
             target={target}
             innings={innings}
