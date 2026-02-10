@@ -30,7 +30,6 @@ function MatchSetupPage() {
 
   const [batChoice, setBatChoice] = useState(null);
 
-
   // ---------------- MATCH RULES ----------------
   const [rules, setRules] = useState({
     wide: false,
@@ -38,9 +37,8 @@ function MatchSetupPage() {
     byes: false,
     wideRunAllowed: false,
     noBallRunAllowed: false,
-    noBallFreeHit: false,   // add this
+    noBallFreeHit: false, // add this
   });
-  
 
   // ---------------- TOSS LOGIC ----------------
   const handleToss = () => {
@@ -59,6 +57,9 @@ function MatchSetupPage() {
     }
   };
 
+  //--------------------Single Batsman---------------
+  const [lastManBatting, setLastManBatting] = useState(false);
+
   // ---------------- START MATCH ----------------
   const startMatch = () => {
     const matchData = {
@@ -76,10 +77,12 @@ function MatchSetupPage() {
       matchDays,
       inningsPerTeam,
       oversPerDay,
+      lastManBatting,   // ✅ ADD HERE
     };
-
+  
     navigate("/scoring", { state: matchData });
   };
+  
 
   return (
     <div className={styles.container}>
@@ -127,6 +130,14 @@ function MatchSetupPage() {
           type="number"
           onChange={(e) => setOvers(e.target.value)}
         />
+        <label>
+          <input
+            type="checkbox"
+            checked={lastManBatting}
+            onChange={(e) => setLastManBatting(e.target.checked)}
+          />
+          Last Man Can Bat Alone (Gully Rule)
+        </label>
 
         {/* TEST MATCH SETUP */}
         <div className={styles.testMatchBox}>
@@ -224,33 +235,32 @@ function MatchSetupPage() {
         {/* BAT/BOWL */}
         {tossWinner && (
           <div className={styles.choiceRow}>
-          <p>{tossWinner} chooses:</p>
-        
-          <button
-            className={`${styles.choiceBtn} ${
-              batChoice === "bat" ? styles.activeChoice : ""
-            }`}
-            onClick={() => {
-              setBatChoice("bat");
-              setBattingFirst(tossWinner);
-            }}
-          >
-            Bat
-          </button>
-        
-          <button
-            className={`${styles.choiceBtn} ${
-              batChoice === "bowl" ? styles.activeChoice : ""
-            }`}
-            onClick={() => {
-              setBatChoice("bowl");
-              setBattingFirst(tossWinner === teamA ? teamB : teamA);
-            }}
-          >
-            Bowl
-          </button>
-        </div>
-        
+            <p>{tossWinner} chooses:</p>
+
+            <button
+              className={`${styles.choiceBtn} ${
+                batChoice === "bat" ? styles.activeChoice : ""
+              }`}
+              onClick={() => {
+                setBatChoice("bat");
+                setBattingFirst(tossWinner);
+              }}
+            >
+              Bat
+            </button>
+
+            <button
+              className={`${styles.choiceBtn} ${
+                batChoice === "bowl" ? styles.activeChoice : ""
+              }`}
+              onClick={() => {
+                setBatChoice("bowl");
+                setBattingFirst(tossWinner === teamA ? teamB : teamA);
+              }}
+            >
+              Bowl
+            </button>
+          </div>
         )}
 
         {/* EXTRAS RULES */}
@@ -295,33 +305,33 @@ function MatchSetupPage() {
           </div>
         )}
 
-{rules.noBall && (
-  <div className={styles.ruleBox}>
-    <p>No Ball Rule</p>
+        {rules.noBall && (
+          <div className={styles.ruleBox}>
+            <p>No Ball Rule</p>
 
-    <label>
-      <input
-        type="checkbox"
-        checked={rules.noBallFreeHit}
-        onChange={(e) =>
-          setRules({ ...rules, noBallFreeHit: e.target.checked })
-        }
-      />
-      Free Hit
-    </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={rules.noBallFreeHit}
+                onChange={(e) =>
+                  setRules({ ...rules, noBallFreeHit: e.target.checked })
+                }
+              />
+              Free Hit
+            </label>
 
-    <label>
-      <input
-        type="checkbox"
-        checked={rules.noBallRunAllowed}
-        onChange={(e) =>
-          setRules({ ...rules, noBallRunAllowed: e.target.checked })
-        }
-      />
-      Run
-    </label>
-  </div>
-)}
+            <label>
+              <input
+                type="checkbox"
+                checked={rules.noBallRunAllowed}
+                onChange={(e) =>
+                  setRules({ ...rules, noBallRunAllowed: e.target.checked })
+                }
+              />
+              Run
+            </label>
+          </div>
+        )}
 
         <button className={styles.startBtn} onClick={startMatch}>
           Start Match

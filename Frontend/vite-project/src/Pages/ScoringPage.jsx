@@ -337,6 +337,17 @@ function ScoringPage() {
   /* ================= HANDLE WICKET EVENT ================= */
   useEffect(() => {
     if (wicketEvent) {
+      const maxWickets =
+        innings === 1
+          ? Number(matchData.teamAPlayers || 11) - 1
+          : Number(matchData.teamBPlayers || 11) - 1;
+
+      if (matchData.lastManBatting && wickets + 1 >= maxWickets) {
+        // Last man batting — do NOT ask new batsman
+        setWicketEvent(null);
+        return;
+      }
+
       setOutBatsman(strikerIndex);
       setIsWicketPending(true);
       shouldSaveSnapshot.current = true;
@@ -412,10 +423,15 @@ function ScoringPage() {
 
           <OverBalls history={currentOver} />
 
-          {players.length >= 2 && (
+          {players.length >= 1 && (
             <BatsmenRow
               striker={players[strikerIndex]}
-              nonStriker={players[nonStrikerIndex]}
+              nonStriker={
+                matchData.lastManBatting &&
+                wickets >= Number(matchData.teamAPlayers) - 1
+                  ? null
+                  : players[nonStrikerIndex]
+              }
               partnershipRuns={partnershipRuns}
               partnershipBalls={partnershipBalls}
               matchData={matchData}

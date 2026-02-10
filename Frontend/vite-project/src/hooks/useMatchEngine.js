@@ -45,34 +45,39 @@ export default function useMatchEngine(matchData, swapStrike) {
   };
 
   /* ================= END MATCH ================= */
-  const endMatch = (winningTeam, finalScore, finalWickets, finalOvers, finalBalls) => {
+  const endMatch = (
+    winningTeam,
+    finalScore,
+    finalWickets,
+    finalOvers,
+    finalBalls
+  ) => {
     if (innings === 2) {
-      setInnings2Score({ 
-        score: finalScore, 
-        wickets: finalWickets, 
-        overs: finalOvers, 
-        balls: finalBalls 
+      setInnings2Score({
+        score: finalScore,
+        wickets: finalWickets,
+        overs: finalOvers,
+        balls: finalBalls,
       });
-  
+
       // 🧠 FORCE parent to capture BEFORE reset
       setInningsChangeEvent({ matchEnd: true });
     }
-  
+
     setMatchOver(true);
     setWinner(winningTeam);
   };
-  
 
   const [inningsChangeEvent, setInningsChangeEvent] = useState(null);
-  
+
   /* ================= END INNINGS ================= */
   const endInnings = () => {
     if (innings === 1) {
       const newTarget = score + 1;
-  
+
       // ✅ SAVE INNINGS 1 FINAL SCORE
       setInnings1Score({ score, wickets, overs, balls });
-  
+
       setTarget(newTarget);
       setInnings(2);
       setScore(0);
@@ -82,7 +87,7 @@ export default function useMatchEngine(matchData, swapStrike) {
       setCurrentOver([]);
       setCompleteHistory([]);
       setIsFreeHit(false);
-  
+
       setInningsChangeEvent({ target: newTarget });
     }
   };
@@ -90,160 +95,216 @@ export default function useMatchEngine(matchData, swapStrike) {
   /* ================= MATCH STATUS ================= */
   const checkMatchStatus = (newScore, nextWickets, nextBalls, nextOvers) => {
     const ballsBowled = nextOvers * 6 + nextBalls;
-  
+
     if (innings === 2 && newScore >= target) {
       endMatch(secondBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
       return "MATCH_OVER";
     }
-  
-    if (nextWickets >= maxWickets) {
-      innings === 2 
-        ? endMatch(firstBattingTeam, newScore, nextWickets, nextOvers, nextBalls)
+
+    const isLastWicket = nextWickets >= maxWickets;
+
+    if (isLastWicket) {
+      if (lastManBatting) {
+        // 🟢 Do NOT end innings
+        // Just continue with same batsman
+        return "CONTINUE";
+      }
+
+      // 🔴 Normal cricket behaviour
+      innings === 2
+        ? endMatch(
+            firstBattingTeam,
+            newScore,
+            nextWickets,
+            nextOvers,
+            nextBalls
+          )
         : endInnings();
+
       return "MATCH_OVER";
     }
-  
+
     if (ballsBowled >= totalBalls) {
-      innings === 2 
-        ? endMatch(firstBattingTeam, newScore, nextWickets, nextOvers, nextBalls)
+      innings === 2
+        ? endMatch(
+            firstBattingTeam,
+            newScore,
+            nextWickets,
+            nextOvers,
+            nextBalls
+          )
         : endInnings();
       return "MATCH_OVER";
     }
-  
+
     return "CONTINUE";
   };
 
   /* ================= MASTER ENGINE ================= */
   useEffect(() => {
     if (matchOver) return;
-
+  
     const ballsBowled = overs * 6 + balls;
-
-    if (innings === 2 && score >= target) 
+    const isLastManMode = lastManBatting && wickets >= maxWickets;
+  
+    if (innings === 2 && score >= target)
       endMatch(secondBattingTeam, score, wickets, overs, balls);
-    if (innings === 2 && (wickets >= maxWickets || ballsBowled >= totalBalls))
+  
+    if (innings === 2 && ballsBowled >= totalBalls)
       endMatch(firstBattingTeam, score, wickets, overs, balls);
-    if (innings === 1 && (wickets >= maxWickets || ballsBowled >= totalBalls))
+  
+    if (innings === 1 && ballsBowled >= totalBalls)
       endInnings();
+  
+    // ❌ DO NOT END INNINGS ON LAST WICKET IF LAST MAN MODE
   }, [overs, balls, wickets, score]);
+  
 
   /* ================= RUN ================= */
   const handleRun = (runs) => {
     if (matchOver) return;
     if (isFreeHit) setIsFreeHit(false);
-
+  
     const newScore = score + runs;
     setScore(newScore);
-
+  
     let nextBalls = balls + 1;
     let nextOvers = overs;
-
-    if (runs % 2 === 1) swapStrike();
-
+  
+    const isLastManMode = lastManBatting && wickets >= maxWickets - 1;
+  
+    // 🟢 Normal strike rule (only if NOT last man)
+    if (!isLastManMode && runs % 2 === 1) {
+      swapStrike();
+    }
+  
     setCurrentOver(prev => [...prev, { runs }]);
-    setCompleteHistory(prev => [...prev, { event: "RUN", runs, over: overs, ball: balls }]);
-
+    setCompleteHistory(prev => [
+      ...prev,
+      { event: "RUN", runs, over: overs, ball: balls }
+    ]);
+  
+    // 🟢 Over complete
     if (nextBalls === 6) {
       nextOvers++;
       nextBalls = 0;
-      swapStrike();
+  
+      // Swap strike only if NOT last man
+      if (!isLastManMode) swapStrike();
+  
       setCurrentOver([]);
-      
+  
       const ballsBowled = nextOvers * 6;
       if (ballsBowled < totalBalls && wickets < maxWickets) {
         setOverCompleteEvent({ overNumber: nextOvers });
       }
     }
-
+  
     setBalls(nextBalls);
     setOvers(nextOvers);
-
-    // ✅ Check match status AFTER updating all state
+  
     checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
   };
+  
 
   /* ================= WICKET ================= */
   const handleWicket = () => {
     if (matchOver) return;
-  
+
     if (isFreeHit) {
-      setCurrentOver(prev => [...prev, { type: "FH" }]);
-      setCompleteHistory(prev => [...prev, { event: "FREE_HIT", over: overs, ball: balls }]);
-  
+      setCurrentOver((prev) => [...prev, { type: "FH" }]);
+      setCompleteHistory((prev) => [
+        ...prev,
+        { event: "FREE_HIT", over: overs, ball: balls },
+      ]);
+
       let nextBalls = balls + 1;
       let nextOvers = overs;
-  
+
       if (nextBalls === 6) {
         nextOvers++;
         nextBalls = 0;
         swapStrike();
         setCurrentOver([]);
-        
+
         const ballsBowled = nextOvers * 6;
         if (ballsBowled < totalBalls && wickets < maxWickets) {
           setOverCompleteEvent({ overNumber: nextOvers });
         }
       }
-  
+
       setBalls(nextBalls);
       setOvers(nextOvers);
       setIsFreeHit(false);
       return;
     }
-  
-    setCurrentOver(prev => [...prev, { type: "W" }]);
-    setCompleteHistory(prev => [...prev, { event: "WICKET", over: overs, ball: balls }]);
-    
+
+    setCurrentOver((prev) => [...prev, { type: "W" }]);
+    setCompleteHistory((prev) => [
+      ...prev,
+      { event: "WICKET", over: overs, ball: balls },
+    ]);
+
     setWicketEvent({ out: true });
-  
+
     const nextWickets = wickets + 1;
     let nextBalls = balls + 1;
     let nextOvers = overs;
-  
+
     if (nextBalls === 6) {
       nextOvers++;
       nextBalls = 0;
       swapStrike();
       setCurrentOver([]);
-      
+
       const ballsBowled = nextOvers * 6;
       const status = checkMatchStatus(score, nextWickets, nextBalls, nextOvers);
       const isMatchStillOn = status !== "MATCH_OVER";
-      
-      if (ballsBowled < totalBalls && nextWickets < maxWickets && isMatchStillOn) {
+
+      if (
+        ballsBowled < totalBalls &&
+        nextWickets < maxWickets &&
+        isMatchStillOn
+      ) {
         setOverCompleteEvent({ overNumber: nextOvers });
       }
     }
-  
+
     setBalls(nextBalls);
     setOvers(nextOvers);
     setWickets(nextWickets);
-  
+
     checkMatchStatus(score, nextWickets, nextBalls, nextOvers);
   };
 
   /* ================= WIDE ================= */
   const handleWide = () => {
     if (!rules.wide || matchOver) return;
-    setScore(prev => prev + 1);
-    setCurrentOver(prev => [...prev, { type: "WD" }]);
-    setCompleteHistory(prev => [...prev, { event: "WD", over: overs, ball: balls }]);
+    setScore((prev) => prev + 1);
+    setCurrentOver((prev) => [...prev, { type: "WD" }]);
+    setCompleteHistory((prev) => [
+      ...prev,
+      { event: "WD", over: overs, ball: balls },
+    ]);
   };
 
   /* ================= NO BALL ================= */
   const handleNoBall = () => {
     if (!rules.noBall || matchOver) return;
-    setScore(prev => prev + 1);
+    setScore((prev) => prev + 1);
     setIsFreeHit(true);
-    setCurrentOver(prev => [...prev, { type: "NB" }]);
-    setCompleteHistory(prev => [...prev, { event: "NB", over: overs, ball: balls }]);
+    setCurrentOver((prev) => [...prev, { type: "NB" }]);
+    setCompleteHistory((prev) => [
+      ...prev,
+      { event: "NB", over: overs, ball: balls },
+    ]);
   };
 
   /* ================= BYE ================= */
   const handleBye = (runs = 1) => {
     if (!rules.byes || matchOver) return;
 
-    setScore(prev => prev + runs);
+    setScore((prev) => prev + runs);
 
     let nextBalls = balls + 1;
     let nextOvers = overs;
@@ -255,7 +316,7 @@ export default function useMatchEngine(matchData, swapStrike) {
       nextBalls = 0;
       swapStrike();
       setCurrentOver([]);
-      
+
       const ballsBowled = nextOvers * 6;
       if (ballsBowled < totalBalls && wickets < maxWickets) {
         setOverCompleteEvent({ overNumber: nextOvers });
@@ -265,9 +326,14 @@ export default function useMatchEngine(matchData, swapStrike) {
     setBalls(nextBalls);
     setOvers(nextOvers);
 
-    setCurrentOver(prev => [...prev, { type: "BYE", runs }]);
-    setCompleteHistory(prev => [...prev, { event: "BYE", runs, over: overs, ball: balls }]);
+    setCurrentOver((prev) => [...prev, { type: "BYE", runs }]);
+    setCompleteHistory((prev) => [
+      ...prev,
+      { event: "BYE", runs, over: overs, ball: balls },
+    ]);
   };
+
+  const lastManBatting = matchData.lastManBatting || false;
 
   return {
     score,
@@ -293,8 +359,7 @@ export default function useMatchEngine(matchData, swapStrike) {
     setOverCompleteEvent,
     inningsChangeEvent,
     setInningsChangeEvent,
-    innings1Score,  // ✅ EXPORT
-    innings2Score,  // ✅ EXPORT
+    innings1Score, // ✅ EXPORT
+    innings2Score, // ✅ EXPORT
   };
 }
-
