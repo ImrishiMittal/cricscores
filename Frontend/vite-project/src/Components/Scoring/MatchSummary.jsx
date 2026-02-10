@@ -1,3 +1,4 @@
+import { calculateManOfTheMatch } from '../../utils/momCalculator';
 import styles from './MatchSummary.module.css';
 
 function MatchSummary({
@@ -11,20 +12,17 @@ function MatchSummary({
   matchData,
   onClose,
 }) {
-  // ✅ FIX: Proper cricket over formatting
   const formatOvers = (overs, balls) => {
     const completeOvers = Math.floor(overs);
     const ballsInCurrentOver = balls % 6;
     return `${completeOvers}.${ballsInCurrentOver}`;
   };
 
-  // ✅ FIXED: Determine match result with correct win type
   const determineResult = () => {
     const score1 = innings1Score?.score || 0;
     const score2 = innings2Score?.score || 0;
-    const wickets1 = innings1Score?.wickets || 0;
     const wickets2 = innings2Score?.wickets || 0;
-    const maxWickets = Number(matchData?.teamAPlayers || 11) - 1; // Total wickets available
+    const maxWickets = Number(matchData?.teamAPlayers || 11) - 1;
 
     if (score1 === score2) {
       return {
@@ -34,7 +32,6 @@ function MatchSummary({
       };
     }
 
-    // ✅ Team 1 (Batting First) - Wins by RUNS
     if (score1 > score2) {
       return {
         type: 'win',
@@ -43,7 +40,6 @@ function MatchSummary({
       };
     }
 
-    // ✅ Team 2 (Batting Second) - Wins by WICKETS (wickets remaining)
     const wicketsRemaining = maxWickets - wickets2;
     return {
       type: 'win',
@@ -52,16 +48,15 @@ function MatchSummary({
     };
   };
 
-  const result = determineResult();
+  // ✅ Calculate Man of the Match
+  const manOfTheMatch = calculateManOfTheMatch(innings1Data, innings2Data, winner, matchData);
 
+  const result = determineResult();
   const team1Score = innings1Score?.score || 0;
   const team1Wickets = innings1Score?.wickets || 0;
-  // ✅ FIX: Use proper cricket over format
   const team1OversFormatted = formatOvers(innings1Score?.overs || 0, innings1Score?.balls || 0);
-
   const team2Score = innings2Score?.score || 0;
   const team2Wickets = innings2Score?.wickets || 0;
-  // ✅ FIX: Use proper cricket over format
   const team2OversFormatted = formatOvers(innings2Score?.overs || 0, innings2Score?.balls || 0);
 
   return (
@@ -78,15 +73,33 @@ function MatchSummary({
           <p className={styles.resultDescription}>{result.description}</p>
         </div>
 
+        {/* ✅ MAN OF THE MATCH */}
+        {manOfTheMatch && (
+          <div className={styles.momBox}>
+            <div className={styles.momContent}>
+              <p className={styles.momLabel}>MAN OF THE MATCH</p>
+              <p className={styles.momName}>{manOfTheMatch.name}</p>
+              <p className={styles.momTeam}>{manOfTheMatch.team}</p>
+              <div className={styles.momStats}>
+                {manOfTheMatch.battingScore > 0 && (
+                  <span className={styles.momStat}>Batting: {manOfTheMatch.battingScore} pts</span>
+                )}
+                {manOfTheMatch.bowlingScore > 0 && (
+                  <span className={styles.momStat}>Bowling: {manOfTheMatch.bowlingScore} pts</span>
+                )}
+                <span className={styles.momTotal}>Total: {manOfTheMatch.totalScore} pts</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* SCORECARD CONTAINER */}
         <div className={styles.scorecardContainer}>
           {/* TEAM 1 SCORECARD */}
           <div className={styles.scorecard}>
             <div className={styles.cardHeader}>
               <h2 className={styles.teamNameCard}>{team1}</h2>
-              <span className={styles.oversCard}>
-                OVERS {team1OversFormatted}
-              </span>
+              <span className={styles.oversCard}>OVERS {team1OversFormatted}</span>
             </div>
 
             <div className={styles.mainScore}>
@@ -94,8 +107,7 @@ function MatchSummary({
               <span className={styles.wicketsNumber}>-{team1Wickets}</span>
             </div>
 
-            {/* BATTING STATS TABLE */}
-            {innings1Data?.battingStats && innings1Data.battingStats.length > 0 ? (
+            {innings1Data?.battingStats && innings1Data.battingStats.length > 0 && (
               <div className={styles.statsTable}>
                 <div className={styles.tableHeader}>
                   <div className={styles.playerCol}>BATSMAN</div>
@@ -112,10 +124,9 @@ function MatchSummary({
                   </div>
                 ))}
               </div>
-            ) : null}
+            )}
 
-            {/* BOWLING STATS TABLE */}
-            {innings1Data?.bowlingStats && innings1Data.bowlingStats.length > 0 ? (
+            {innings1Data?.bowlingStats && innings1Data.bowlingStats.length > 0 && (
               <div className={styles.statsTable}>
                 <div className={styles.tableHeader}>
                   <div className={styles.playerCol}>BOWLER</div>
@@ -126,25 +137,22 @@ function MatchSummary({
                 {innings1Data.bowlingStats.map((bowler, idx) => (
                   <div key={idx} className={styles.tableRow}>
                     <div className={styles.playerCol}>{bowler.name}</div>
-                    <div className={styles.statCol}>{bowler.overs}</div>
+                    <div className={styles.statCol}>{bowler.overs}.{bowler.balls}</div>
                     <div className={styles.statCol}>{bowler.runs}</div>
                     <div className={styles.statCol}>{bowler.wickets}</div>
                   </div>
                 ))}
               </div>
-            ) : null}
+            )}
           </div>
 
-          {/* DIVIDER */}
           <div className={styles.divider} />
 
           {/* TEAM 2 SCORECARD */}
           <div className={styles.scorecard}>
             <div className={styles.cardHeader}>
               <h2 className={styles.teamNameCard}>{team2}</h2>
-              <span className={styles.oversCard}>
-                OVERS {team2OversFormatted}
-              </span>
+              <span className={styles.oversCard}>OVERS {team2OversFormatted}</span>
             </div>
 
             <div className={styles.mainScore}>
@@ -152,8 +160,7 @@ function MatchSummary({
               <span className={styles.wicketsNumber}>-{team2Wickets}</span>
             </div>
 
-            {/* BATTING STATS TABLE */}
-            {innings2Data?.battingStats && innings2Data.battingStats.length > 0 ? (
+            {innings2Data?.battingStats && innings2Data.battingStats.length > 0 && (
               <div className={styles.statsTable}>
                 <div className={styles.tableHeader}>
                   <div className={styles.playerCol}>BATSMAN</div>
@@ -170,10 +177,9 @@ function MatchSummary({
                   </div>
                 ))}
               </div>
-            ) : null}
+            )}
 
-            {/* BOWLING STATS TABLE */}
-            {innings2Data?.bowlingStats && innings2Data.bowlingStats.length > 0 ? (
+            {innings2Data?.bowlingStats && innings2Data.bowlingStats.length > 0 && (
               <div className={styles.statsTable}>
                 <div className={styles.tableHeader}>
                   <div className={styles.playerCol}>BOWLER</div>
@@ -184,20 +190,17 @@ function MatchSummary({
                 {innings2Data.bowlingStats.map((bowler, idx) => (
                   <div key={idx} className={styles.tableRow}>
                     <div className={styles.playerCol}>{bowler.name}</div>
-                    <div className={styles.statCol}>{bowler.overs}</div>
+                    <div className={styles.statCol}>{bowler.overs}.{bowler.balls}</div>
                     <div className={styles.statCol}>{bowler.runs}</div>
                     <div className={styles.statCol}>{bowler.wickets}</div>
                   </div>
                 ))}
               </div>
-            ) : null}
+            )}
           </div>
         </div>
 
-        {/* CLOSE BUTTON */}
-        <button className={styles.closeBtn} onClick={onClose}>
-          Close
-        </button>
+        <button className={styles.closeBtn} onClick={onClose}>Close</button>
       </div>
     </div>
   );
