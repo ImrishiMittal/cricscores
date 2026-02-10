@@ -19,6 +19,8 @@ import useMatchEngine from "../hooks/useMatchEngine";
 import usePlayersAndBowlers from "../hooks/usePlayersAndBowlers";
 import usePartnerships from "../hooks/usePartnerships";
 
+import MoreOptionsMenu from "../Components/Scoring/MoreOptionsMenu";
+
 function ScoringPage() {
   const location = useLocation();
   const matchData = location.state || {};
@@ -364,6 +366,8 @@ function ScoringPage() {
   const currentBattingTeam =
     innings === 1 ? firstBattingTeam : secondBattingTeam;
 
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+
   return (
     <div className={styles.container}>
       {showStartModal && (
@@ -385,17 +389,17 @@ function ScoringPage() {
             team={innings === 1 ? firstBattingTeam : secondBattingTeam}
             score={score}
             wickets={wickets}
-            overs={overs} 
-            balls={balls} 
-            totalOvers={matchData.overs} 
-            target = {target}
+            overs={overs}
+            balls={balls}
+            totalOvers={matchData.overs}
+            target={target}
           />
 
           <InfoStrip
             overs={overs}
             balls={balls}
             bowler={bowlers[currentBowlerIndex]?.name}
-            bowlers={bowlers} 
+            bowlers={bowlers}
             currentBowlerIndex={currentBowlerIndex}
             score={score}
             target={target}
@@ -502,6 +506,12 @@ function ScoringPage() {
             📈 Comparison Graph
           </button>
         )}
+        <button
+          className={`${styles.utilityBtn} ${styles.moreBtn}`}
+          onClick={() => setShowMoreMenu(true)}
+        >
+          ⚙ MORE
+        </button>
       </div>
 
       {isWicketPending && (
@@ -557,6 +567,12 @@ function ScoringPage() {
           innings2History={inn2BallByBall}
           matchData={matchData}
           onClose={() => setShowComparisonGraph(false)}
+        />
+      )}
+      {showMoreMenu && (
+        <MoreOptionsMenu
+          innings={innings}
+          onClose={() => setShowMoreMenu(false)}
         />
       )}
     </div>

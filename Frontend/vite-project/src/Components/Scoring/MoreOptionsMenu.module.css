@@ -1,0 +1,65 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+  }
+  
+  .modal {
+    background: #111;
+    border: 2px solid #cfd2d6;
+    border-radius: 22px;
+    width: 420px;
+    padding: 30px;
+    box-shadow: 0 0 50px rgba(200, 200, 200, 0.2);
+    animation: slideUp 0.3s ease;
+  }
+  
+  .title {
+    text-align: center;
+    color: #cfd2d6;
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+  
+  .optionList {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  
+  .optionBtn {
+    padding: 14px;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #d7d7d7, #bfc3c8);
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .optionBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+  }
+  
+  .closeBtn {
+    margin-top: 22px;
+    width: 100%;
+    padding: 12px;
+    background: #22c55e;
+    border: none;
+    border-radius: 12px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  @keyframes slideUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
