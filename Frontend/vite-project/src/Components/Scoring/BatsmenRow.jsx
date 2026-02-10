@@ -29,7 +29,7 @@ function BatsmenRow({
           <div className={styles.stats}>
             <span>{striker.runs}</span>
             <span>({striker.balls})</span>
-            <span className={styles.sr}>
+            <span className={styles.strikeRate}>
               SR {calculateStrikeRate(striker.runs, striker.balls)}
             </span>
           </div>
@@ -44,7 +44,7 @@ function BatsmenRow({
           <div className={styles.stats}>
             <span>{nonStriker.runs}</span>
             <span>({nonStriker.balls})</span>
-            <span className={styles.sr}>
+            <span className={styles.strikeRate}>
               SR {calculateStrikeRate(nonStriker.runs, nonStriker.balls)}
             </span>
           </div>
