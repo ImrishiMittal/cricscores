@@ -133,6 +133,7 @@ function ScoringPage() {
         wickets: b.wickets || 0,
         economy: b.overs > 0 ? (b.runs / b.overs).toFixed(2) : "0.00",
       })),
+      history: [...completeHistory],
     };
   };
 
@@ -552,6 +553,8 @@ function ScoringPage() {
           innings2Data={innings2Data}
           innings1Score={innings1Score}
           innings2Score={innings2Score}
+          innings1History={innings === 1 ? completeHistory : innings1Data?.history || []} // ✅ ADD
+    innings2History={innings === 2 ? completeHistory : []} 
           matchData={matchData}
           onClose={() => setShowComparisonGraph(false)}
         />
