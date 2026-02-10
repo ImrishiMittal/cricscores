@@ -553,8 +553,8 @@ function ScoringPage() {
           innings2Data={innings2Data}
           innings1Score={innings1Score}
           innings2Score={innings2Score}
-          innings1History={innings === 1 ? completeHistory : innings1Data?.history || []} // ✅ ADD
-    innings2History={innings === 2 ? completeHistory : []} 
+          innings1History={inn1BallByBall}
+          innings2History={inn2BallByBall}
           matchData={matchData}
           onClose={() => setShowComparisonGraph(false)}
         />
