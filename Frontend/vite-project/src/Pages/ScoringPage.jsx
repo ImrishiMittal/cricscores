@@ -247,6 +247,7 @@ function ScoringPage() {
         balls: 0,
         overs: 0,
         currentOver: [],
+        completeHistory: [],
         players: JSON.parse(JSON.stringify(players)),
         strikerIndex: 0,
         nonStrikerIndex: 1,
@@ -273,6 +274,7 @@ function ScoringPage() {
         balls,
         overs,
         currentOver: [...currentOver],
+        completeHistory: [...completeHistory],
         players: JSON.parse(JSON.stringify(players)),
         strikerIndex,
         nonStrikerIndex,
@@ -303,6 +305,7 @@ function ScoringPage() {
     striker2Contribution,
     bowlers,
     currentBowlerIndex,
+    completeHistory,
   ]);
 
   /* ================= UNDO ================= */
@@ -384,6 +387,7 @@ function ScoringPage() {
             overs={overs} 
             balls={balls} 
             totalOvers={matchData.overs} 
+            target = {target}
           />
 
           <InfoStrip
