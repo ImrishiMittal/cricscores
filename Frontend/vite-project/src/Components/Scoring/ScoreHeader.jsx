@@ -8,6 +8,7 @@ function ScoreHeader({
   overs,
   balls,
   totalOvers,
+  target,
 }) {
   // ✅ Calculate Predicted Score (only for 1st innings)
   const calculatePredictedScore = () => {
@@ -22,7 +23,23 @@ function ScoreHeader({
     return predictedScore;
   };
 
+  // ✅ Calculate Runs Required (only for 2nd innings)
+  const calculateRunsRequired = () => {
+    if (innings !== 2 || !target) return null;
+
+    const runsNeeded = target - score;
+    const totalBalls = Number(totalOvers) * 6;
+    const ballsBowled = overs * 6 + balls;
+    const ballsRemaining = totalBalls - ballsBowled;
+
+    return {
+      runs: runsNeeded > 0 ? runsNeeded : 0,
+      balls: ballsRemaining > 0 ? ballsRemaining : 0
+    };
+  };
+
   const predictedScore = calculatePredictedScore();
+  const runsRequired = calculateRunsRequired();
 
   return (
     <div className={styles.container}>
@@ -39,11 +56,24 @@ function ScoreHeader({
           <span className={styles.wickets}>/{wickets}</span>
         </div>
 
-        {/* ✅ Predicted Score - Top Right Corner (1st innings only) */}
+        {/* ✅ 1st Innings: Predicted Score */}
         {innings === 1 && (
           <div className={styles.predictedBox}>
-            <span className={styles.predictedLabel}>PREDICTED SCORE</span>
+            <span className={styles.predictedLabel}>PREDICTED</span>
             <span className={styles.predictedScore}>{predictedScore}</span>
+          </div>
+        )}
+
+        {/* ✅ 2nd Innings: Runs Required */}
+        {innings === 2 && runsRequired && (
+          <div className={styles.requiredBox}>
+            <span className={styles.requiredLabel}>NEED</span>
+            <span className={styles.requiredValue}>
+              {runsRequired.runs}
+            </span>
+            <span className={styles.requiredBalls}>
+              from {runsRequired.balls} balls
+            </span>
           </div>
         )}
       </div>

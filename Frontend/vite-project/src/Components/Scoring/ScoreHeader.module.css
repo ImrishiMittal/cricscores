@@ -32,8 +32,8 @@
   margin: 0;
   font-size: 24px;
   font-weight: 900;
-  color: #04fe60;
-  text-shadow: 0 2px 8px rgba(165, 206, 180, 0.3);
+  color: #22c55e;
+  text-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
 }
 
 .scoreDisplay {
@@ -46,7 +46,7 @@
 .score {
   font-size: 56px;
   font-weight: 900;
-  color: #04fe60;
+  color: #22c55e;
   text-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
   line-height: 1;
 }
@@ -54,11 +54,11 @@
 .wickets {
   font-size: 36px;
   font-weight: 700;
-  color: #04fe60;
-  opacity: 1;
+  color: #22c55e;
+  opacity: 0.8;
 }
 
-/* ✅ PREDICTED SCORE - Top Right Corner */
+/* ✅ PREDICTED SCORE - Top Right Corner (1st Innings) */
 .predictedBox {
   position: absolute;
   top: 20px;
@@ -85,9 +85,59 @@
 .predictedScore {
   font-size: 24px;
   font-weight: 900;
-  color: #ffffff;
+  color: #3b82f6;
   text-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
   line-height: 1;
+}
+
+/* ✅ RUNS REQUIRED - Top Right Corner (2nd Innings) */
+.requiredBox {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 2px solid #ef4444;
+  border-radius: 10px;
+  padding: 10px 16px;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  animation: pulseGlow 2s infinite;
+}
+
+.requiredLabel {
+  font-size: 9px;
+  font-weight: 700;
+  color: #ef4444;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.requiredValue {
+  font-size: 28px;
+  font-weight: 900;
+  color: #ef4444;
+  text-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  line-height: 1;
+}
+
+.requiredBalls {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ef4444;
+  opacity: 0.9;
+  text-align: center;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.6);
+  }
 }
 
 /* ================= MOBILE RESPONSIVE ================= */
@@ -108,18 +158,28 @@
     font-size: 30px;
   }
 
-  .predictedBox {
+  .predictedBox,
+  .requiredBox {
     top: 16px;
     right: 16px;
     padding: 8px 12px;
   }
 
-  .predictedLabel {
+  .predictedLabel,
+  .requiredLabel {
     font-size: 8px;
   }
 
   .predictedScore {
     font-size: 20px;
+  }
+
+  .requiredValue {
+    font-size: 24px;
+  }
+
+  .requiredBalls {
+    font-size: 9px;
   }
 }
 
@@ -145,17 +205,27 @@
     font-size: 26px;
   }
 
-  .predictedBox {
+  .predictedBox,
+  .requiredBox {
     top: 12px;
-    right: -12px;
+    right: 12px;
     padding: 6px 10px;
   }
 
-  .predictedLabel {
+  .predictedLabel,
+  .requiredLabel {
     font-size: 7px;
   }
 
   .predictedScore {
     font-size: 18px;
+  }
+
+  .requiredValue {
+    font-size: 20px;
+  }
+
+  .requiredBalls {
+    font-size: 8px;
   }
 }

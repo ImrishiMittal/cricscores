@@ -41,6 +41,7 @@ export default function useMatchEngine(matchData, swapStrike) {
     setBalls(snap.balls);
     setOvers(snap.overs);
     setCurrentOver([...snap.currentOver]);
+    setCompleteHistory([...snap.completeHistory]);
   };
 
   /* ================= END MATCH ================= */
