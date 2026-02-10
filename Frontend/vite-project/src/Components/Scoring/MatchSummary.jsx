@@ -18,10 +18,13 @@ function MatchSummary({
     return `${completeOvers}.${ballsInCurrentOver}`;
   };
 
-  // Determine match result with tie detection
+  // ✅ FIXED: Determine match result with correct win type
   const determineResult = () => {
     const score1 = innings1Score?.score || 0;
     const score2 = innings2Score?.score || 0;
+    const wickets1 = innings1Score?.wickets || 0;
+    const wickets2 = innings2Score?.wickets || 0;
+    const maxWickets = Number(matchData?.teamAPlayers || 11) - 1; // Total wickets available
 
     if (score1 === score2) {
       return {
@@ -31,6 +34,7 @@ function MatchSummary({
       };
     }
 
+    // ✅ Team 1 (Batting First) - Wins by RUNS
     if (score1 > score2) {
       return {
         type: 'win',
@@ -39,9 +43,11 @@ function MatchSummary({
       };
     }
 
+    // ✅ Team 2 (Batting Second) - Wins by WICKETS (wickets remaining)
+    const wicketsRemaining = maxWickets - wickets2;
     return {
       type: 'win',
-      message: `${team2} WON BY ${score2 - score1} RUNS`,
+      message: `${team2} WON BY ${wicketsRemaining} WICKET${wicketsRemaining === 1 ? '' : 'S'}`,
       description: `${team2} defeated ${team1}`,
     };
   };
