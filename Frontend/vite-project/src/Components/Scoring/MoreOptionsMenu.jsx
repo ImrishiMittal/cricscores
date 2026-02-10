@@ -1,6 +1,6 @@
 import styles from "./MoreOptionsMenu.module.css";
 
-function MoreOptionsMenu({ innings, onClose }) {
+function MoreOptionsMenu({ innings, onClose, onOpenDLS }) {
   return (
     <div className={styles.overlay}>
       <div className={styles.modal}>
@@ -21,7 +21,13 @@ function MoreOptionsMenu({ innings, onClose }) {
 
           {innings === 2 && (
             <>
-              <button className={styles.optionBtn}>
+              <button 
+                className={styles.optionBtn}
+                onClick={() => {
+                  onClose();
+                  onOpenDLS();
+                }}
+              >
                 🌧 DLS Calculator
               </button>
 
@@ -41,3 +47,4 @@ function MoreOptionsMenu({ innings, onClose }) {
 }
 
 export default MoreOptionsMenu;
+

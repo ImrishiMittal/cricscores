@@ -13,6 +13,7 @@ import PartnershipHistory from "../Components/Scoring/PartnershipHistory";
 import MatchSummary from "../Components/Scoring/MatchSummary";
 import InningsHistory from "../Components/Scoring/InningsHistory";
 import ComparisonGraph from "../Components/Scoring/ComparisonGraph";
+import DLSCalculator from "../Components/Scoring/DLSCalculator";
 import styles from "../Components/Scoring/scoring.module.css";
 
 import useMatchEngine from "../hooks/useMatchEngine";
@@ -108,6 +109,8 @@ function ScoringPage() {
   const [showInningsHistory, setShowInningsHistory] = useState(false);
   const [historyStack, setHistoryStack] = useState([]);
   const [showComparisonGraph, setShowComparisonGraph] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showDLSCalculator, setShowDLSCalculator] = useState(false);
 
   // Ball-by-ball tracking for each innings
   const [inn1BallByBall, setInn1BallByBall] = useState([]);
@@ -117,6 +120,10 @@ function ScoringPage() {
   );
 
   const shouldSaveSnapshot = useRef(false);
+
+  // Store innings 1 final state for DLS
+  const [innings1FinalOvers, setInnings1FinalOvers] = useState(0);
+  const [innings1FinalBalls, setInnings1FinalBalls] = useState(0);
 
   /* ================= HELPER: CAPTURE CURRENT INNINGS DATA ================= */
   const captureCurrentInningsData = () => {
@@ -195,6 +202,10 @@ function ScoringPage() {
     console.log("📊 Innings 1 Data Captured:", inn1Data);
     setInnings1Data(inn1Data);
 
+    // Save innings 1 final overs/balls for DLS
+    setInnings1FinalOvers(overs);
+    setInnings1FinalBalls(balls);
+
     // Reset everything for 2nd Innings
     setTimeout(() => {
       console.log("🔧 Resetting players and bowlers for Innings 2");
@@ -261,16 +272,19 @@ function ScoringPage() {
         bowlers: JSON.parse(JSON.stringify(bowlers)),
         currentBowlerIndex: 0,
         partnershipHistory: [],
-        isWicketPending: false,
       };
-
       setHistoryStack([initialSnapshot]);
+      console.log("✅ Saved Initial State for Undo");
     }
-  }, [showStartModal, players, bowlers]);
+  }, [showStartModal, players]);
 
-  /* ================= AUTO-SAVE SNAPSHOT AFTER STATE UPDATES ================= */
+  /* ================= SAVE STATE SNAPSHOTS ================= */
   useEffect(() => {
-    if (shouldSaveSnapshot.current && !showStartModal) {
+    if (
+      shouldSaveSnapshot.current &&
+      players.length > 0 &&
+      bowlers.length > 0
+    ) {
       const snapshot = {
         score,
         wickets,
@@ -281,18 +295,18 @@ function ScoringPage() {
         players: JSON.parse(JSON.stringify(players)),
         strikerIndex,
         nonStrikerIndex,
-        isWicketPending,
         partnershipRuns,
         partnershipBalls,
         striker1Contribution,
         striker2Contribution,
-        partnershipHistory: JSON.parse(JSON.stringify(partnershipHistory)),
         bowlers: JSON.parse(JSON.stringify(bowlers)),
         currentBowlerIndex,
+        partnershipHistory: [...partnershipHistory],
       };
 
       setHistoryStack((prev) => [...prev, snapshot]);
       shouldSaveSnapshot.current = false;
+      console.log("📸 Saved snapshot. Total:", historyStack.length + 1);
     }
   }, [
     score,
@@ -300,38 +314,55 @@ function ScoringPage() {
     balls,
     overs,
     players,
-    strikerIndex,
-    nonStrikerIndex,
-    partnershipRuns,
-    partnershipBalls,
-    striker1Contribution,
-    striker2Contribution,
     bowlers,
-    currentBowlerIndex,
+    currentOver,
     completeHistory,
   ]);
 
-  /* ================= UNDO ================= */
+  /* ================= UNDO LAST BALL ================= */
   const undoLastBall = () => {
-    if (historyStack.length === 0) {
-      alert("No balls to undo!");
+    if (historyStack.length <= 1) {
+      console.log("❌ Cannot undo — at initial state");
       return;
     }
 
-    const last = historyStack[historyStack.length - 1];
-    setHistoryStack((prev) => prev.slice(0, -1));
+    const prevStack = [...historyStack];
+    prevStack.pop();
+    const previousState = prevStack[prevStack.length - 1];
 
-    restoreState(last);
-    restorePlayersState(last);
-    restorePartnershipState(last);
-    restoreBowlersState(last);
+    console.log("⏪ Undoing last ball. Restoring:", previousState);
 
-    // Remove last ball from ball-by-ball
-    if (innings === 1) {
-      setInn1BallByBall((prev) => prev.slice(0, -1));
-    } else {
-      setInn2BallByBall((prev) => prev.slice(0, -1));
-    }
+    restoreState({
+      score: previousState.score,
+      wickets: previousState.wickets,
+      balls: previousState.balls,
+      overs: previousState.overs,
+      currentOver: previousState.currentOver,
+      completeHistory: previousState.completeHistory,
+    });
+
+    restorePlayersState({
+      players: previousState.players,
+      strikerIndex: previousState.strikerIndex,
+      nonStrikerIndex: previousState.nonStrikerIndex,
+      isWicketPending: false,
+    });
+
+    restoreBowlersState({
+      bowlers: previousState.bowlers,
+      currentBowlerIndex: previousState.currentBowlerIndex,
+    });
+
+    restorePartnershipState({
+      partnershipRuns: previousState.partnershipRuns,
+      partnershipBalls: previousState.partnershipBalls,
+      striker1Contribution: previousState.striker1Contribution,
+      striker2Contribution: previousState.striker2Contribution,
+      partnershipHistory: previousState.partnershipHistory,
+    });
+
+    setHistoryStack(prevStack);
+    console.log("✅ Undo complete. Remaining snapshots:", prevStack.length);
   };
 
   /* ================= HANDLE WICKET EVENT ================= */
@@ -377,8 +408,6 @@ function ScoringPage() {
   const currentBattingTeam =
     innings === 1 ? firstBattingTeam : secondBattingTeam;
 
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
-
   return (
     <div className={styles.container}>
       {showStartModal && (
@@ -394,7 +423,6 @@ function ScoringPage() {
       <BrandTitle size="small" />
       {!showSummary && (
         <>
-          {/* ✅ FIX #2: Pass bowlers and currentBowlerIndex to ScoreHeader */}
           <ScoreHeader
             innings={innings}
             team={innings === 1 ? firstBattingTeam : secondBattingTeam}
@@ -585,10 +613,33 @@ function ScoringPage() {
           onClose={() => setShowComparisonGraph(false)}
         />
       )}
+
       {showMoreMenu && (
         <MoreOptionsMenu
           innings={innings}
           onClose={() => setShowMoreMenu(false)}
+          onOpenDLS={() => setShowDLSCalculator(true)}
+        />
+      )}
+
+      {showDLSCalculator && innings === 2 && (
+        <DLSCalculator
+          onClose={() => setShowDLSCalculator(false)}
+          matchData={matchData}
+          currentScore={score}
+          currentWickets={wickets}
+          currentOvers={overs}
+          currentBalls={balls}
+          team1Score={innings1Score?.score}
+          team1Wickets={innings1Score?.wickets}
+          team1Overs={innings1Score?.overs}
+          team1Balls={innings1Score?.balls}
+          // team1Wickets={
+          //   innings1Data?.battingStats?.filter((p) => p.balls > 0).length - 1 ||
+          //   0
+          // }
+          // team1Overs={innings1FinalOvers}
+          // team1Balls={innings1FinalBalls}
         />
       )}
     </div>
