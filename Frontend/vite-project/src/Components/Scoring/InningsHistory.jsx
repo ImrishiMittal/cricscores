@@ -13,7 +13,41 @@ function groupByOvers(history) {
   return overs;
 }
 
+// ✅ NEW: Combine consecutive balls if they're run + wicket on same delivery
+function combineBalls(balls) {
+  const combined = [];
+  let i = 0;
+
+  while (i < balls.length) {
+    const current = balls[i];
+    const next = balls[i + 1];
+
+    // Check if current is a RUN and next is a WICKET (run out scenario)
+    if (
+      current && 
+      next && 
+      current.event === "RUN" && 
+      next.event === "WICKET" &&
+      current.ball === next.ball // Same ball number
+    ) {
+      // Combine them: e.g., "1W" or "2W"
+      combined.push({
+        ...current,
+        event: "RUN_WICKET",
+        runs: current.runs,
+      });
+      i += 2; // Skip both
+    } else {
+      combined.push(current);
+      i += 1;
+    }
+  }
+
+  return combined;
+}
+
 function getLabel(ball) {
+  if (ball.event === "RUN_WICKET") return `${ball.runs}W`; // ✅ Combined display
   if (ball.event === "RUN") return ball.runs;
   if (ball.event === "WD") return "WD";
   if (ball.event === "NB") return "NB";
@@ -24,6 +58,7 @@ function getLabel(ball) {
 }
 
 function getBallType(ball) {
+  if (ball.event === "RUN_WICKET") return "RUN_WICKET"; // ✅ New type
   if (ball.event === "RUN") return ball.runs.toString();
   if (ball.event === "WD") return "WD";
   if (ball.event === "NB") return "NB";
@@ -52,6 +87,9 @@ export default function InningsHistory({ history, onClose }) {
           {Object.entries(overs).map(([overNo, balls]) => {
             const runs = balls.reduce((t, b) => t + (b.runs || 0), 0);
             const wickets = balls.filter((b) => b.event === "WICKET").length;
+            
+            // ✅ Combine consecutive run + wicket balls
+            const combinedBalls = combineBalls(balls);
 
             return (
               <div key={overNo} className={styles.overBlock}>
@@ -63,7 +101,7 @@ export default function InningsHistory({ history, onClose }) {
                 </div>
 
                 <div className={styles.ballRow}>
-                  {balls.map((ball, i) => (
+                  {combinedBalls.map((ball, i) => (
                     <div
                       key={i}
                       className={styles.ballHistory}
