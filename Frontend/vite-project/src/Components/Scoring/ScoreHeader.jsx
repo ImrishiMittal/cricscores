@@ -2,6 +2,7 @@ import styles from "./ScoreHeader.module.css";
 
 function ScoreHeader({
   innings,
+  teamName,
   team,
   score,
   wickets,
@@ -47,7 +48,7 @@ function ScoreHeader({
         {/* Team name and innings */}
         <div className={styles.topSection}>
           <p className={styles.label}>INNINGS {innings}</p>
-          <h1 className={styles.team}>{team}</h1>
+          <h2 className={styles.teamName}>{teamName}</h2>
         </div>
 
         {/* Centered score */}

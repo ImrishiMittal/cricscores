@@ -77,11 +77,16 @@ function MatchSetupPage() {
       matchDays,
       inningsPerTeam,
       oversPerDay,
-      lastManBatting,   // ✅ ADD HERE
+      lastManBatting,
     };
   
+    localStorage.setItem("matchData", JSON.stringify(matchData));
     navigate("/scoring", { state: matchData });
   };
+  
+  
+
+
   
 
   return (
@@ -337,6 +342,7 @@ function MatchSetupPage() {
           Start Match
         </button>
       </div>
+      
     </div>
   );
 }

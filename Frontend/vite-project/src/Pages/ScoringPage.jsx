@@ -26,7 +26,12 @@ import usePartnerships from "../hooks/usePartnerships";
 
 function ScoringPage() {
   const location = useLocation();
-  const matchData = location.state || {};
+
+const matchData =
+  location.state ||
+  JSON.parse(localStorage.getItem("matchData")) ||
+  {};
+
 
   /* ================= HOOKS ================= */
   const playersHook = usePlayersAndBowlers();
@@ -336,20 +341,16 @@ function ScoringPage() {
     console.log("✅ Undone to previous state");
   };
 
-  /* ================= TEAM NAMES ================= */
-  const firstBattingTeam =
-    matchData.tossWinner === matchData.team1 && matchData.tossDecision === "bat"
-      ? matchData.team1
-      : matchData.tossWinner === matchData.team2 && matchData.tossDecision === "bat"
-      ? matchData.team2
-      : matchData.tossWinner === matchData.team1
-      ? matchData.team2
-      : matchData.team1;
+  // /* ================= TEAM NAMES (FIXED) ================= */
 
-  const secondBattingTeam =
-    firstBattingTeam === matchData.team1 ? matchData.team2 : matchData.team1;
+const team1 = matchData.teamA;
+const team2 = matchData.teamB;
 
-  const currentBattingTeam = innings === 1 ? firstBattingTeam : secondBattingTeam;
+const firstBattingTeam = matchData.battingFirst; // already decided during toss
+const secondBattingTeam = firstBattingTeam === team1 ? team2 : team1;
+
+const currentBattingTeam = innings === 1 ? firstBattingTeam : secondBattingTeam;
+
 
   /* ================= HANDLE WICKET CLICK ================= */
   const handleWicketClick = () => {
@@ -515,7 +516,8 @@ const handleRunClick = (r) => {
         <>
           <ScoreHeader
             innings={innings}
-            team={innings === 1 ? firstBattingTeam : secondBattingTeam}
+            // team={innings === 1 ? firstBattingTeam : secondBattingTeam}
+            teamName={currentBattingTeam} 
             score={score}
             wickets={wickets}
             overs={overs}
