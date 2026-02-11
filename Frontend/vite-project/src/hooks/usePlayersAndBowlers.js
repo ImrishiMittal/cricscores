@@ -3,6 +3,7 @@ import { useState } from "react";
 export default function usePlayersAndBowlers() {
   /* ================= PLAYERS ================= */
   const [players, setPlayers] = useState([]);
+  const [allPlayers, setAllPlayers] = useState([]); // ✅ NEW: Track all batsmen who have played
   const [strikerIndex, setStrikerIndex] = useState(0);
   const [nonStrikerIndex, setNonStrikerIndex] = useState(1);
   const [isWicketPending, setIsWicketPending] = useState(false);
@@ -16,9 +17,12 @@ export default function usePlayersAndBowlers() {
   /* ================= START INNINGS ================= */
   const startInnings = (strikerName, nonStrikerName, bowlerName) => {
     setPlayers([
-      { name: strikerName, runs: 0, balls: 0 },
-      { name: nonStrikerName, runs: 0, balls: 0 },
+      { name: strikerName, runs: 0, balls: 0, dismissal: null },
+      { name: nonStrikerName, runs: 0, balls: 0, dismissal: null },
     ]);
+
+    // ✅ Reset allPlayers for new innings
+    setAllPlayers([]);
 
     setBowlers([{ name: bowlerName, overs: 0, balls: 0, runs: 0, wickets: 0 }]);
     setStrikerIndex(0);
@@ -96,10 +100,87 @@ export default function usePlayersAndBowlers() {
     setIsWicketPending(true);
   };
 
+  // ✅ Set dismissal info
+  const setDismissal = (wicketType, fielder, bowlerName, outBatsmanIndex) => {
+    setPlayers((prev) => {
+      const updated = [...prev];
+      
+      const batsmanIndex = outBatsmanIndex !== undefined ? outBatsmanIndex : outBatsman;
+      
+      if (batsmanIndex === null || batsmanIndex === undefined || !updated[batsmanIndex]) {
+        console.error("❌ Invalid batsman index for dismissal:", batsmanIndex);
+        return prev;
+      }
+
+      let dismissalText = '';
+
+      switch (wicketType) {
+        case 'runout':
+          dismissalText = `run out (${fielder})`;
+          break;
+        case 'caught':
+          dismissalText = `c ${fielder} b ${bowlerName}`;
+          break;
+        case 'bowled':
+          dismissalText = `b ${bowlerName}`;
+          break;
+        case 'lbw':
+          dismissalText = `lbw b ${bowlerName}`;
+          break;
+        case 'stumped':
+          dismissalText = `st ${fielder} b ${bowlerName}`;
+          break;
+        default:
+          dismissalText = 'out';
+      }
+
+      updated[batsmanIndex].dismissal = dismissalText;
+      console.log(`✅ Dismissal set for ${updated[batsmanIndex].name}: ${dismissalText}`);
+      return updated;
+    });
+  };
+
+  // ✅ UPDATED: Replace batsman and save to history
+  const replaceBatsman = (index, newName) => {
+    setPlayers((prev) => {
+      const updated = [...prev];
+      if (index !== null && index !== undefined && updated[index]) {
+        // ✅ Save the dismissed batsman to allPlayers before replacing
+        const dismissedPlayer = { ...updated[index] };
+        
+        // Only add to allPlayers if they actually batted (or got out without facing a ball)
+        if (dismissedPlayer.balls > 0 || dismissedPlayer.dismissal) {
+          setAllPlayers(all => {
+            // Check if player already exists (shouldn't happen, but just in case)
+            const exists = all.some(p => p.name === dismissedPlayer.name);
+            if (!exists) {
+              console.log(`✅ Adding dismissed player to history: ${dismissedPlayer.name}`);
+              return [...all, dismissedPlayer];
+            }
+            return all;
+          });
+        }
+        
+        // Replace with new batsman
+        updated[index] = { name: newName, runs: 0, balls: 0, dismissal: null };
+        console.log(`✅ Replaced batsman at index ${index} with ${newName}`);
+      } else {
+        console.error("❌ Invalid index for batsman replacement:", index);
+      }
+      return updated;
+    });
+  };
+
   const confirmNewBatsman = (name) => {
     setPlayers((prev) => {
       const updated = [...prev];
-      updated[outBatsman] = { name, runs: 0, balls: 0 };
+      
+      if (outBatsman === null || outBatsman === undefined) {
+        console.error("❌ No out batsman to replace");
+        return prev;
+      }
+      
+      updated[outBatsman] = { name, runs: 0, balls: 0, dismissal: null };
       return updated;
     });
 
@@ -122,9 +203,11 @@ export default function usePlayersAndBowlers() {
   /* ================= RESTORE (FOR UNDO) ================= */
   const restorePlayersState = (snap) => {
     setPlayers(JSON.parse(JSON.stringify(snap.players)));
+    setAllPlayers(JSON.parse(JSON.stringify(snap.allPlayers || [])));
     setStrikerIndex(snap.strikerIndex);
     setNonStrikerIndex(snap.nonStrikerIndex);
     setIsWicketPending(snap.isWicketPending || false);
+    setOutBatsman(snap.outBatsman || null);
   };
 
   const restoreBowlersState = (snap) => {
@@ -134,6 +217,7 @@ export default function usePlayersAndBowlers() {
 
   return {
     players,
+    allPlayers, // ✅ NEW: Export allPlayers
     strikerIndex,
     nonStrikerIndex,
     bowlers,
@@ -143,12 +227,14 @@ export default function usePlayersAndBowlers() {
     outBatsman,
     setOutBatsman,
     setIsWicketPending,
+    setDismissal,
+    replaceBatsman,
     startInnings,
     swapStrike,
     addRunsToStriker,
-    addRunsToBowler,      // ✅ NEW
-    addBallToBowler,      // ✅ NEW
-    addWicketToBowler,    // ✅ NEW
+    addRunsToBowler,
+    addBallToBowler,
+    addWicketToBowler,
     registerWicket,
     confirmNewBatsman,
     requestNewBowler,

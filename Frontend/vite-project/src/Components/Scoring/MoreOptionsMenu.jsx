@@ -47,4 +47,3 @@ function MoreOptionsMenu({ innings, onClose, onOpenDLS }) {
 }
 
 export default MoreOptionsMenu;
-
