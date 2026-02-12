@@ -87,6 +87,12 @@ function MatchSetupPage() {
 
   const [maxOversPerBowler, setMaxOversPerBowler] = useState("");
 
+  const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
+
+  const [showAdditionalSetup, setShowAdditionalSetup] = useState(false);
+
+
+
   return (
     <div className={styles.container}>
       <BrandTitle size="medium" />
@@ -133,85 +139,105 @@ function MatchSetupPage() {
           type="number"
           onChange={(e) => setOvers(e.target.value)}
         />
-        <label>
-          <input
-            type="checkbox"
-            checked={lastManBatting}
-            onChange={(e) => setLastManBatting(e.target.checked)}
-          />
-          Last Man Can Bat Alone (Gully Rule)
-        </label>
+{/* ================= ADDITIONAL SETUP ================= */}
 
-        <div className={styles.testField}>
-          <label>Max Overs Per Bowler (Per Innings)</label>
-          <input
-            type="number"
-            min="1"
-            value={maxOversPerBowler}
-            onChange={(e) => setMaxOversPerBowler(e.target.value)}
-            disabled={isTestMatch}
-          />
-        </div>
+<div className={styles.additionalBox}>
+  <div
+    className={styles.additionalHeader}
+    onClick={() => setShowAdditionalSetup(!showAdditionalSetup)}
+  >
+    <span>⚙ Additional Setup</span>
+    <span>{showAdditionalSetup ? "▲" : "▼"}</span>
+  </div>
 
-        {/* TEST MATCH SETUP */}
-        <div className={styles.testMatchBox}>
-          <label className={styles.testToggle}>
+  {showAdditionalSetup && (
+    <div className={styles.additionalContent}>
+
+      {/* Gully Mode */}
+      <label className={styles.additionalOption}>
+        <input
+          type="checkbox"
+          checked={lastManBatting}
+          onChange={(e) => setLastManBatting(e.target.checked)}
+        />
+        Gully Mode (Last Man Can Bat Alone)
+      </label>
+
+      {/* Max Overs Per Bowler */}
+      <div className={styles.testField}>
+        <label>Max Overs Per Bowler (Per Innings)</label>
+        <input
+          type="number"
+          min="1"
+          value={maxOversPerBowler}
+          onChange={(e) => setMaxOversPerBowler(e.target.value)}
+          disabled={isTestMatch}
+        />
+      </div>
+
+      {/* Test Match Toggle */}
+      <label className={styles.additionalOption}>
+        <input
+          type="checkbox"
+          checked={isTestMatch}
+          onChange={(e) => setIsTestMatch(e.target.checked)}
+        />
+        Test Match Setup
+      </label>
+
+      {/* Test Match Options */}
+      {isTestMatch && (
+        <div className={styles.testOptions}>
+          <div className={styles.testField}>
+            <label>Number of Days</label>
             <input
-              type="checkbox"
-              checked={isTestMatch}
-              onChange={(e) => setIsTestMatch(e.target.checked)}
+              type="number"
+              placeholder="e.g. 5"
+              onChange={(e) => setMatchDays(e.target.value)}
             />
-            <span>Test Match Setup</span>
-          </label>
+          </div>
 
-          {isTestMatch && (
-            <div className={styles.testOptions}>
-              <div className={styles.testField}>
-                <label>Number of Days</label>
+          <div className={styles.testField}>
+            <label>Overs per Day</label>
+            <input
+              type="number"
+              placeholder="e.g. 90"
+              onChange={(e) => setOversPerDay(e.target.value)}
+            />
+          </div>
+
+          <div className={styles.inningsRow}>
+            <label>Innings per Team</label>
+            <div className={styles.radioGroup}>
+              <label>
                 <input
-                  type="number"
-                  placeholder="e.g. 5"
-                  onChange={(e) => setMatchDays(e.target.value)}
+                  type="radio"
+                  name="innings"
+                  value="1"
+                  checked={inningsPerTeam === 1}
+                  onChange={() => setInningsPerTeam(1)}
                 />
-              </div>
-
-              <div className={styles.testField}>
-                <label>Overs per Day</label>
+                1
+              </label>
+              <label>
                 <input
-                  type="number"
-                  placeholder="e.g. 90"
-                  onChange={(e) => setOversPerDay(e.target.value)}
+                  type="radio"
+                  name="innings"
+                  value="2"
+                  checked={inningsPerTeam === 2}
+                  onChange={() => setInningsPerTeam(2)}
                 />
-              </div>
-
-              <div className={styles.inningsRow}>
-                <label>Innings per Team</label>
-                <div className={styles.radioGroup}>
-                  <label>
-                    <input
-                      type="radio"
-                      name="innings"
-                      value="1"
-                      checked={inningsPerTeam === 1}
-                      onChange={() => setInningsPerTeam(1)}
-                    />
-                    1
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="innings"
-                      value="2"
-                      checked={inningsPerTeam === 2}
-                      onChange={() => setInningsPerTeam(2)}
-                    />
-                    2
-                  </label>
-                </div>
-              </div>
+                2
+              </label>
             </div>
-          )}
+          </div>
         </div>
+      )}
+
+    </div>
+  )}
+</div>
+
 
         {/* TOSS CALL */}
         <div className={styles.tossCallRow}>
