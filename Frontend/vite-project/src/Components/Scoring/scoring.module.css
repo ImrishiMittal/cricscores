@@ -224,13 +224,34 @@ animation: pulse 1.5s infinite;
   justify-content:center;
 }
 
+.ballHistory[data-type="RUN_WICKET"] {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 0, 0, 0.15);
+  border: 2px solid #ff4d4d;
+  color: #ff4d4d;
+}
+
+
+
+.ballHistory[data-type="W"] {
+  border: 2px solid red;
+  color: red;
+}
+
+.ballHistory[data-type="WD"] {
+  border: 2px solid yellow;
+  color: yellow;
+}
+
+
+.ball[data-type="RUN"] {
+  border: 2px solid #00ff88;
+}
+
+
+
 .batsmenRow {
-  /* display:flex;
-  justify-content:space-between;
-  margin:5px 0;
-  padding:10px 20px;
-  background:#1a1a1a;
-  border-radius:12px; */
   display: flex;
 justify-content: space-between;
 align-items: center;
@@ -927,19 +948,20 @@ flex-wrap: wrap;
 
 /* Default ball style */
 .ballHistory {
-width: 42px;
-height: 42px;
-border-radius: 50%;
-border: 2px solid #00ff88;
-background: #1a1a1a;
-display: flex;
-align-items: center;
-justify-content: center;
-font-weight: bold;
-font-size: 15px;
-color: #00ff88;
-transition: 0.2s;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid #00ff88;
+  background: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 15px;
+  color: #00ff88;
+  transition: 0.2s;
 }
+
 
 .ballHistory:hover {
 transform: scale(1.15);
@@ -1071,34 +1093,14 @@ transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4), 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
-/* Alternative styles if you prefer different designs: */
-
-/* Option 2: Vertical split */
-
 .ballHistory[data-type="RUN_WICKET"] {
-  background: linear-gradient(to bottom, #22c55e 50%, #ef4444 50%);
-  color: #fff;
-  font-weight: 900;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-/* Option 3: Border with red background */
-
-.ballHistory[data-type="RUN_WICKET"] {
-  background: #ef4444;
-  border: 3px solid #22c55e;
-  color: #fff;
-  font-weight: 900;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-
-/* Option 4: Radial gradient */
-
-.ballHistory[data-type="RUN_WICKET"] {
-  background: radial-gradient(circle at center, #22c55e 0%, #22c55e 40%, #ef4444 40%, #ef4444 100%);
-  color: #fff;
-  font-weight: 900;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 6px;
+  min-width: 46px;
+  border-radius: 20px; /* pill instead of circle */
+  border: 2px solid #ff4d4d;
+  color: #ff4d4d;
+  background: rgba(255, 0, 0, 0.12);
 }
 

@@ -47,7 +47,7 @@ function combineBalls(balls) {
 }
 
 function getLabel(ball) {
-  if (ball.event === "RUN_WICKET") return `${ball.runs}W`; // ✅ Combined display
+  if (ball.event === "RUN_WICKET") return `${ball.runs} + W`;// ✅ Combined display
   if (ball.event === "RUN") return ball.runs;
   if (ball.event === "WD") return "WD";
   if (ball.event === "NB") return "NB";
