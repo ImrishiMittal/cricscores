@@ -125,9 +125,14 @@ export default function usePlayersAndBowlers(matchData) {
         case "runout":
           dismissalText = `run out (${fielder})`;
           break;
-        case "caught":
-          dismissalText = `c ${fielder} b ${bowlerName}`;
-          break;
+          case "caught":
+            if (fielder && fielder === bowlerName) {
+              dismissalText = `c & b ${bowlerName}`;
+            } else {
+              dismissalText = `c ${fielder} b ${bowlerName}`;
+            }
+            break;
+          
         case "bowled":
           dismissalText = `b ${bowlerName}`;
           break;
