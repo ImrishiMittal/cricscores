@@ -181,7 +181,7 @@ function ScoringPage() {
       const striker = players[strikerIndex]?.name || "Unknown";
       const nonStriker = players[nonStrikerIndex]?.name || "Unknown";
       console.log("💾 Saving final partnership of innings 1:", { striker, nonStriker, runs: partnershipRuns });
-      savePartnership(striker, nonStriker, partnershipRuns, partnershipBalls);
+      savePartnership(score, wickets + 1);
     }
 
     // ✅ CRITICAL: Capture innings 1 data with complete history
@@ -445,7 +445,7 @@ const handleFielderConfirm = ({ fielder, newBatsman }) => {
     balls: partnershipBalls 
   });
   
-  savePartnership(striker, nonStriker, partnershipRuns, partnershipBalls);
+  savePartnership(score, wickets);
   resetPartnership();
 
   // ✅ Step 4: Replace the batsman
