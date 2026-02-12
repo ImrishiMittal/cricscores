@@ -27,7 +27,7 @@ function ScoringPage() {
   const matchData = location.state || {};
 
   /* ================= HOOKS ================= */
-  const playersHook = usePlayersAndBowlers();
+  const playersHook = usePlayersAndBowlers(matchData);
   const partnershipsHook = usePartnerships();
 
   const {
@@ -56,6 +56,8 @@ function ScoringPage() {
     setIsWicketPending,
     setDismissal,
     replaceBatsman,
+    bowlerError,
+    setBowlerError
   } = playersHook;
 
   const {
@@ -261,23 +263,15 @@ function ScoringPage() {
   useEffect(() => {
     if (!overCompleteEvent) return;
   
-    const lastBowler = bowlers[currentBowlerIndex];
-  
-    if (!lastBowler) {
-      requestNewBowler();
-      setOverCompleteEvent(null);
-      return;
-    }
-  
-    // Save last bowler index
     const lastBowlerIndex = currentBowlerIndex;
   
-    // Prevent same bowler consecutively
+    // Ask for new bowler and pass last bowler index
     requestNewBowler(lastBowlerIndex);
   
     setOverCompleteEvent(null);
   
-    }, [overCompleteEvent, requestNewBowler, setOverCompleteEvent]);
+  }, [overCompleteEvent, currentBowlerIndex, requestNewBowler]);
+  
 
   /* ================= SAVE INITIAL STATE ================= */
   useEffect(() => {
@@ -372,19 +366,16 @@ function ScoringPage() {
   };
 
   /* ================= TEAM NAMES ================= */
-  const firstBattingTeam =
-    matchData.tossWinner === matchData.team1 && matchData.tossDecision === "bat"
-      ? matchData.team1
-      : matchData.tossWinner === matchData.team2 && matchData.tossDecision === "bat"
-      ? matchData.team2
-      : matchData.tossWinner === matchData.team1
-      ? matchData.team2
-      : matchData.team1;
+  const firstBattingTeam = matchData.battingFirst;
 
-  const secondBattingTeam =
-    firstBattingTeam === matchData.team1 ? matchData.team2 : matchData.team1;
+const secondBattingTeam =
+  matchData.battingFirst === matchData.teamA
+    ? matchData.teamB
+    : matchData.teamA;
 
-  const currentBattingTeam = innings === 1 ? firstBattingTeam : secondBattingTeam;
+const currentBattingTeam =
+  innings === 1 ? firstBattingTeam : secondBattingTeam;
+
 
   /* ================= HANDLE WICKET CLICK ================= */
   const handleWicketClick = () => {
@@ -709,9 +700,10 @@ const handleRunClick = (r) => {
 
 {isNewBowlerPending && (
   <NewBowlerModal
-    onConfirm={confirmNewBowler}
-    existingBowlers={bowlers}
-  />
+  onConfirm={confirmNewBowler}
+  existingBowlers={bowlers}
+/>
+
 )}
 
 

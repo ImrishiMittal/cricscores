@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function usePlayersAndBowlers() {
+export default function usePlayersAndBowlers(matchData) {
   /* ================= PLAYERS ================= */
   const [players, setPlayers] = useState([]);
   const [allPlayers, setAllPlayers] = useState([]); // ✅ NEW: Track all batsmen who have played
@@ -13,6 +13,7 @@ export default function usePlayersAndBowlers() {
   const [bowlers, setBowlers] = useState([]);
   const [currentBowlerIndex, setCurrentBowlerIndex] = useState(0);
   const [isNewBowlerPending, setIsNewBowlerPending] = useState(false);
+  const [previousBowlerIndex, setPreviousBowlerIndex] = useState(null);
 
   /* ================= START INNINGS ================= */
   const startInnings = (strikerName, nonStrikerName, bowlerName) => {
@@ -27,6 +28,7 @@ export default function usePlayersAndBowlers() {
     setBowlers([{ name: bowlerName, overs: 0, balls: 0, runs: 0, wickets: 0 }]);
     setStrikerIndex(0);
     setNonStrikerIndex(1);
+    setPreviousBowlerIndex(null);
   };
 
   /* ================= SWAP STRIKE ================= */
@@ -63,7 +65,7 @@ export default function usePlayersAndBowlers() {
     setBowlers((prev) => {
       const updated = [...prev];
       const currentBowler = updated[currentBowlerIndex];
-      
+
       if (!currentBowler) return prev;
 
       currentBowler.balls += 1;
@@ -80,7 +82,7 @@ export default function usePlayersAndBowlers() {
     setBowlers((prev) => {
       const updated = [...prev];
       const currentBowler = updated[currentBowlerIndex];
-      
+
       if (!currentBowler) return prev;
 
       currentBowler.wickets += 1;
@@ -104,38 +106,45 @@ export default function usePlayersAndBowlers() {
   const setDismissal = (wicketType, fielder, bowlerName, outBatsmanIndex) => {
     setPlayers((prev) => {
       const updated = [...prev];
-      
-      const batsmanIndex = outBatsmanIndex !== undefined ? outBatsmanIndex : outBatsman;
-      
-      if (batsmanIndex === null || batsmanIndex === undefined || !updated[batsmanIndex]) {
+
+      const batsmanIndex =
+        outBatsmanIndex !== undefined ? outBatsmanIndex : outBatsman;
+
+      if (
+        batsmanIndex === null ||
+        batsmanIndex === undefined ||
+        !updated[batsmanIndex]
+      ) {
         console.error("❌ Invalid batsman index for dismissal:", batsmanIndex);
         return prev;
       }
 
-      let dismissalText = '';
+      let dismissalText = "";
 
       switch (wicketType) {
-        case 'runout':
+        case "runout":
           dismissalText = `run out (${fielder})`;
           break;
-        case 'caught':
+        case "caught":
           dismissalText = `c ${fielder} b ${bowlerName}`;
           break;
-        case 'bowled':
+        case "bowled":
           dismissalText = `b ${bowlerName}`;
           break;
-        case 'lbw':
+        case "lbw":
           dismissalText = `lbw b ${bowlerName}`;
           break;
-        case 'stumped':
+        case "stumped":
           dismissalText = `st ${fielder} b ${bowlerName}`;
           break;
         default:
-          dismissalText = 'out';
+          dismissalText = "out";
       }
 
       updated[batsmanIndex].dismissal = dismissalText;
-      console.log(`✅ Dismissal set for ${updated[batsmanIndex].name}: ${dismissalText}`);
+      console.log(
+        `✅ Dismissal set for ${updated[batsmanIndex].name}: ${dismissalText}`
+      );
       return updated;
     });
   };
@@ -147,20 +156,22 @@ export default function usePlayersAndBowlers() {
       if (index !== null && index !== undefined && updated[index]) {
         // ✅ Save the dismissed batsman to allPlayers before replacing
         const dismissedPlayer = { ...updated[index] };
-        
+
         // Only add to allPlayers if they actually batted (or got out without facing a ball)
         if (dismissedPlayer.balls > 0 || dismissedPlayer.dismissal) {
-          setAllPlayers(all => {
+          setAllPlayers((all) => {
             // Check if player already exists (shouldn't happen, but just in case)
-            const exists = all.some(p => p.name === dismissedPlayer.name);
+            const exists = all.some((p) => p.name === dismissedPlayer.name);
             if (!exists) {
-              console.log(`✅ Adding dismissed player to history: ${dismissedPlayer.name}`);
+              console.log(
+                `✅ Adding dismissed player to history: ${dismissedPlayer.name}`
+              );
               return [...all, dismissedPlayer];
             }
             return all;
           });
         }
-        
+
         // Replace with new batsman
         updated[index] = { name: newName, runs: 0, balls: 0, dismissal: null };
         console.log(`✅ Replaced batsman at index ${index} with ${newName}`);
@@ -174,12 +185,12 @@ export default function usePlayersAndBowlers() {
   const confirmNewBatsman = (name) => {
     setPlayers((prev) => {
       const updated = [...prev];
-      
+
       if (outBatsman === null || outBatsman === undefined) {
         console.error("❌ No out batsman to replace");
         return prev;
       }
-      
+
       updated[outBatsman] = { name, runs: 0, balls: 0, dismissal: null };
       return updated;
     });
@@ -188,35 +199,78 @@ export default function usePlayersAndBowlers() {
   };
 
   /* ================= NEW BOWLER FLOW ================= */
-  const requestNewBowler = () => setIsNewBowlerPending(true);
+  const requestNewBowler = (lastBowlerIndex = null) => {
+    setPreviousBowlerIndex(lastBowlerIndex);
+    setIsNewBowlerPending(true);
+  };
 
   const confirmNewBowler = (name) => {
     const trimmedName = name.trim();
   
-    // Check if bowler already exists
+    if (!trimmedName) {
+      setBowlerError("Bowler name required");
+      return;
+    }
+  
     const existingIndex = bowlers.findIndex(
       (b) => b.name.toLowerCase() === trimmedName.toLowerCase()
     );
   
+    let selectedIndex;
+    let selectedBowler;
+  
     if (existingIndex !== -1) {
-      // ✅ Reuse existing bowler
-      setCurrentBowlerIndex(existingIndex);
-      setIsNewBowlerPending(false);
+      selectedIndex = existingIndex;
+      selectedBowler = bowlers[existingIndex];
+    } else {
+      selectedIndex = bowlers.length;
+      selectedBowler = {
+        name: trimmedName,
+        overs: 0,
+        balls: 0,
+        runs: 0,
+        wickets: 0,
+      };
+    }
+  
+    const completedOvers = selectedBowler.overs;
+  
+    /* ================= VALIDATION ================= */
+  
+    // 🚫 Prevent consecutive overs
+    if (
+      previousBowlerIndex !== null &&
+      selectedIndex === previousBowlerIndex
+    ) {
+      setBowlerError("Same bowler cannot bowl consecutive overs!");
       return;
     }
   
-    // ❌ If not exists → create new bowler
-    const newBowler = {
-      name: trimmedName,
-      overs: 0,
-      balls: 0,
-      runs: 0,
-      wickets: 0,
-    };
+    // 🚫 Restrict max overs
+    if (
+      matchData?.maxOversPerBowler &&
+      !matchData?.isTestMatch &&
+      completedOvers >= matchData.maxOversPerBowler
+    ) {
+      setBowlerError(
+        `Max ${matchData.maxOversPerBowler} overs allowed per bowler in this innings.`
+      );
+      return;
+    }
   
-    setBowlers((prev) => [...prev, newBowler]);
-    setCurrentBowlerIndex(bowlers.length);
+    /* ================= APPLY ================= */
+  
+    if (existingIndex !== -1) {
+      setCurrentBowlerIndex(existingIndex);
+    } else {
+      setBowlers((prev) => [...prev, selectedBowler]);
+      setCurrentBowlerIndex(selectedIndex);
+    }
+  
+    setBowlerError(null); // ✅ clear previous error
     setIsNewBowlerPending(false);
+  
+    return { success: true };
   };
   
 
@@ -234,6 +288,7 @@ export default function usePlayersAndBowlers() {
     setBowlers(JSON.parse(JSON.stringify(snap.bowlers)));
     setCurrentBowlerIndex(snap.currentBowlerIndex);
   };
+  const [bowlerError, setBowlerError] = useState(null);
 
   return {
     players,
@@ -261,5 +316,7 @@ export default function usePlayersAndBowlers() {
     confirmNewBowler,
     restorePlayersState,
     restoreBowlersState,
+    bowlerError,
+    setBowlerError,
   };
 }
