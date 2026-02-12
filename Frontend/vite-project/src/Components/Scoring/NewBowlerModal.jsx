@@ -1,8 +1,12 @@
 import { useState } from "react";
 import styles from "./NewBowlerModal.module.css";
 
-function NewBowlerModal({ onConfirm }) {
+function NewBowlerModal({ onConfirm, existingBowlers = [] }) {
   const [bowlerName, setBowlerName] = useState("");
+  const existingBowler = existingBowlers.find(
+    (b) => b.name.toLowerCase() === bowlerName.trim().toLowerCase()
+  );
+
   const [error, setError] = useState("");
 
   const handleConfirm = () => {
@@ -30,9 +34,12 @@ function NewBowlerModal({ onConfirm }) {
   };
 
   return (
-    <div className={styles.overlay} onClick={(e) => {
-      if (e.target === e.currentTarget) return;
-    }}>
+    <div
+      className={styles.overlay}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) return;
+      }}
+    >
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>🎯 New Bowler</h2>
 
@@ -48,7 +55,22 @@ function NewBowlerModal({ onConfirm }) {
             onKeyPress={handleKeyPress}
             autoFocus
           />
-          
+          {existingBowler && (
+            <div
+              className={styles.suggestionBox}
+              onClick={() => onConfirm(existingBowler.name)}
+            >
+              <div className={styles.suggestionHeader}> <b>Existing Bowler</b></div>
+
+              <div className={styles.suggestionName}>{existingBowler.name}</div>
+
+              <div className={styles.suggestionStats}>
+                {existingBowler.overs} overs | {existingBowler.runs} runs | {' '} 
+                {existingBowler.wickets} wkts
+              </div>
+            </div>
+          )}
+
           {error && <p className={styles.errorText}>{error}</p>}
         </div>
 
@@ -69,4 +91,3 @@ function NewBowlerModal({ onConfirm }) {
 }
 
 export default NewBowlerModal;
-

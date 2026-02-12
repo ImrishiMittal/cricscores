@@ -259,12 +259,25 @@ function ScoringPage() {
 
   /* ================= OVER COMPLETE HANDLER ================= */
   useEffect(() => {
-    if (overCompleteEvent) {
-      console.log("🎯 Over complete - requesting new bowler");
+    if (!overCompleteEvent) return;
+  
+    const lastBowler = bowlers[currentBowlerIndex];
+  
+    if (!lastBowler) {
       requestNewBowler();
       setOverCompleteEvent(null);
+      return;
     }
-  }, [overCompleteEvent, requestNewBowler, setOverCompleteEvent]);
+  
+    // Save last bowler index
+    const lastBowlerIndex = currentBowlerIndex;
+  
+    // Prevent same bowler consecutively
+    requestNewBowler(lastBowlerIndex);
+  
+    setOverCompleteEvent(null);
+  
+    }, [overCompleteEvent, requestNewBowler, setOverCompleteEvent]);
 
   /* ================= SAVE INITIAL STATE ================= */
   useEffect(() => {
@@ -694,7 +707,13 @@ const handleRunClick = (r) => {
         />
       )}
 
-      {isNewBowlerPending && <NewBowlerModal onConfirm={confirmNewBowler} />}
+{isNewBowlerPending && (
+  <NewBowlerModal
+    onConfirm={confirmNewBowler}
+    existingBowlers={bowlers}
+  />
+)}
+
 
       {showPartnershipHistory && (
         <PartnershipHistory

@@ -78,16 +78,14 @@ function MatchSetupPage() {
       inningsPerTeam,
       oversPerDay,
       lastManBatting,
+      maxOversPerBowler: isTestMatch ? null : Number(maxOversPerBowler),
     };
-  
+
     localStorage.setItem("matchData", JSON.stringify(matchData));
     navigate("/scoring", { state: matchData });
   };
-  
-  
 
-
-  
+  const [maxOversPerBowler, setMaxOversPerBowler] = useState("");
 
   return (
     <div className={styles.container}>
@@ -143,6 +141,17 @@ function MatchSetupPage() {
           />
           Last Man Can Bat Alone (Gully Rule)
         </label>
+
+        <div className={styles.testField}>
+          <label>Max Overs Per Bowler (Per Innings)</label>
+          <input
+            type="number"
+            min="1"
+            value={maxOversPerBowler}
+            onChange={(e) => setMaxOversPerBowler(e.target.value)}
+            disabled={isTestMatch}
+          />
+        </div>
 
         {/* TEST MATCH SETUP */}
         <div className={styles.testMatchBox}>
@@ -342,7 +351,6 @@ function MatchSetupPage() {
           Start Match
         </button>
       </div>
-      
     </div>
   );
 }
