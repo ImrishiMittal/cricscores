@@ -191,14 +191,34 @@ export default function usePlayersAndBowlers() {
   const requestNewBowler = () => setIsNewBowlerPending(true);
 
   const confirmNewBowler = (name) => {
-    setBowlers((prev) => [
-      ...prev,
-      { name, overs: 0, balls: 0, runs: 0, wickets: 0 },
-    ]);
-
-    setCurrentBowlerIndex((prev) => prev + 1);
+    const trimmedName = name.trim();
+  
+    // Check if bowler already exists
+    const existingIndex = bowlers.findIndex(
+      (b) => b.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+  
+    if (existingIndex !== -1) {
+      // ✅ Reuse existing bowler
+      setCurrentBowlerIndex(existingIndex);
+      setIsNewBowlerPending(false);
+      return;
+    }
+  
+    // ❌ If not exists → create new bowler
+    const newBowler = {
+      name: trimmedName,
+      overs: 0,
+      balls: 0,
+      runs: 0,
+      wickets: 0,
+    };
+  
+    setBowlers((prev) => [...prev, newBowler]);
+    setCurrentBowlerIndex(bowlers.length);
     setIsNewBowlerPending(false);
   };
+  
 
   /* ================= RESTORE (FOR UNDO) ================= */
   const restorePlayersState = (snap) => {
