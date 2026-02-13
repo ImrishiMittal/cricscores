@@ -14,13 +14,13 @@ function ScoreHeader({
   // ✅ Calculate Predicted Score (only for 1st innings)
   const calculatePredictedScore = () => {
     if (innings !== 1) return null;
-    
+
     const ballsBowled = overs * 6 + balls;
     if (ballsBowled === 0) return 0;
-    
+
     const currentRunRate = score / (ballsBowled / 6);
     const predictedScore = Math.round(currentRunRate * Number(totalOvers));
-    
+
     return predictedScore;
   };
 
@@ -35,7 +35,7 @@ function ScoreHeader({
 
     return {
       runs: runsNeeded > 0 ? runsNeeded : 0,
-      balls: ballsRemaining > 0 ? ballsRemaining : 0
+      balls: ballsRemaining > 0 ? ballsRemaining : 0,
     };
   };
 
@@ -45,39 +45,44 @@ function ScoreHeader({
   return (
     <div className={styles.container}>
       <div className={styles.content}>
+
+        {/* 🔹 LEFT: Total Overs */}
+        <div className={styles.totalOversBox}>
+            <span className={styles.totalOversLabel}>TOTAL OVERS</span>
+            <span className={styles.totalOversValue}>{totalOvers}</span>
+          </div>
         {/* Team name and innings */}
         <div className={styles.topSection}>
           <p className={styles.label}>INNINGS {innings}</p>
           <h2 className={styles.teamName}>{team}</h2>
-
         </div>
 
-        {/* Centered score */}
-        <div className={styles.scoreDisplay}>
-          <span className={styles.score}>{score}</span>
-          <span className={styles.wickets}>/{wickets}</span>
+          {/* 🔹 CENTER: Score */}
+          <div className={styles.scoreDisplay}>
+            <span className={styles.score}>{score}</span>
+            <span className={styles.wickets}>/{wickets}</span>
+          </div>
+        <div className={styles.scoreRow}>
+
+
+          {/* 🔹 RIGHT: Predicted / Required */}
+          {innings === 1 && (
+            <div className={styles.predictedBox}>
+              <span className={styles.predictedLabel}>PREDICTED</span>
+              <span className={styles.predictedScore}>{predictedScore}</span>
+            </div>
+          )}
+
+          {innings === 2 && runsRequired && (
+            <div className={styles.requiredBox}>
+              <span className={styles.requiredLabel}>NEED</span>
+              <span className={styles.requiredValue}>{runsRequired.runs}</span>
+              <span className={styles.requiredBalls}>
+                from {runsRequired.balls} balls
+              </span>
+            </div>
+          )}
         </div>
-
-        {/* ✅ 1st Innings: Predicted Score */}
-        {innings === 1 && (
-          <div className={styles.predictedBox}>
-            <span className={styles.predictedLabel}>PREDICTED</span>
-            <span className={styles.predictedScore}>{predictedScore}</span>
-          </div>
-        )}
-
-        {/* ✅ 2nd Innings: Runs Required */}
-        {innings === 2 && runsRequired && (
-          <div className={styles.requiredBox}>
-            <span className={styles.requiredLabel}>NEED</span>
-            <span className={styles.requiredValue}>
-              {runsRequired.runs}
-            </span>
-            <span className={styles.requiredBalls}>
-              from {runsRequired.balls} balls
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );
