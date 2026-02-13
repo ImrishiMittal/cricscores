@@ -5,50 +5,53 @@ function OverBalls({ history }) {
     return null;
   }
 
-  const combinedBalls = [];
-  let i = 0;
-
-  while (i < history.length) {
-    const current = history[i];
-    const next = history[i + 1];
-
-    // 🔥 Detect run + wicket on same ball (runout)
-    if (
-      current &&
-      next &&
-      current.runs !== undefined &&
-      next.type === "W" &&
-      current.ball === next.ball
-    ) {
-      combinedBalls.push({
-        type: "RUN_W",
-        runs: current.runs,
-      });
-      i += 2;
-    } else {
-      combinedBalls.push(current);
-      i++;
-    }
-  }
-
   return (
     <div className={styles.overBalls}>
-      {combinedBalls.map((ball, i) => {
+      {history.map((ball, idx) => {
         let label = "";
+        let dataType = "";
 
-        if (ball.type === "RUN_W") label = `${ball.runs}+W`; // ✅ FIXED FORMAT
-        else if (ball.runs !== undefined) label = ball.runs;
-        else if (ball.type === "NB") label = "NB";
-        else if (ball.type === "WD") label = "WD";
-        else if (ball.type === "W") label = "W";
-        else if (ball.type === "FH") label = "FH";
-        else if (ball.type === "FH-W") label = "FH";
+        // Handle combined run + wicket events
+        if (ball.event === "RUN_WICKET" || (ball.event === "RUN" && ball.isWicket)) {
+          label = `${ball.runs}+W`;
+          dataType = "RUN_WICKET";
+        } 
+        // Handle regular run events OR balls with just a 'runs' property
+        else if (ball.event === "RUN" || (ball.runs !== undefined && !ball.event)) {
+          const runs = ball.runs ?? 0;
+          label = runs;
+          dataType = runs === 0 ? "0" : runs === 4 ? "4" : runs === 6 ? "6" : "RUN";
+        } 
+        else if (ball.event === "WICKET") {
+          label = "W";
+          dataType = "W";
+        } 
+        else if (ball.event === "WD") {
+          label = "WD";
+          dataType = "WD";
+        } 
+        else if (ball.event === "NB") {
+          label = "NB";
+          dataType = "NB";
+        } 
+        else if (ball.event === "BYE") {
+          label = `B${ball.runs || ""}`;
+          dataType = "BYE";
+        } 
+        else if (ball.event === "FREE_HIT") {
+          label = "FH";
+          dataType = "FH";
+        } 
+        else {
+          label = "•";
+          dataType = "DOT";
+        }
 
         return (
           <div
-            key={i}
+            key={idx}
             className={styles.ball}
-            data-type={ball.type || ball.event}
+            data-type={dataType}
           >
             {label}
           </div>

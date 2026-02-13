@@ -1,5 +1,5 @@
 import { addCaptainTag } from "../../utils/captainHelper";
-import styles from "./BatsmenRow.module.css";
+import styles from "./scoring.module.css";
 
 function BatsmenRow({
   striker,
@@ -8,56 +8,50 @@ function BatsmenRow({
   partnershipBalls,
   matchData,
   currentTeam,
-})
- {
-  const calculateStrikeRate = (runs, balls) =>
-    balls === 0 ? "0.0" : ((runs / balls) * 100).toFixed(1);
-
-  const strikerDisplay = addCaptainTag(striker?.name, matchData, currentTeam);
-  const nonStrikerDisplay = addCaptainTag(nonStriker?.name, matchData, currentTeam);
+  wickets,
+}) {
+  // Calculate strike rates
+  const strikerSR = striker.balls > 0 
+    ? ((striker.runs / striker.balls) * 100).toFixed(1) 
+    : "0.0";
+  
+  const nonStrikerSR = nonStriker.balls > 0 
+    ? ((nonStriker.runs / nonStriker.balls) * 100).toFixed(1) 
+    : "0.0";
 
   return (
-    <div className={styles.container}>
-  
-      {striker && (
-        <div className={`${styles.batsmanCard} ${styles.striker}`}>
-          <div className={styles.header}>
-            <h3 className={styles.name}>
-              {strikerDisplay} <span className={styles.strikeBadge}>*</span>
-            </h3>
+    <div className={styles.batsmenRow}>
+      <div className={styles.batsmenSection}>
+        <div className={styles.batsmanBlock}>
+          <div className={styles.batsmanName}>
+            {addCaptainTag(striker.name, matchData, currentTeam)} *
           </div>
-          <div className={styles.stats}>
-            <span>{striker.runs}</span>
-            <span>({striker.balls})</span>
-            <span className={styles.strikeRate}>
-              SR {calculateStrikeRate(striker.runs, striker.balls)}
-            </span>
+          <div className={styles.batsmanScore}>
+            {striker.runs}({striker.balls})
+          </div>
+          <div className={styles.batsmanSR}>
+            SR {strikerSR}
           </div>
         </div>
-      )}
-  
-      {nonStriker && (
-        <div className={styles.batsmanCard}>
-          <div className={styles.header}>
-            <h3 className={styles.name}>{nonStrikerDisplay}</h3>
+
+        <div className={styles.batsmanBlock}>
+          <div className={styles.batsmanName}>
+            {addCaptainTag(nonStriker.name, matchData, currentTeam)}
           </div>
-          <div className={styles.stats}>
-            <span>{nonStriker.runs}</span>
-            <span>({nonStriker.balls})</span>
-            <span className={styles.strikeRate}>
-              SR {calculateStrikeRate(nonStriker.runs, nonStriker.balls)}
-            </span>
+          <div className={styles.batsmanScore}>
+            {nonStriker.runs}({nonStriker.balls})
+          </div>
+          <div className={styles.batsmanSR}>
+            SR {nonStrikerSR}
           </div>
         </div>
-      )}
-  
-      <div className={styles.partnershipRow}>
+      </div>
+
+      <div className={styles.partnershipBox}>
         PARTNERSHIP: {partnershipRuns} ({partnershipBalls})
       </div>
-  
     </div>
   );
-  }
+}
 
 export default BatsmenRow;
-

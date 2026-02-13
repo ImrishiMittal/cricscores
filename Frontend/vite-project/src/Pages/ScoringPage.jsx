@@ -397,25 +397,25 @@ function ScoringPage() {
       alert("No balls to undo!");
       return;
     }
-  
+
     const last = historyStack[historyStack.length - 1];
-    
+
     console.log("⏮️ Undoing to state:", {
       score: last.score,
       wickets: last.wickets,
       balls: last.balls,
       overs: last.overs,
-      historyLength: last.completeHistory?.length || 0
+      historyLength: last.completeHistory?.length || 0,
     });
-  
+
     setHistoryStack((prev) => prev.slice(0, -1));
-  
+
     // Restore all state
     restoreState(last);
     restorePlayersState(last);
     restorePartnershipState(last);
     restoreBowlersState(last);
-  
+
     // ✅ Also close any open modals
     setShowWicketTypeModal(false);
     setShowFielderInputModal(false);
@@ -423,7 +423,7 @@ function ScoringPage() {
     setWaitingForRunoutRun(false);
     setSelectedWicketType(null);
     setPendingRunoutRuns(null);
-  
+
     console.log("✅ Undone to previous state");
   };
 
@@ -447,7 +447,6 @@ function ScoringPage() {
 
     console.log("🎯 Wicket button clicked");
     setShowWicketTypeModal(true);
-
   };
 
   /* ================= HANDLE WICKET TYPE SELECT ================= */
@@ -475,126 +474,135 @@ function ScoringPage() {
   const handleFielderConfirm = ({ fielder, newBatsman }) => {
     const bowlerName = bowlers[currentBowlerIndex]?.name || "Unknown";
     const currentOutBatsman = strikerIndex;
-  
+
     console.log("✅ Fielder/New Batsman confirmed:", {
       fielder,
       newBatsman,
       selectedWicketType,
-      currentWickets: wickets
+      currentWickets: wickets,
     });
-  
+
     // ✅ Get CURRENT team size from matchData (this updates when user changes it)
-    const currentBattingTeam = innings === 1 ? 'teamAPlayers' : 'teamBPlayers';
+    const currentBattingTeam = innings === 1 ? "teamAPlayers" : "teamBPlayers";
     const currentTeamSize = Number(matchData[currentBattingTeam] || 11);
     const currentMaxWickets = currentTeamSize - 1;
-  
+
     // ✅ Calculate next wickets BEFORE any changes
     const nextWickets = wickets + 1;
-  
+
     // ✅ Calculate how many unique batsmen have played (including the new one)
     const uniqueBatsmenCount = new Set([
-      ...players.map(p => p.name),
-      newBatsman
+      ...players.map((p) => p.name),
+      newBatsman,
     ]).size;
-  
+
     console.log("🔍 Wicket check:", {
       currentWickets: wickets,
       nextWickets,
       currentMaxWickets,
       currentTeamSize,
       uniqueBatsmenCount,
-      willBeAllOut: nextWickets >= currentMaxWickets
+      willBeAllOut: nextWickets >= currentMaxWickets,
     });
-  
+
     // ✅ Step 1: Set dismissal info FIRST
     setDismissal(selectedWicketType, fielder, bowlerName, currentOutBatsman);
-  
+
     // ✅ Step 2: Update bowler stats
-    if (selectedWicketType !== 'runout') {
+    if (selectedWicketType !== "runout") {
       addWicketToBowler();
     } else if (pendingRunoutRuns === null || pendingRunoutRuns === 0) {
       addBallToBowler();
     }
-  
+
     // ✅ Step 3: Handle partnership
     if (pendingRunoutRuns === null || pendingRunoutRuns === 0) {
       addBallToPartnership();
     }
-    
+
     console.log("💾 Saving partnership");
     savePartnership(score, nextWickets);
     resetPartnership();
-  
+
     // ✅ Step 4: Call handleWicket (this increments wickets and handles match engine)
     handleWicket();
-  
+
     // ✅ Step 5: Check if this was the last wicket
     const allWicketsFallen = nextWickets >= currentMaxWickets;
-  
+
     console.log("🏏 After wicket:", {
       allWicketsFallen,
       nextWickets,
-      currentMaxWickets
+      currentMaxWickets,
     });
-  
+
     // ✅ If all wickets have fallen, DON'T add new batsman
     if (allWicketsFallen) {
-      console.log("🚫 All wickets fallen - not adding new batsman, innings will end");
-      
+      console.log(
+        "🚫 All wickets fallen - not adding new batsman, innings will end"
+      );
+
       // Close modals
       setShowFielderInputModal(false);
       setIsWicketPending(false);
       setSelectedWicketType(null);
       setPendingRunoutRuns(null);
       setWaitingForRunoutRun(false);
-  
+
       // Save snapshot
       setTimeout(() => {
         shouldSaveSnapshot.current = true;
       }, 100);
-  
+
       return;
     }
-  
+
     // ✅ Check if we can add this new batsman (team size constraint)
     if (uniqueBatsmenCount > currentTeamSize) {
       console.log("❌ Cannot add new batsman - team size exceeded");
-      alert(`❌ Cannot add new batsman! Team only has ${currentTeamSize} players and all have batted.`);
-      
+      alert(
+        `❌ Cannot add new batsman! Team only has ${currentTeamSize} players and all have batted.`
+      );
+
       // Close modals
       setShowFielderInputModal(false);
       setIsWicketPending(false);
       setSelectedWicketType(null);
       setPendingRunoutRuns(null);
       setWaitingForRunoutRun(false);
-      
+
       return;
     }
-  
+
     // ✅ Step 6: Replace batsman (wickets still available)
-    console.log("🔄 Replacing batsman at index", currentOutBatsman, "with", newBatsman);
-    
+    console.log(
+      "🔄 Replacing batsman at index",
+      currentOutBatsman,
+      "with",
+      newBatsman
+    );
+
     setTimeout(() => {
       replaceBatsman(currentOutBatsman, newBatsman);
     }, 50);
-  
+
     // ✅ Step 7: Start new partnership
     setTimeout(() => {
       const nonStrikerName = players[nonStrikerIndex]?.name || "Unknown";
       console.log("🤝 Starting new partnership:", {
         newBatsmanName: newBatsman,
-        nonStrikerName
+        nonStrikerName,
       });
       startPartnership(newBatsman, nonStrikerName);
     }, 150);
-  
+
     // ✅ Step 8: Close modals
     setShowFielderInputModal(false);
     setIsWicketPending(false);
     setSelectedWicketType(null);
     setPendingRunoutRuns(null);
     setWaitingForRunoutRun(false);
-  
+
     // ✅ Step 9: Save snapshot
     setTimeout(() => {
       shouldSaveSnapshot.current = true;
@@ -616,7 +624,7 @@ function ScoringPage() {
         addRunsToBowler(r);
         addBallToBowler();
         addRunsToPartnership(r, players[strikerIndex].name);
-        handleRun(r);
+        // handleRun(r);
       } else {
         // Even on 0 runs, we need to add a ball for runout
         addBallToBowler();
@@ -741,6 +749,7 @@ function ScoringPage() {
               partnershipBalls={partnershipBalls}
               matchData={updatedMatchData}
               currentTeam={currentBattingTeam}
+              wickets={wickets} // ✅ ADD THIS LINE
             />
           )}
 
