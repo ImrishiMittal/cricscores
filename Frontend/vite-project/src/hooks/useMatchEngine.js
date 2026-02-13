@@ -33,22 +33,15 @@ export default function useMatchEngine(matchData, swapStrike) {
   const maxWickets = useMemo(() => {
     const teamACount = Number(matchData.teamAPlayers || 11);
     const teamBCount = Number(matchData.teamBPlayers || 11);
-  
-    const count =
-      innings === 1
-        ? teamACount - 1
-        : teamBCount - 1;
-  
+
+    const count = innings === 1 ? teamACount - 1 : teamBCount - 1;
+
     console.log(
       `🎯 Max wickets recalculated for innings ${innings}: ${count} (A: ${teamACount}, B: ${teamBCount})`
     );
-  
+
     return count;
-  }, [
-    innings,
-    matchData.teamAPlayers,
-    matchData.teamBPlayers
-  ]);  
+  }, [innings, matchData.teamAPlayers, matchData.teamBPlayers]);
 
   const lastManBatting = matchData.lastManBatting || false;
 
@@ -113,7 +106,7 @@ export default function useMatchEngine(matchData, swapStrike) {
   /* ================= MATCH STATUS ================= */
   const checkMatchStatus = (newScore, nextWickets, nextBalls, nextOvers) => {
     const ballsBowled = nextOvers * 6 + nextBalls;
-  
+
     console.log("🔍 Check Match Status:", {
       innings,
       nextWickets,
@@ -121,70 +114,79 @@ export default function useMatchEngine(matchData, swapStrike) {
       newScore,
       target,
       ballsBowled,
-      totalBalls
+      totalBalls,
     });
-  
+
     // ✅ Check if team 2 reached target
-    
-  if (innings === 2 && newScore >= target) {
-    console.log("🏆 Team 2 wins by reaching target");
-    endMatch(secondBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
-    return "MATCH_OVER";
-  }
 
-  // 🔴 FIX: Simply check if wickets reached/exceeded maxWickets
-  const isLastWicket = nextWickets >= maxWickets;
-
-  if (isLastWicket) {
-    console.log("🏏 All out - ending innings/match");
-    
-    if (innings === 2) {
-      endMatch(firstBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
-    } else {
-      endInnings();
+    if (innings === 2 && newScore >= target) {
+      console.log("🏆 Team 2 wins by reaching target");
+      endMatch(secondBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
+      return "MATCH_OVER";
     }
 
-    return "MATCH_OVER";
-  }
+    // 🔴 FIX: Respect gully mode in checkMatchStatus too
+    const shouldEndForWickets = lastManBatting
+      ? nextWickets > maxWickets
+      : nextWickets >= maxWickets;
 
-  if (ballsBowled >= totalBalls) {
-    console.log("⏱️ Overs completed");
-    
-    if (innings === 2) {
-      endMatch(firstBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
-    } else {
-      endInnings();
+    if (shouldEndForWickets) {
+      console.log("🏏 All out - ending innings/match");
+
+      if (innings === 2) {
+        endMatch(firstBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
+      } else {
+        endInnings();
+      }
+
+      return "MATCH_OVER";
     }
-    
-    return "MATCH_OVER";
-  }
 
-  return "CONTINUE";
-};
+    if (ballsBowled >= totalBalls) {
+      console.log("⏱️ Overs completed");
+
+      if (innings === 2) {
+        endMatch(firstBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
+      } else {
+        endInnings();
+      }
+
+      return "MATCH_OVER";
+    }
+
+    return "CONTINUE";
+  };
 
   /* ================= MASTER ENGINE ================= */
   useEffect(() => {
     if (matchOver) return;
-  
+
     const ballsBowled = overs * 6 + balls;
-    
-    console.log(`🔍 Match Engine Check - Innings: ${innings}, Wickets: ${wickets}/${maxWickets}, Balls: ${ballsBowled}/${totalBalls}`);
-  
+
+    console.log(
+      `🔍 Match Engine Check - Innings: ${innings}, Wickets: ${wickets}/${maxWickets}, Balls: ${ballsBowled}/${totalBalls}`
+    );
+
     // Priority 1: Team 2 reached target
     if (innings === 2 && score >= target) {
       console.log("🏆 Team 2 wins - target reached");
       endMatch(secondBattingTeam, score, wickets, overs, balls);
       return;
     }
-  
+
     // 🔴 KEY FIX: Handle mid-innings team size reduction
     // When team size is reduced, wickets can EXCEED maxWickets
     // Only allow last man batting if wickets === maxWickets AND lastManBatting is enabled
     // If wickets > maxWickets (team size was reduced), ALWAYS end innings
-    const shouldEndForWickets = wickets >= maxWickets && (!lastManBatting || wickets > maxWickets);
-    
+    // In Master Engine useEffect
+    const shouldEndForWickets = lastManBatting
+      ? wickets > maxWickets
+      : wickets >= maxWickets;
+
     if (shouldEndForWickets) {
-      console.log(`🏏 Innings ending - wickets (${wickets}) >= maxWickets (${maxWickets})`);
+      console.log(
+        `🏏 Innings ending - wickets (${wickets}) vs maxWickets (${maxWickets}), gully: ${lastManBatting}`
+      );
       if (innings === 2) {
         console.log("🏆 Team 1 wins - all wickets down");
         endMatch(firstBattingTeam, score, wickets, overs, balls);
@@ -194,7 +196,6 @@ export default function useMatchEngine(matchData, swapStrike) {
       }
       return;
     }
-  
     // Priority 3: Overs completed
     if (ballsBowled >= totalBalls) {
       console.log("⏱️ Overs completed");
@@ -207,56 +208,63 @@ export default function useMatchEngine(matchData, swapStrike) {
       }
       return;
     }
-  
-  }, [overs, balls, wickets, score, maxWickets, innings, matchOver, target, lastManBatting]);
-  
+  }, [
+    overs,
+    balls,
+    wickets,
+    score,
+    maxWickets,
+    innings,
+    matchOver,
+    target,
+    lastManBatting,
+  ]);
 
   /* ================= RUN ================= */
   const handleRun = (runs) => {
     if (matchOver) return;
     if (isFreeHit) setIsFreeHit(false);
-  
+
     const newScore = score + runs;
     setScore(newScore);
-  
+
     let nextBalls = balls + 1;
     let nextOvers = overs;
-  
-    const isLastManMode = lastManBatting && wickets >= maxWickets - 1;
-  
+
+    const isLastManAlone = lastManBatting && wickets === maxWickets;
+
     // 🟢 Normal strike rule (only if NOT last man)
-    if (!isLastManMode && runs % 2 === 1) {
+    if (!isLastManAlone && runs % 2 === 1) {
       swapStrike();
     }
-  
-    setCurrentOver(prev => [...prev, { runs }]);
-    setCompleteHistory(prev => [
+
+    setCurrentOver((prev) => [...prev, { runs }]);
+    setCompleteHistory((prev) => [
       ...prev,
-      { event: "RUN", runs, over: overs, ball: balls }
+      { event: "RUN", runs, over: overs, ball: balls },
     ]);
-  
+
     // 🟢 Over complete
     if (nextBalls === 6) {
       nextOvers++;
       nextBalls = 0;
-  
+
       // Swap strike only if NOT last man
-      if (!isLastManMode) swapStrike();
-  
+      if (!isLastManAlone) swapStrike();
+
       setCurrentOver([]);
-  
+
       const ballsBowled = nextOvers * 6;
       if (ballsBowled < totalBalls && wickets < maxWickets) {
         setOverCompleteEvent({ overNumber: nextOvers });
       }
     }
-  
+
     setBalls(nextBalls);
     setOvers(nextOvers);
-  
+
     checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
   };
-  
 
   /* ================= WICKET ================= */
   const handleWicket = () => {
@@ -328,8 +336,6 @@ export default function useMatchEngine(matchData, swapStrike) {
     checkMatchStatus(score, nextWickets, nextBalls, nextOvers);
   };
 
-  
-
   /* ================= WIDE ================= */
   const handleWide = () => {
     if (!rules.wide || matchOver) return;
@@ -385,7 +391,6 @@ export default function useMatchEngine(matchData, swapStrike) {
       { event: "BYE", runs, over: overs, ball: balls },
     ]);
   };
-
 
   return {
     score,
