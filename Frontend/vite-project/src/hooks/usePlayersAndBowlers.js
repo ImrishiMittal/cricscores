@@ -14,6 +14,7 @@ export default function usePlayersAndBowlers(matchData) {
   const [currentBowlerIndex, setCurrentBowlerIndex] = useState(0);
   const [isNewBowlerPending, setIsNewBowlerPending] = useState(false);
   const [previousBowlerIndex, setPreviousBowlerIndex] = useState(null);
+  const [bowlerError, setBowlerError] = useState(null);
 
   /* ================= START INNINGS ================= */
   const startInnings = (strikerName, nonStrikerName, bowlerName) => {
@@ -125,14 +126,13 @@ export default function usePlayersAndBowlers(matchData) {
         case "runout":
           dismissalText = `run out (${fielder})`;
           break;
-          case "caught":
-            if (fielder && fielder === bowlerName) {
-              dismissalText = `c & b ${bowlerName}`;
-            } else {
-              dismissalText = `c ${fielder} b ${bowlerName}`;
-            }
-            break;
-          
+        case "caught":
+          if (fielder && fielder === bowlerName) {
+            dismissalText = `c & b ${bowlerName}`;
+          } else {
+            dismissalText = `c ${fielder} b ${bowlerName}`;
+          }
+          break;
         case "bowled":
           dismissalText = `b ${bowlerName}`;
           break;
@@ -154,7 +154,7 @@ export default function usePlayersAndBowlers(matchData) {
     });
   };
 
-  // ✅ UPDATED: Replace batsman and save to history
+  // ✅ FIXED: Replace batsman and save to history
   const replaceBatsman = (index, newName) => {
     setPlayers((prev) => {
       const updated = [...prev];
@@ -277,7 +277,6 @@ export default function usePlayersAndBowlers(matchData) {
   
     return { success: true };
   };
-  
 
   /* ================= RESTORE (FOR UNDO) ================= */
   const restorePlayersState = (snap) => {
@@ -293,7 +292,6 @@ export default function usePlayersAndBowlers(matchData) {
     setBowlers(JSON.parse(JSON.stringify(snap.bowlers)));
     setCurrentBowlerIndex(snap.currentBowlerIndex);
   };
-  const [bowlerError, setBowlerError] = useState(null);
 
   return {
     players,
