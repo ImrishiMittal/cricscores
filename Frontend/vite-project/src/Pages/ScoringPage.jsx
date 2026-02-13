@@ -23,12 +23,14 @@ import useMatchEngine from "../hooks/useMatchEngine";
 import usePlayersAndBowlers from "../hooks/usePlayersAndBowlers";
 import usePartnerships from "../hooks/usePartnerships";
 
+import ChangePlayersModal from "../Components/Scoring/ChangePlayersModal";
 function ScoringPage() {
   const location = useLocation();
   const matchData = location.state || {};
 
+  const [updatedMatchData, setUpdatedMatchData] = useState(matchData);
   /* ================= HOOKS ================= */
-  const playersHook = usePlayersAndBowlers(matchData);
+  const playersHook = usePlayersAndBowlers(updatedMatchData);
   const partnershipsHook = usePartnerships();
 
   const {
@@ -78,7 +80,7 @@ function ScoringPage() {
     restorePartnershipState,
   } = partnershipsHook;
 
-  const engine = useMatchEngine(matchData, swapStrike);
+  const engine = useMatchEngine(updatedMatchData, swapStrike);
 
   const {
     score,
@@ -117,6 +119,7 @@ function ScoringPage() {
   const [showInningsSummary, setShowInningsSummary] = useState(false);
   const [showComparisonGraph, setShowComparisonGraph] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showChangePlayersModal, setShowChangePlayersModal] = useState(false);
 
   const [historyStack, setHistoryStack] = useState([]);
 
@@ -390,18 +393,37 @@ function ScoringPage() {
 
   /* ================= UNDO LAST BALL ================= */
   const undoLastBall = () => {
-    if (historyStack.length <= 1) {
-      alert("No action to undo!");
+    if (historyStack.length === 0) {
+      alert("No balls to undo!");
       return;
     }
-
-    const prev = historyStack[historyStack.length - 2];
-    restoreState(prev);
-    restorePlayersState(prev);
-    restoreBowlersState(prev);
-    restorePartnershipState(prev);
-
-    setHistoryStack((h) => h.slice(0, -1));
+  
+    const last = historyStack[historyStack.length - 1];
+    
+    console.log("⏮️ Undoing to state:", {
+      score: last.score,
+      wickets: last.wickets,
+      balls: last.balls,
+      overs: last.overs,
+      historyLength: last.completeHistory?.length || 0
+    });
+  
+    setHistoryStack((prev) => prev.slice(0, -1));
+  
+    // Restore all state
+    restoreState(last);
+    restorePlayersState(last);
+    restorePartnershipState(last);
+    restoreBowlersState(last);
+  
+    // ✅ Also close any open modals
+    setShowWicketTypeModal(false);
+    setShowFielderInputModal(false);
+    setIsWicketPending(false);
+    setWaitingForRunoutRun(false);
+    setSelectedWicketType(null);
+    setPendingRunoutRuns(null);
+  
     console.log("✅ Undone to previous state");
   };
 
@@ -425,6 +447,7 @@ function ScoringPage() {
 
     console.log("🎯 Wicket button clicked");
     setShowWicketTypeModal(true);
+
   };
 
   /* ================= HANDLE WICKET TYPE SELECT ================= */
@@ -444,80 +467,135 @@ function ScoringPage() {
     // ✅ For other wicket types, show fielder input modal immediately
     console.log("📝 Showing fielder input modal for:", wicketType);
 
-    // Register the wicket in the engine
-    registerWicket();
-    addWicketToBowler();
-    handleWicket();
-
     // Show the fielder input modal
     setShowFielderInputModal(true);
   };
 
   /* ================= HANDLE FIELDER CONFIRM ================= */
   const handleFielderConfirm = ({ fielder, newBatsman }) => {
+    const bowlerName = bowlers[currentBowlerIndex]?.name || "Unknown";
+    const currentOutBatsman = strikerIndex;
+  
     console.log("✅ Fielder/New Batsman confirmed:", {
       fielder,
       newBatsman,
       selectedWicketType,
+      currentWickets: wickets
     });
-
-    // ✅ Step 1: Get current bowler name
-    const bowlerName = bowlers[currentBowlerIndex]?.name || "Unknown";
-    console.log("🎾 Bowler:", bowlerName);
-
-    // ✅ Step 2: Set dismissal FIRST (before replacing batsman)
-    setDismissal(selectedWicketType, fielder, bowlerName, outBatsman);
-
-    // ✅ Step 3: Save partnership before replacing batsman
-    const striker = players[strikerIndex]?.name || "Unknown";
-    const nonStriker = players[nonStrikerIndex]?.name || "Unknown";
-
-    console.log("💾 Saving partnership:", {
-      striker,
-      nonStriker,
-      runs: partnershipRuns,
-      balls: partnershipBalls,
+  
+    // ✅ Get CURRENT team size from matchData (this updates when user changes it)
+    const currentBattingTeam = innings === 1 ? 'teamAPlayers' : 'teamBPlayers';
+    const currentTeamSize = Number(matchData[currentBattingTeam] || 11);
+    const currentMaxWickets = currentTeamSize - 1;
+  
+    // ✅ Calculate next wickets BEFORE any changes
+    const nextWickets = wickets + 1;
+  
+    // ✅ Calculate how many unique batsmen have played (including the new one)
+    const uniqueBatsmenCount = new Set([
+      ...players.map(p => p.name),
+      newBatsman
+    ]).size;
+  
+    console.log("🔍 Wicket check:", {
+      currentWickets: wickets,
+      nextWickets,
+      currentMaxWickets,
+      currentTeamSize,
+      uniqueBatsmenCount,
+      willBeAllOut: nextWickets >= currentMaxWickets
     });
-
-    savePartnership(score, wickets);
+  
+    // ✅ Step 1: Set dismissal info FIRST
+    setDismissal(selectedWicketType, fielder, bowlerName, currentOutBatsman);
+  
+    // ✅ Step 2: Update bowler stats
+    if (selectedWicketType !== 'runout') {
+      addWicketToBowler();
+    } else if (pendingRunoutRuns === null || pendingRunoutRuns === 0) {
+      addBallToBowler();
+    }
+  
+    // ✅ Step 3: Handle partnership
+    if (pendingRunoutRuns === null || pendingRunoutRuns === 0) {
+      addBallToPartnership();
+    }
+    
+    console.log("💾 Saving partnership");
+    savePartnership(score, nextWickets);
     resetPartnership();
-
-    // ✅ Step 4: Replace the batsman
-    if (outBatsman !== null && outBatsman !== undefined) {
-      console.log(
-        `🔄 Replacing batsman at index ${outBatsman} with ${newBatsman}`
-      );
-      replaceBatsman(outBatsman, newBatsman);
-    } else {
-      console.error("❌ No out batsman index available");
+  
+    // ✅ Step 4: Call handleWicket (this increments wickets and handles match engine)
+    handleWicket();
+  
+    // ✅ Step 5: Check if this was the last wicket
+    const allWicketsFallen = nextWickets >= currentMaxWickets;
+  
+    console.log("🏏 After wicket:", {
+      allWicketsFallen,
+      nextWickets,
+      currentMaxWickets
+    });
+  
+    // ✅ If all wickets have fallen, DON'T add new batsman
+    if (allWicketsFallen) {
+      console.log("🚫 All wickets fallen - not adding new batsman, innings will end");
+      
+      // Close modals
+      setShowFielderInputModal(false);
+      setIsWicketPending(false);
+      setSelectedWicketType(null);
+      setPendingRunoutRuns(null);
+      setWaitingForRunoutRun(false);
+  
+      // Save snapshot
+      setTimeout(() => {
+        shouldSaveSnapshot.current = true;
+      }, 100);
+  
+      return;
     }
-
-    // ✅ Step 5: Handle runout runs if pending
-    if (pendingRunoutRuns !== null && pendingRunoutRuns > 0) {
-      console.log("🏃 Adding runout runs:", pendingRunoutRuns);
-      // Runs were already added in handleRunClick, so just log
+  
+    // ✅ Check if we can add this new batsman (team size constraint)
+    if (uniqueBatsmenCount > currentTeamSize) {
+      console.log("❌ Cannot add new batsman - team size exceeded");
+      alert(`❌ Cannot add new batsman! Team only has ${currentTeamSize} players and all have batted.`);
+      
+      // Close modals
+      setShowFielderInputModal(false);
+      setIsWicketPending(false);
+      setSelectedWicketType(null);
+      setPendingRunoutRuns(null);
+      setWaitingForRunoutRun(false);
+      
+      return;
     }
-
-    // ✅ Step 6: Start new partnership after a delay
+  
+    // ✅ Step 6: Replace batsman (wickets still available)
+    console.log("🔄 Replacing batsman at index", currentOutBatsman, "with", newBatsman);
+    
     setTimeout(() => {
-      const newStrikerName = players[strikerIndex]?.name || newBatsman;
+      replaceBatsman(currentOutBatsman, newBatsman);
+    }, 50);
+  
+    // ✅ Step 7: Start new partnership
+    setTimeout(() => {
       const nonStrikerName = players[nonStrikerIndex]?.name || "Unknown";
-
       console.log("🤝 Starting new partnership:", {
-        newStrikerName,
-        nonStrikerName,
+        newBatsmanName: newBatsman,
+        nonStrikerName
       });
       startPartnership(newBatsman, nonStrikerName);
     }, 150);
-
-    // ✅ Step 7: Close modals and reset state
+  
+    // ✅ Step 8: Close modals
     setShowFielderInputModal(false);
     setIsWicketPending(false);
     setSelectedWicketType(null);
     setPendingRunoutRuns(null);
     setWaitingForRunoutRun(false);
-
-    // ✅ Step 8: Save snapshot
+  
+    // ✅ Step 9: Save snapshot
     setTimeout(() => {
       shouldSaveSnapshot.current = true;
     }, 200);
@@ -571,6 +649,46 @@ function ScoringPage() {
     handleRun(r);
   };
 
+  const handleChangePlayersConfirm = ({
+    team,
+    isBattingTeam,
+    newCount,
+    oldCount,
+  }) => {
+    console.log("✅ Changing player count:", {
+      team,
+      isBattingTeam,
+      newCount,
+      oldCount,
+    });
+
+    // Update match data
+    const updated = { ...updatedMatchData };
+
+    if (innings === 1) {
+      if (isBattingTeam) {
+        updated.teamAPlayers = newCount;
+      } else {
+        updated.teamBPlayers = newCount;
+      }
+    } else {
+      if (isBattingTeam) {
+        updated.teamBPlayers = newCount;
+      } else {
+        updated.teamAPlayers = newCount;
+      }
+    }
+
+    setUpdatedMatchData(updated);
+
+    // Save to localStorage
+    localStorage.setItem("matchData", JSON.stringify(updated));
+
+    setShowChangePlayersModal(false);
+
+    alert(`✅ ${team} player count changed from ${oldCount} to ${newCount}`);
+  };
+
   return (
     <div className={styles.container}>
       {showStartModal && (
@@ -589,12 +707,12 @@ function ScoringPage() {
         <>
           <ScoreHeader
             innings={innings}
-            team={innings === 1 ? firstBattingTeam : secondBattingTeam}
+            teamName={innings === 1 ? firstBattingTeam : secondBattingTeam}
             score={score}
             wickets={wickets}
             overs={overs}
             balls={balls}
-            totalOvers={matchData.overs}
+            totalOvers={updatedMatchData.overs}
             target={target}
           />
 
@@ -607,9 +725,9 @@ function ScoringPage() {
             score={score}
             target={target}
             innings={innings}
-            totalOvers={matchData.overs}
+            totalOvers={updatedMatchData.overs}
             isFreeHit={isFreeHit}
-            matchData={matchData}
+            matchData={updatedMatchData}
             currentTeam={currentBattingTeam}
           />
 
@@ -621,7 +739,7 @@ function ScoringPage() {
               nonStriker={players[nonStrikerIndex]}
               partnershipRuns={partnershipRuns}
               partnershipBalls={partnershipBalls}
-              matchData={matchData}
+              matchData={updatedMatchData}
               currentTeam={currentBattingTeam}
             />
           )}
@@ -763,7 +881,7 @@ function ScoringPage() {
         <PartnershipHistory
           history={partnershipHistory}
           onClose={() => setShowPartnershipHistory(false)}
-          matchData={matchData}
+          matchData={updatedMatchData}
           battingTeam={currentBattingTeam}
         />
       )}
@@ -777,7 +895,7 @@ function ScoringPage() {
           innings2Data={innings2Data}
           innings1Score={innings1Score}
           innings2Score={innings2Score}
-          matchData={matchData}
+          matchData={updatedMatchData}
           onClose={() => setShowSummary(false)}
         />
       )}
@@ -807,18 +925,31 @@ function ScoringPage() {
               : innings1HistoryRef.current || innings1Data?.history || []
           }
           innings2History={innings === 2 ? completeHistory : []}
-          matchData={matchData}
+          matchData={updatedMatchData}
           currentInnings={innings}
           onClose={() => setShowComparisonGraph(false)}
         />
       )}
+
+      {/* ✅ Change Players Modal */}
+      {showChangePlayersModal && (
+        <ChangePlayersModal
+          matchData={updatedMatchData}
+          currentInnings={innings}
+          players={players}
+          allPlayers={allPlayers}
+          bowlers={bowlers}
+          onConfirm={handleChangePlayersConfirm}
+          onClose={() => setShowChangePlayersModal(false)}
+        />
+      )}
+
       {showMoreMenu && (
         <MoreOptionsMenu
           innings={innings}
           onClose={() => setShowMoreMenu(false)}
-          onOpenDLS={() => {
-            console.log("Open DLS Calculator");
-          }}
+          onOpenDLS={() => setShowDLSCalculator(true)}
+          onOpenChangePlayers={() => setShowChangePlayersModal(true)} // Add this
         />
       )}
     </div>

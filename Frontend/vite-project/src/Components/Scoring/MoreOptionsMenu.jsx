@@ -1,19 +1,23 @@
 import styles from "./MoreOptionsMenu.module.css";
 
-function MoreOptionsMenu({ innings, onClose, onOpenDLS }) {
+function MoreOptionsMenu({ innings, onClose, onOpenDLS, onOpenChangePlayers }) {
   return (
     <div className={styles.overlay}>
       <div className={styles.modal}>
         <h2 className={styles.title}>⚙ Match Controls</h2>
 
         <div className={styles.optionList}>
-          <button className={styles.optionBtn}>
+          <button
+            className={styles.optionBtn}
+            onClick={() => {
+              onClose();
+              onOpenChangePlayers(); // Add this prop
+            }}
+          >
             👥 Change Number of Players
           </button>
 
-          <button className={styles.optionBtn}>
-            🏏 Change Total Overs
-          </button>
+          <button className={styles.optionBtn}>🏏 Change Total Overs</button>
 
           <button className={styles.optionBtn}>
             🎯 Change Bowler Over Limit
@@ -21,7 +25,7 @@ function MoreOptionsMenu({ innings, onClose, onOpenDLS }) {
 
           {innings === 2 && (
             <>
-              <button 
+              <button
                 className={styles.optionBtn}
                 onClick={() => {
                   onClose();
@@ -31,9 +35,7 @@ function MoreOptionsMenu({ innings, onClose, onOpenDLS }) {
                 🌧 DLS Calculator
               </button>
 
-              <button className={styles.optionBtn}>
-                📊 Win Probability
-              </button>
+              <button className={styles.optionBtn}>📊 Win Probability</button>
             </>
           )}
         </div>

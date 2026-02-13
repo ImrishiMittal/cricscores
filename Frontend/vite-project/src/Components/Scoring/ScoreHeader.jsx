@@ -54,7 +54,7 @@ function ScoreHeader({
         {/* Team name and innings */}
         <div className={styles.topSection}>
           <p className={styles.label}>INNINGS {innings}</p>
-          <h2 className={styles.teamName}>{team}</h2>
+          <h2 className={styles.teamName}>{teamName}</h2>
         </div>
 
           {/* 🔹 CENTER: Score */}
