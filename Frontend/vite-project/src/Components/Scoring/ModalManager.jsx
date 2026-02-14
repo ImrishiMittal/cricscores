@@ -14,6 +14,7 @@ import ChangePlayersModal from "./ChangePlayersModal";
 import DLSCalculator from "./DLSCalculator";
 import ChangeOversModal from "./ChangeOversModal";
 import ChangeBowlerLimitModal from "./ChangeBowlerLimitModal";
+import WinProbabilityModal from "./WinProbabilityModal";
 
 function ModalManager({
   modalStates,
@@ -209,6 +210,20 @@ function ModalManager({
         />
       )}
 
+      {/* Win Probability Modal */}
+      {modalStates.showWinProbability && innings === 2 && (
+        <WinProbabilityModal
+          matchData={updatedMatchData}
+          innings1Score={innings1Score?.score || 0}
+          innings1Wickets={innings1Score?.wickets || 0}
+          currentScore={score}
+          currentWickets={wickets}
+          currentOvers={overs}
+          currentBalls={balls}
+          onClose={() => modalStates.setShowWinProbability(false)}
+        />
+      )}
+
       {/* More Options Menu */}
       {modalStates.showMoreMenu && (
         <MoreOptionsMenu
@@ -223,6 +238,9 @@ function ModalManager({
           }
           onOpenChangeBowlerLimit={() =>
             modalStates.setShowChangeBowlerLimitModal(true)
+          }
+          onOpenWinProbability={() =>
+            modalStates.setShowWinProbability(true)
           }
         />
       )}

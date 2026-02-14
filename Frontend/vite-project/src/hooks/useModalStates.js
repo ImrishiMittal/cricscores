@@ -1,54 +1,100 @@
-import { useState } from "react";
+import { useState } from 'react';
 
 function useModalStates() {
-  const [showStartModal, setShowStartModal] = useState(true);
-  const [showSummary, setShowSummary] = useState(false);
-  const [showInningsHistory, setShowInningsHistory] = useState(false);
-  const [showInningsSummary, setShowInningsSummary] = useState(false);
-  const [showComparisonGraph, setShowComparisonGraph] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showChangePlayersModal, setShowChangePlayersModal] = useState(false);
+  // Start Innings Modal
+  const [showStartModal, setShowStartModal] = useState(false);
+
+  // Wicket Flow Modals
+  const [showWicketTypeModal, setShowWicketTypeModal] = useState(false);
+  const [showFielderInputModal, setShowFielderInputModal] = useState(false);
+
+  // Partnership History
   const [showPartnershipHistory, setShowPartnershipHistory] = useState(false);
-  const [showDLSCalculator, setShowDLSCalculator] = useState(false); // ✅ ADD THIS
+
+  // Match Summary
+  const [showSummary, setShowSummary] = useState(false);
+
+  // Innings History
+  const [showInningsHistory, setShowInningsHistory] = useState(false);
+
+  // Innings Summary
+  const [showInningsSummary, setShowInningsSummary] = useState(false);
+
+  // Comparison Graph
+  const [showComparisonGraph, setShowComparisonGraph] = useState(false);
+
+  // More Options Menu
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+
+  // Change Players Modal
+  const [showChangePlayersModal, setShowChangePlayersModal] = useState(false);
+
+  // Change Overs Modal
   const [showChangeOversModal, setShowChangeOversModal] = useState(false);
-  const [showChangeBowlerLimitModal, setShowChangeBowlerLimitModal] =
-    useState(false);
+
+  // Change Bowler Limit Modal
+  const [showChangeBowlerLimitModal, setShowChangeBowlerLimitModal] = useState(false);
+
+  // DLS Calculator
+  const [showDLSCalculator, setShowDLSCalculator] = useState(false);
+
+  // Win Probability Modal ✅ NEW
+  const [showWinProbability, setShowWinProbability] = useState(false);
 
   return {
-    // Start modal
+    // Start Innings
     showStartModal,
     setShowStartModal,
 
-    // Summary modals
-    showSummary,
-    setShowSummary,
-    showInningsSummary,
-    setShowInningsSummary,
+    // Wicket Flow
+    showWicketTypeModal,
+    setShowWicketTypeModal,
+    showFielderInputModal,
+    setShowFielderInputModal,
 
-    // History modals
-    showInningsHistory,
-    setShowInningsHistory,
+    // Partnership History
     showPartnershipHistory,
     setShowPartnershipHistory,
 
-    // Analysis modals
+    // Match Summary
+    showSummary,
+    setShowSummary,
+
+    // Innings History
+    showInningsHistory,
+    setShowInningsHistory,
+
+    // Innings Summary
+    showInningsSummary,
+    setShowInningsSummary,
+
+    // Comparison Graph
     showComparisonGraph,
     setShowComparisonGraph,
 
-    // Settings modals
+    // More Options Menu
     showMoreMenu,
     setShowMoreMenu,
+
+    // Change Players
     showChangePlayersModal,
     setShowChangePlayersModal,
 
-    // DLS Calculator  ✅ ADD THIS
+    // Change Overs
+    showChangeOversModal,
+    setShowChangeOversModal,
+
+    // Change Bowler Limit
+    showChangeBowlerLimitModal,
+    setShowChangeBowlerLimitModal,
+
+    // DLS Calculator
     showDLSCalculator,
     setShowDLSCalculator,
 
-    showChangeOversModal,
-    setShowChangeOversModal,
-    showChangeBowlerLimitModal,
-    setShowChangeBowlerLimitModal,
+    // Win Probability ✅ NEW
+    showWinProbability,
+    setShowWinProbability,
   };
 }
 

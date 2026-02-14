@@ -6,7 +6,8 @@ function MoreOptionsMenu({
   onOpenDLS, 
   onOpenChangePlayers,
   onOpenChangeOvers,
-  onOpenChangeBowlerLimit
+  onOpenChangeBowlerLimit,
+  onOpenWinProbability
 }) {
   return (
     <div className={styles.overlay}>
@@ -62,7 +63,15 @@ function MoreOptionsMenu({
                 🌧 DLS Calculator
               </button>
 
-              <button className={styles.optionBtn}>📊 Win Probability</button>
+              <button 
+                className={styles.optionBtn}
+                onClick={() => {
+                  onClose();
+                  onOpenWinProbability();
+                }}
+              >
+                📊 Win Probability
+              </button>
             </>
           )}
         </div>
@@ -76,3 +85,4 @@ function MoreOptionsMenu({
 }
 
 export default MoreOptionsMenu;
+
