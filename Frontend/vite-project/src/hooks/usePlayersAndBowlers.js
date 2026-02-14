@@ -44,8 +44,11 @@ export default function usePlayersAndBowlers(matchData) {
   const addRunsToStriker = (runs) => {
     setPlayers((prev) => {
       const updated = [...prev];
-      updated[strikerIndex].runs += runs;
-      updated[strikerIndex].balls += 1;
+      // ✅ Safety check: ensure strikerIndex is valid and player exists
+      if (strikerIndex >= 0 && strikerIndex < updated.length && updated[strikerIndex]) {
+        updated[strikerIndex].runs += runs;
+        updated[strikerIndex].balls += 1;
+      }
       return updated;
     });
   };

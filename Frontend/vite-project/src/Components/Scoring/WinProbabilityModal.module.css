@@ -1,0 +1,314 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1002;
+    animation: fadeIn 0.3s ease;
+  }
+  
+  .modal {
+    background: #0a0a0a;
+    border: 2px solid #22c55e;
+    border-radius: 20px;
+    padding: 32px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9);
+    animation: slideUp 0.4s ease;
+  }
+  
+  .title {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 900;
+    color: #22c55e;
+    margin: 0 0 24px 0;
+    text-shadow: 0 2px 10px rgba(34, 197, 94, 0.3);
+  }
+  
+  /* Probability Display */
+  .probabilityBox {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  
+  .probabilityCircle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 4px solid #22c55e;
+    margin: 0 auto 16px;
+    background: rgba(34, 197, 94, 0.1);
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+  }
+  
+  .probabilityNumber {
+    font-size: 48px;
+    font-weight: 900;
+    color: #22c55e;
+  }
+  
+  .probabilityText {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+  }
+  
+  /* Status Box */
+  .statusBox {
+    background: rgba(34, 197, 94, 0.1);
+    border: 2px solid rgba(34, 197, 94, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  
+  .statusTitle {
+    font-size: 14px;
+    font-weight: 700;
+    color: #22c55e;
+    margin: 0 0 16px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .scoreRow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .teamBox {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+  
+  .teamLabel {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  
+  .teamScore {
+    display: block;
+    font-size: 24px;
+    font-weight: 900;
+    color: #22c55e;
+  }
+  
+  .vsBox {
+    font-size: 14px;
+    font-weight: 700;
+    color: #888;
+    text-align: center;
+  }
+  
+  .needsBox {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  
+  .needsText {
+    font-size: 14px;
+    color: #ccc;
+    margin: 0;
+    text-align: center;
+  }
+  
+  .needsText strong {
+    color: #fff;
+    font-weight: 700;
+  }
+  
+  /* Analysis Box */
+  .analysisBox {
+    background: rgba(34, 197, 94, 0.05);
+    border: 2px solid rgba(34, 197, 94, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  
+  .analysisTitle {
+    font-size: 14px;
+    font-weight: 700;
+    color: #22c55e;
+    margin: 0 0 16px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .analysisGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  
+  .analysisItem {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  
+  .label {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  
+  .value {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    color: #22c55e;
+  }
+  
+  .value.green {
+    color: #22c55e;
+  }
+  
+  .value.red {
+    color: #ef4444;
+  }
+  
+  /* Insights Box */
+  .insightsBox {
+    background: rgba(245, 158, 11, 0.1);
+    border: 2px solid rgba(245, 158, 11, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  
+  .insightsTitle {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fbbf24;
+    margin: 0 0 12px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .insightsList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .insightsList li {
+    font-size: 13px;
+    color: #ccc;
+    margin-bottom: 8px;
+    padding-left: 0;
+    font-weight: 500;
+  }
+  
+  .insightsList li:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* Close Button */
+  .closeBtn {
+    width: 100%;
+    padding: 14px;
+    background: #22c55e;
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    font-size: 15px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  }
+  
+  .closeBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.5);
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(50px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .modal::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .modal::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+  }
+  
+  .modal::-webkit-scrollbar-thumb {
+    background: rgba(34, 197, 94, 0.5);
+    border-radius: 10px;
+  }
+  
+  .modal::-webkit-scrollbar-thumb:hover {
+    background: rgba(34, 197, 94, 0.7);
+  }
+  
+  @media (max-width: 600px) {
+    .modal {
+      padding: 24px;
+    }
+  
+    .title {
+      font-size: 20px;
+    }
+  
+    .probabilityCircle {
+      width: 120px;
+      height: 120px;
+    }
+  
+    .probabilityNumber {
+      font-size: 36px;
+    }
+  
+    .scoreRow {
+      flex-direction: column;
+    }
+  
+    .analysisGrid {
+      grid-template-columns: 1fr;
+    }
+  }
+  

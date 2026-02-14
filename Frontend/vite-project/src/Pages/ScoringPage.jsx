@@ -77,6 +77,14 @@ function ScoringPage() {
     playersHook.outBatsman
   );
 
+  /* ================= SHOW START INNINGS MODAL ON MOUNT ================= */
+  useEffect(() => {
+    // Show the start innings modal when page loads (if no players selected yet)
+    if (playersHook.players.length === 0) {
+      modalStates.setShowStartModal(true);
+    }
+  }, []);
+
   /* ================= OVER COMPLETE HANDLER ================= */
   useEffect(() => {
     if (!engine.overCompleteEvent) return;
@@ -105,10 +113,14 @@ function ScoringPage() {
         playersHook.addRunsToStriker(r);
         playersHook.addRunsToBowler(r);
         playersHook.addBallToBowler();
-        partnershipsHook.addRunsToPartnership(
-          r,
-          playersHook.players[playersHook.strikerIndex].name
-        );
+        
+        // ✅ Safe check before accessing striker
+        if (playersHook.strikerIndex >= 0 && playersHook.players[playersHook.strikerIndex]) {
+          partnershipsHook.addRunsToPartnership(
+            r,
+            playersHook.players[playersHook.strikerIndex].name
+          );
+        }
       } else {
         playersHook.addBallToBowler();
         partnershipsHook.addBallToPartnership();
@@ -132,10 +144,15 @@ function ScoringPage() {
     playersHook.addRunsToStriker(r);
     playersHook.addRunsToBowler(r);
     playersHook.addBallToBowler();
-    partnershipsHook.addRunsToPartnership(
-      r,
-      playersHook.players[playersHook.strikerIndex].name
-    );
+    
+    // ✅ Safe check before accessing striker
+    if (playersHook.strikerIndex >= 0 && playersHook.players[playersHook.strikerIndex]) {
+      partnershipsHook.addRunsToPartnership(
+        r,
+        playersHook.players[playersHook.strikerIndex].name
+      );
+    }
+    
     engine.handleRun(r);
   };
 
@@ -482,3 +499,4 @@ function ScoringPage() {
 }
 
 export default ScoringPage;
+
