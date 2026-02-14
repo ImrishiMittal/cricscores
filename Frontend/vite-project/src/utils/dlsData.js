@@ -69,17 +69,21 @@ const G50_VALUES = {
  * @returns {number} Resource percentage
  */
 function getResourcePercentage(oversLeft, wicketsLost) {
-  // Ensure wickets lost is within valid range
+  if (isNaN(oversLeft) || isNaN(wicketsLost)) return 0;
+
   const wickets = Math.min(Math.max(0, wicketsLost), 9);
-  
-  // Round overs to nearest whole number for table lookup
+
   const overs = Math.round(oversLeft);
-  
-  // Ensure overs is within valid range
   const validOvers = Math.min(Math.max(0, overs), 50);
-  
-  return DLS_TABLE[validOvers][wickets];
+
+  const row = DLS_TABLE[validOvers];
+
+  if (!row) return 0;
+
+  return row[wickets] ?? 0;
 }
+
+
 
 /**
  * Calculate DLS revised target
@@ -115,6 +119,12 @@ function calculateDLSTarget(params) {
   let explanation = "";
 
   // Case 1: R2 < R1 (Team 2 has fewer resources)
+  if (R1 <= 0) {
+    return {
+      error: "Invalid input: Team 1 resource used is zero. Check overs completed."
+    };
+  }
+  
   if (R2 < R1) {
     revisedTarget = Math.floor(team1Score * (R2 / R1)) + 1;
     explanation = `Team 2 has fewer resources (${R2.toFixed(1)}%) than Team 1 used (${R1.toFixed(1)}%). Target adjusted downwards.`;
@@ -132,10 +142,11 @@ function calculateDLSTarget(params) {
     explanation = `Team 2 has more resources (${R2.toFixed(1)}% vs ${R1.toFixed(1)}%). Additional ${extraRuns} runs added for excess ${excessResource.toFixed(1)}% resource.`;
   }
 
-  // Calculate par score (for mid-innings interruptions)
-  if (team2OversUsed > 0) {
-    parScore = Math.floor(team1Score * (R2 / R1));
-  }
+  // Calculate dynamic par score (what Team 2 should have scored by now to be on pace)
+if (team2OversUsed > 0) {
+  // Par score = revised target * (overs bowled / total overs allocated)
+  parScore = Math.floor((revisedTarget * team2OversUsed) / team2OversAllocated);
+}
 
   return {
     revisedTarget,
