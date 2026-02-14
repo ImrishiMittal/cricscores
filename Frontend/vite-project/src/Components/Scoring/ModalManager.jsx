@@ -11,49 +11,36 @@ import InningsSummary from "./InningsSummary";
 import ComparisonGraph from "./ComparisonGraph";
 import MoreOptionsMenu from "./MoreOptionsMenu";
 import ChangePlayersModal from "./ChangePlayersModal";
-import DLSCalculator from "./DLSCalculator"; // ✅ ADD THIS IMPORT
+import DLSCalculator from "./DLSCalculator";
+import ChangeOversModal from "./ChangeOversModal";
+import ChangeBowlerLimitModal from "./ChangeBowlerLimitModal";
 
 function ModalManager({
-  // Modal states
   modalStates,
-
-  // Wicket flow
   wicketFlow,
-
-  // Players & Bowlers
   players,
   allPlayers,
   bowlers,
   isWicketPending,
   isNewBowlerPending,
-
-  // Partnerships
   partnershipHistory,
-
-  // Innings data
   innings1Data,
   innings2Data,
   innings1Score,
   innings2Score,
   innings1HistoryRef,
-
-  // Match data
   matchData,
   updatedMatchData,
   firstBattingTeam,
   secondBattingTeam,
   currentBattingTeam,
   winner,
-
-  // Scoring state
   score,
   wickets,
   overs,
   balls,
   completeHistory,
   innings,
-
-  // Event handlers
   onStartInnings,
   onConfirmNewBatsman,
   onConfirmNewBowler,
@@ -61,6 +48,8 @@ function ModalManager({
   onFielderConfirm,
   onFielderCancel,
   onChangePlayersConfirm,
+  onChangeOversConfirm,
+  onChangeBowlerLimitConfirm,
 }) {
   return (
     <>
@@ -184,6 +173,26 @@ function ModalManager({
         />
       )}
 
+      {/* Change Overs Modal */}
+      {modalStates.showChangeOversModal && (
+        <ChangeOversModal
+          matchData={updatedMatchData}
+          currentOvers={overs}
+          currentBalls={balls}
+          onConfirm={onChangeOversConfirm}
+          onClose={() => modalStates.setShowChangeOversModal(false)}
+        />
+      )}
+
+      {/* Change Bowler Limit Modal */}
+      {modalStates.showChangeBowlerLimitModal && (
+        <ChangeBowlerLimitModal
+          matchData={updatedMatchData}
+          onConfirm={onChangeBowlerLimitConfirm}
+          onClose={() => modalStates.setShowChangeBowlerLimitModal(false)}
+        />
+      )}
+
       {/* DLS Calculator Modal */}
       {modalStates.showDLSCalculator && innings === 2 && (
         <DLSCalculator
@@ -191,9 +200,7 @@ function ModalManager({
           matchData={updatedMatchData}
           currentScore={score}
           currentWickets={wickets}
-          // ✅ FIX: Convert overs + balls to decimal
           currentOvers={overs + balls / 6}
-          // ✅ FIX: Use innings1Score for Team 1 data
           team1Score={innings1Score?.score || 0}
           team1Wickets={innings1Score?.wickets || 0}
           team1Overs={
@@ -207,9 +214,15 @@ function ModalManager({
         <MoreOptionsMenu
           innings={innings}
           onClose={() => modalStates.setShowMoreMenu(false)}
-          onOpenDLS={() => modalStates.setShowDLSCalculator(true)} // ✅ FIX THIS
+          onOpenDLS={() => modalStates.setShowDLSCalculator(true)}
           onOpenChangePlayers={() =>
             modalStates.setShowChangePlayersModal(true)
+          }
+          onOpenChangeOvers={() =>
+            modalStates.setShowChangeOversModal(true)
+          }
+          onOpenChangeBowlerLimit={() =>
+            modalStates.setShowChangeBowlerLimitModal(true)
           }
         />
       )}

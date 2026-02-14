@@ -239,7 +239,7 @@ function ScoringPage() {
       return;
     }
 
-    console.log("⏮️ Undoing to state");
+    console.log("↩️ Undoing to state");
     historySnapshotHook.popSnapshot();
 
     engine.restoreState(last);
@@ -251,7 +251,7 @@ function ScoringPage() {
     playersHook.setIsWicketPending(false);
   };
 
-  /* ================= CHANGE PLAYERS CONFIRM ================= */
+  /* ================= HANDLE CHANGE PLAYERS ================= */
   const handleChangePlayersConfirm = ({
     team,
     isBattingTeam,
@@ -278,6 +278,28 @@ function ScoringPage() {
     localStorage.setItem("matchData", JSON.stringify(updated));
     modalStates.setShowChangePlayersModal(false);
     alert(`✅ ${team} player count changed from ${oldCount} to ${newCount}`);
+  };
+
+  /* ================= HANDLE CHANGE OVERS ================= */
+  const handleChangeOversConfirm = ({ newOvers, oldOvers }) => {
+    const updated = { ...updatedMatchData };
+    updated.overs = newOvers;
+
+    setUpdatedMatchData(updated);
+    localStorage.setItem("matchData", JSON.stringify(updated));
+    modalStates.setShowChangeOversModal(false);
+    alert(`✅ Total overs changed from ${oldOvers} to ${newOvers}`);
+  };
+
+  /* ================= HANDLE CHANGE BOWLER LIMIT ================= */
+  const handleChangeBowlerLimitConfirm = ({ newLimit, oldLimit }) => {
+    const updated = { ...updatedMatchData };
+    updated.maxOversPerBowler = newLimit;
+
+    setUpdatedMatchData(updated);
+    localStorage.setItem("matchData", JSON.stringify(updated));
+    modalStates.setShowChangeBowlerLimitModal(false);
+    alert(`✅ Bowler limit changed from ${oldLimit} to ${newLimit} overs`);
   };
 
   return (
@@ -360,7 +382,6 @@ function ScoringPage() {
         </>
       )}
 
-      {/* Utility Buttons */}
       <div className={styles.utilityRow}>
         {partnershipsHook.partnershipHistory.length > 0 && (
           <button
@@ -410,53 +431,52 @@ function ScoringPage() {
         )}
       </div>
 
-      {/* All Modals */}
-      {/* All Modals */}
-<ModalManager
-  modalStates={modalStates}
-  wicketFlow={wicketFlow}
-  players={playersHook.players}
-  allPlayers={playersHook.allPlayers}
-  bowlers={playersHook.bowlers}
-  isWicketPending={playersHook.isWicketPending}
-  isNewBowlerPending={playersHook.isNewBowlerPending}
-  partnershipHistory={partnershipsHook.partnershipHistory}
-  innings1Data={inningsDataHook.innings1Data}
-  innings2Data={inningsDataHook.innings2Data}
-  innings1Score={engine.innings1Score}
-  innings2Score={engine.innings2Score}
-  innings1HistoryRef={inningsDataHook.innings1HistoryRef}
-  matchData={matchData}
-  updatedMatchData={updatedMatchData}
-  firstBattingTeam={firstBattingTeam}
-  secondBattingTeam={secondBattingTeam}
-  currentBattingTeam={currentBattingTeam}
-  winner={engine.winner}
-  score={engine.score}
-  wickets={engine.wickets}
-  overs={engine.overs}
-  balls={engine.balls}
-  completeHistory={engine.completeHistory}
-  innings={engine.innings}
-  onStartInnings={(s, ns, b) => {
-    playersHook.startInnings(s, ns, b);
-    partnershipsHook.startPartnership(s, ns);
-    modalStates.setShowStartModal(false);
-  }}
-  onConfirmNewBatsman={(name) => {
-    playersHook.confirmNewBatsman(name);
-    partnershipsHook.startPartnership(
-      playersHook.players[0].name,
-      playersHook.players[1].name
-    );
-  }}
-  onConfirmNewBowler={playersHook.confirmNewBowler}
-  onWicketTypeSelect={wicketFlow.handleWicketTypeSelect}
-  onFielderConfirm={handleFielderConfirm}
-  onFielderCancel={wicketFlow.cancelWicketFlow}
-  onChangePlayersConfirm={handleChangePlayersConfirm}
-  // ❌ REMOVE: onOpenDLS={() => {}}
-/>
+      <ModalManager
+        modalStates={modalStates}
+        wicketFlow={wicketFlow}
+        players={playersHook.players}
+        allPlayers={playersHook.allPlayers}
+        bowlers={playersHook.bowlers}
+        isWicketPending={playersHook.isWicketPending}
+        isNewBowlerPending={playersHook.isNewBowlerPending}
+        partnershipHistory={partnershipsHook.partnershipHistory}
+        innings1Data={inningsDataHook.innings1Data}
+        innings2Data={inningsDataHook.innings2Data}
+        innings1Score={engine.innings1Score}
+        innings2Score={engine.innings2Score}
+        innings1HistoryRef={inningsDataHook.innings1HistoryRef}
+        matchData={matchData}
+        updatedMatchData={updatedMatchData}
+        firstBattingTeam={firstBattingTeam}
+        secondBattingTeam={secondBattingTeam}
+        currentBattingTeam={currentBattingTeam}
+        winner={engine.winner}
+        score={engine.score}
+        wickets={engine.wickets}
+        overs={engine.overs}
+        balls={engine.balls}
+        completeHistory={engine.completeHistory}
+        innings={engine.innings}
+        onStartInnings={(s, ns, b) => {
+          playersHook.startInnings(s, ns, b);
+          partnershipsHook.startPartnership(s, ns);
+          modalStates.setShowStartModal(false);
+        }}
+        onConfirmNewBatsman={(name) => {
+          playersHook.confirmNewBatsman(name);
+          partnershipsHook.startPartnership(
+            playersHook.players[0].name,
+            playersHook.players[1].name
+          );
+        }}
+        onConfirmNewBowler={playersHook.confirmNewBowler}
+        onWicketTypeSelect={wicketFlow.handleWicketTypeSelect}
+        onFielderConfirm={handleFielderConfirm}
+        onFielderCancel={wicketFlow.cancelWicketFlow}
+        onChangePlayersConfirm={handleChangePlayersConfirm}
+        onChangeOversConfirm={handleChangeOversConfirm}
+        onChangeBowlerLimitConfirm={handleChangeBowlerLimitConfirm}
+      />
     </div>
   );
 }

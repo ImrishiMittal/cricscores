@@ -10,37 +10,45 @@ function useModalStates() {
   const [showChangePlayersModal, setShowChangePlayersModal] = useState(false);
   const [showPartnershipHistory, setShowPartnershipHistory] = useState(false);
   const [showDLSCalculator, setShowDLSCalculator] = useState(false); // ✅ ADD THIS
+  const [showChangeOversModal, setShowChangeOversModal] = useState(false);
+  const [showChangeBowlerLimitModal, setShowChangeBowlerLimitModal] =
+    useState(false);
 
   return {
     // Start modal
     showStartModal,
     setShowStartModal,
-    
+
     // Summary modals
     showSummary,
     setShowSummary,
     showInningsSummary,
     setShowInningsSummary,
-    
+
     // History modals
     showInningsHistory,
     setShowInningsHistory,
     showPartnershipHistory,
     setShowPartnershipHistory,
-    
+
     // Analysis modals
     showComparisonGraph,
     setShowComparisonGraph,
-    
+
     // Settings modals
     showMoreMenu,
     setShowMoreMenu,
     showChangePlayersModal,
     setShowChangePlayersModal,
-    
+
     // DLS Calculator  ✅ ADD THIS
     showDLSCalculator,
     setShowDLSCalculator,
+
+    showChangeOversModal,
+    setShowChangeOversModal,
+    showChangeBowlerLimitModal,
+    setShowChangeBowlerLimitModal,
   };
 }
 

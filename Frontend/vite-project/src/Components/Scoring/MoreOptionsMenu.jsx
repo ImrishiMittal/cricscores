@@ -1,6 +1,13 @@
 import styles from "./MoreOptionsMenu.module.css";
 
-function MoreOptionsMenu({ innings, onClose, onOpenDLS, onOpenChangePlayers }) {
+function MoreOptionsMenu({ 
+  innings, 
+  onClose, 
+  onOpenDLS, 
+  onOpenChangePlayers,
+  onOpenChangeOvers,
+  onOpenChangeBowlerLimit
+}) {
   return (
     <div className={styles.overlay}>
       <div className={styles.modal}>
@@ -11,18 +18,38 @@ function MoreOptionsMenu({ innings, onClose, onOpenDLS, onOpenChangePlayers }) {
             className={styles.optionBtn}
             onClick={() => {
               onClose();
-              onOpenChangePlayers(); // Add this prop
+              onOpenChangePlayers();
             }}
           >
             👥 Change Number of Players
           </button>
 
-          <button className={styles.optionBtn}>🏏 Change Total Overs</button>
+          {/* Only show in Innings 1 */}
+          {innings === 1 && (
+            <>
+              <button 
+                className={styles.optionBtn}
+                onClick={() => {
+                  onClose();
+                  onOpenChangeOvers();
+                }}
+              >
+                🏏 Change Total Overs
+              </button>
 
-          <button className={styles.optionBtn}>
-            🎯 Change Bowler Over Limit
-          </button>
+              <button 
+                className={styles.optionBtn}
+                onClick={() => {
+                  onClose();
+                  onOpenChangeBowlerLimit();
+                }}
+              >
+                🎯 Change Bowler Over Limit
+              </button>
+            </>
+          )}
 
+          {/* Only show in Innings 2 */}
           {innings === 2 && (
             <>
               <button
