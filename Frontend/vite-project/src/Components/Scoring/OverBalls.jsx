@@ -11,36 +11,44 @@ function OverBalls({ history }) {
         let label = "";
         let dataType = "";
 
+        // ✅ FIX: Check ball.type instead of ball.event
+        const ballType = ball.type || ball.event;
+
         // Handle combined run + wicket events
-        if (ball.event === "RUN_WICKET" || (ball.event === "RUN" && ball.isWicket)) {
+        if (ballType === "RUN_WICKET" || (ballType === "RUN" && ball.isWicket)) {
           label = `${ball.runs}+W`;
           dataType = "RUN_WICKET";
         } 
+        // Handle wickets
+        else if (ballType === "W" || ballType === "WICKET") {
+          label = "W";
+          dataType = "W";
+        }
+        // Handle wide
+        else if (ballType === "WD" || ballType === "WIDE") {
+          label = ball.runs > 0 ? `${ball.runs}WD` : "WD";
+          dataType = "WD";
+        }
+        // Handle no ball
+        else if (ballType === "NB" || ballType === "NO_BALL") {
+          label = ball.runs > 0 ? `${ball.runs}NB` : "NB";
+          dataType = "NB";
+        }
+        // Handle free hit
+        else if (ballType === "FH" || ballType === "FREE_HIT") {
+          label = "FH";
+          dataType = "FH";
+        }
+        // Handle bye
+        else if (ballType === "BYE") {
+          label = `B${ball.runs || ""}`;
+          dataType = "BYE";
+        }
         // Handle regular run events OR balls with just a 'runs' property
-        else if (ball.event === "RUN" || (ball.runs !== undefined && !ball.event)) {
+        else if (ballType === "RUN" || ball.runs !== undefined) {
           const runs = ball.runs ?? 0;
           label = runs;
           dataType = runs === 0 ? "0" : runs === 4 ? "4" : runs === 6 ? "6" : "RUN";
-        } 
-        else if (ball.event === "WICKET") {
-          label = "W";
-          dataType = "W";
-        } 
-        else if (ball.event === "WD") {
-          label = "WD";
-          dataType = "WD";
-        } 
-        else if (ball.event === "NB") {
-          label = "NB";
-          dataType = "NB";
-        } 
-        else if (ball.event === "BYE") {
-          label = `B${ball.runs || ""}`;
-          dataType = "BYE";
-        } 
-        else if (ball.event === "FREE_HIT") {
-          label = "FH";
-          dataType = "FH";
         } 
         else {
           label = "•";
