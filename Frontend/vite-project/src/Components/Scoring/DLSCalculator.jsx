@@ -14,39 +14,64 @@ function DLSCalculator({
   team1Overs,
   team1Balls,
 }) {
+  // ✅ DEBUG LOG
+  console.log("🔍 DLS Calculator Props:", {
+    team1Score,
+    team1Wickets,
+    team1Overs,
+    team1Balls,
+    currentScore,
+    currentWickets,
+    currentOvers,
+    currentBalls,
+  });
+
   // Match settings
   const totalOvers = Number(matchData?.overs || 50);
   const maxWickets = Number(matchData?.teamBPlayers || 11) - 1;
 
+  // ✅ FIX: Calculate team1 overs properly
+  const calculateOvers = (overs, balls) => {
+    if (overs === undefined || overs === null) return 0;
+    const ballsComponent = balls || 0;
+    return overs + (ballsComponent / 6);
+  };
+
   // Team 1 (completed innings) state
   const [team1FinalScore] = useState(team1Score || 0);
   const [team1OversAllocated, setTeam1OversAllocated] = useState(totalOvers);
-  const initialTeam1Overs =
-  team1Overs && team1Overs > 0
-    ? team1Overs
-    : totalOvers;
-
-const [team1OversCompleted, setTeam1OversCompleted] =
-  useState(initialTeam1Overs);
-
   
+  // ✅ FIX: Properly calculate team1 overs from overs + balls
+  const initialTeam1Overs = calculateOvers(team1Overs, team1Balls);
+  const [team1OversCompleted, setTeam1OversCompleted] = useState(initialTeam1Overs);
   const [team1WicketsLost, setTeam1WicketsLost] = useState(team1Wickets || 0);
 
-  // Team 2 (current innings) state - for interruption scenario
+  // Team 2 (current innings) state
   const [team2OversAllocated, setTeam2OversAllocated] = useState(totalOvers);
-  const [team2CurrentOvers, setTeam2CurrentOvers] = useState(
-    currentOvers || 0
-  );
   
-  const [team2CurrentWickets, setTeam2CurrentWickets] = useState(
-    currentWickets || 0
-  );
+  // ✅ FIX: Calculate current overs from overs + balls
+  const initialTeam2Overs = calculateOvers(currentOvers, currentBalls);
+  const [team2CurrentOvers, setTeam2CurrentOvers] = useState(initialTeam2Overs);
+  const [team2CurrentWickets, setTeam2CurrentWickets] = useState(currentWickets || 0);
 
   // G50 selection
   const [g50, setG50] = useState(G50_VALUES.international);
 
   // Calculation result
   const [result, setResult] = useState(null);
+
+  // ✅ Update team2 current overs when props change (live updates)
+  useEffect(() => {
+    const liveOvers = calculateOvers(currentOvers, currentBalls);
+    setTeam2CurrentOvers(liveOvers);
+    setTeam2CurrentWickets(currentWickets || 0);
+    console.log("📊 Updating live Team 2 data:", {
+      overs: currentOvers,
+      balls: currentBalls,
+      calculated: liveOvers,
+      wickets: currentWickets,
+    });
+  }, [currentOvers, currentBalls, currentWickets]);
 
   // Auto-calculate on mount and when values change
   useEffect(() => {
@@ -63,6 +88,14 @@ const [team1OversCompleted, setTeam1OversCompleted] =
 
   const handleCalculate = () => {
     try {
+      console.log("🧮 Calculating DLS with:", {
+        team1Score: team1FinalScore,
+        team1OversUsed: team1OversCompleted,
+        team1WicketsLost: team1WicketsLost,
+        team2OversUsed: team2CurrentOvers,
+        team2WicketsLost: team2CurrentWickets,
+      });
+
       const calculationResult = calculateDLSTarget({
         team1Score: team1FinalScore,
         team1OversAllocated: team1OversAllocated,
@@ -74,6 +107,7 @@ const [team1OversCompleted, setTeam1OversCompleted] =
         g50: g50,
       });
 
+      console.log("✅ DLS Result:", calculationResult);
       setResult(calculationResult);
     } catch (error) {
       console.error("DLS Calculation Error:", error);
@@ -84,21 +118,19 @@ const [team1OversCompleted, setTeam1OversCompleted] =
   const handleQuickScenario = (scenario) => {
     switch (scenario) {
       case "reducedOvers":
-        // Reduce Team 2's overs by 10
         setTeam2OversAllocated(Math.max(5, totalOvers - 10));
         break;
       case "earlyInterruption":
-        // Interruption after 10 overs
         setTeam2CurrentOvers(10);
         setTeam2OversAllocated(Math.max(20, totalOvers - 5));
         break;
       case "reset":
-        // Reset to current match state
+        // ✅ FIX: Reset using calculated values
         setTeam1OversAllocated(totalOvers);
-        setTeam1OversCompleted(team1Overs + team1Balls / 6);
+        setTeam1OversCompleted(calculateOvers(team1Overs, team1Balls));
         setTeam1WicketsLost(team1Wickets || 0);
         setTeam2OversAllocated(totalOvers);
-        setTeam2CurrentOvers(currentOvers || 0);
+        setTeam2CurrentOvers(calculateOvers(currentOvers, currentBalls));
         setTeam2CurrentWickets(currentWickets || 0);
         break;
     }
@@ -296,12 +328,12 @@ const [team1OversCompleted, setTeam1OversCompleted] =
                   </span>
                 </div>
 
-                {result.parScore !== null && (
-                  <div className={styles.parBox}>
-                    <span className={styles.parLabel}>Par Score</span>
-                    <span className={styles.parValue}>{result.parScore}</span>
-                  </div>
-                )}
+                <div className={styles.parBox}>
+                  <span className={styles.parLabel}>Par Score</span>
+                  <span className={styles.parValue}>
+                    {result.parScore || 0}
+                  </span>
+                </div>
               </div>
 
               <div className={styles.resourceInfo}>

@@ -34,6 +34,7 @@ function ScoringPage() {
   const inningsDataHook = useInningsData(
     engine.completeHistory,
     playersHook.players,
+    playersHook.allPlayers,
     playersHook.bowlers,
     engine.score,
     engine.wickets,
@@ -51,9 +52,11 @@ function ScoringPage() {
     playersHook.restorePlayersState,
     playersHook.restoreBowlersState,
     partnershipsHook.restorePartnershipState,
-    modalStates.setShowStartModal
+    modalStates.setShowStartModal,
+    engine.innings1Score,
+    engine.innings2Score
   );
-
+  
   const historySnapshotHook = useHistorySnapshot(
     modalStates.showStartModal,
     playersHook.players,

@@ -283,17 +283,54 @@ export default function usePlayersAndBowlers(matchData) {
 
   /* ================= RESTORE (FOR UNDO) ================= */
   const restorePlayersState = (snap) => {
-    setPlayers(JSON.parse(JSON.stringify(snap.players)));
-    setAllPlayers(JSON.parse(JSON.stringify(snap.allPlayers || [])));
-    setStrikerIndex(snap.strikerIndex);
-    setNonStrikerIndex(snap.nonStrikerIndex);
-    setIsWicketPending(snap.isWicketPending || false);
-    setOutBatsman(snap.outBatsman || null);
+    // ✅ FIX: Safe JSON parsing with proper checks
+    try {
+      // Check if snap.players exists and is valid
+      if (snap.players && Array.isArray(snap.players)) {
+        setPlayers(JSON.parse(JSON.stringify(snap.players)));
+      } else {
+        setPlayers([]);
+      }
+
+      // Check if snap.allPlayers exists and is valid
+      if (snap.allPlayers && Array.isArray(snap.allPlayers)) {
+        setAllPlayers(JSON.parse(JSON.stringify(snap.allPlayers)));
+      } else {
+        setAllPlayers([]);
+      }
+
+      setStrikerIndex(snap.strikerIndex ?? 0);
+      setNonStrikerIndex(snap.nonStrikerIndex ?? 1);
+      setIsWicketPending(snap.isWicketPending || false);
+      setOutBatsman(snap.outBatsman ?? null);
+    } catch (error) {
+      console.error("❌ Error restoring players state:", error);
+      // Reset to safe defaults
+      setPlayers([]);
+      setAllPlayers([]);
+      setStrikerIndex(0);
+      setNonStrikerIndex(1);
+      setIsWicketPending(false);
+      setOutBatsman(null);
+    }
   };
 
   const restoreBowlersState = (snap) => {
-    setBowlers(JSON.parse(JSON.stringify(snap.bowlers)));
-    setCurrentBowlerIndex(snap.currentBowlerIndex);
+    // ✅ FIX: Safe JSON parsing with proper checks
+    try {
+      if (snap.bowlers && Array.isArray(snap.bowlers)) {
+        setBowlers(JSON.parse(JSON.stringify(snap.bowlers)));
+      } else {
+        setBowlers([]);
+      }
+
+      setCurrentBowlerIndex(snap.currentBowlerIndex ?? 0);
+    } catch (error) {
+      console.error("❌ Error restoring bowlers state:", error);
+      // Reset to safe defaults
+      setBowlers([]);
+      setCurrentBowlerIndex(0);
+    }
   };
 
   return {
