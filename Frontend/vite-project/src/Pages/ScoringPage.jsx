@@ -111,29 +111,37 @@ function ScoringPage() {
     // Handle runout
     if (wicketFlow.waitingForRunoutRun) {
       wicketFlow.handleRunoutWithRuns(r);
-
+  
       if (r > 0) {
         playersHook.addRunsToStriker(r);
         playersHook.addRunsToBowler(r);
         playersHook.addBallToBowler();
         
-        // ✅ Safe check before accessing striker
         if (playersHook.strikerIndex >= 0 && playersHook.players[playersHook.strikerIndex]) {
           partnershipsHook.addRunsToPartnership(
             r,
             playersHook.players[playersHook.strikerIndex].name
           );
         }
+        
+        // ✅ FIX: Add score to scoreboard for run-outs with runs
+        engine.addScore(r);
+        
+        // ✅ ADD THIS: Manually add the run to currentOver
+        engine.addRunToCurrentOver(r);
+        
+        // Swap strike if odd runs
+        if (r % 2 !== 0) {
+          playersHook.swapStrike();
+        }
       } else {
         playersHook.addBallToBowler();
         partnershipsHook.addBallToPartnership();
       }
-
+  
       playersHook.registerWicket();
-      playersHook.addWicketToBowler();
-      engine.handleWicket();
       return;
-    }
+    }  
 
     // Normal run
     if (engine.innings === 2 && engine.score + r >= engine.target) {
@@ -247,6 +255,7 @@ function ScoringPage() {
     }, 150);
 
     wicketFlow.completeWicketFlow();
+    playersHook.setIsWicketPending(false);
     setTimeout(() => historySnapshotHook.triggerSnapshot(), 200);
   };
 
@@ -502,4 +511,3 @@ function ScoringPage() {
 }
 
 export default ScoringPage;
-

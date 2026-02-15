@@ -73,7 +73,15 @@ function ModalManager({
         />
       )}
 
-      {isWicketPending && !wicketFlow.showFielderInputModal && (
+      {/* ✅ FIX: Don't show NewBatsmanModal during runout flow
+          Check BOTH conditions:
+          1. Not currently in fielder input
+          2. Not in runout flow (pendingRunoutRuns !== null OR waitingForRunoutRun)
+      */}
+      {isWicketPending && 
+       !wicketFlow.showFielderInputModal && 
+       !wicketFlow.waitingForRunoutRun &&
+       wicketFlow.pendingRunoutRuns === null && (
         <NewBatsmanModal onConfirm={onConfirmNewBatsman} />
       )}
 
@@ -230,3 +238,4 @@ function ModalManager({
 }
 
 export default ModalManager;
+
