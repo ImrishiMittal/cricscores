@@ -42,6 +42,17 @@ export default function useMatchEngine(matchData, swapStrike) {
 
   const lastManBatting = matchData.lastManBatting || false;
 
+   /* ================= ADD SCORE (for runouts) ================= */
+   const addScore = (runs) => {
+    setScore(prev => prev + runs);
+    console.log(`📊 Score manually increased by ${runs} (runout)`);
+  };
+/* ================= ADD RUN TO CURRENT OVER (for runouts) ================= */
+const addRunToCurrentOver = (runs) => {
+  setCurrentOver(prev => [...prev, { runs }]);
+  console.log(`📊 Added ${runs} runs to currentOver (runout)`);
+};
+
   /* ================= RESTORE STATE (UNDO) ================= */
   const restoreState = (snap) => {
     setScore(snap.score);
@@ -451,5 +462,7 @@ export default function useMatchEngine(matchData, swapStrike) {
     setInningsChangeEvent,
     innings1Score,
     innings2Score,
+    addScore,
+    addRunToCurrentOver,
   };
 }
