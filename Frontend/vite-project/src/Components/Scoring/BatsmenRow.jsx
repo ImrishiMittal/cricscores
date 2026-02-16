@@ -19,6 +19,8 @@ function BatsmenRow({
     ? ((nonStriker.runs / nonStriker.balls) * 100).toFixed(1) 
     : "0.0";
 
+  
+
   return (
     <div className={styles.batsmenRow}>
       <div className={styles.batsmenSection}>
