@@ -1,21 +1,16 @@
-// src/utils/captainHelper.js
+export const addCaptainTag = (playerName, matchData, currentTeam) => {
+  if (!matchData || !currentTeam) return playerName;
 
-export function addCaptainTag(playerName, matchData, currentBattingTeam) {
-    if (!playerName || !matchData) return playerName;
-    
-    // Determine which team is currently batting
-    const firstBattingTeam = matchData.battingFirst || matchData.teamA;
-    const isBattingTeamA = currentBattingTeam === matchData.teamA;
-    
-    const battingCaptain = isBattingTeamA ? matchData.teamACaptain : matchData.teamBCaptain;
-    
-    // For bowler (opposite team)
-    const bowlingCaptain = isBattingTeamA ? matchData.teamBCaptain : matchData.teamACaptain;
-    
-    // Check if player is either captain
-    if (playerName === battingCaptain || playerName === bowlingCaptain) {
-      return `${playerName} (C)`;
-    }
-    
-    return playerName;
-  }
+  const isTeamACaptain =
+    currentTeam === matchData.teamA &&
+    playerName === matchData.teamACaptain;
+
+  const isTeamBCaptain =
+    currentTeam === matchData.teamB &&
+    playerName === matchData.teamBCaptain;
+
+  return isTeamACaptain || isTeamBCaptain
+    ? `${playerName} (C)`
+    : playerName;
+};
+

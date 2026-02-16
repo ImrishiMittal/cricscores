@@ -37,10 +37,15 @@ function InfoStrip({
     return (bowler.runs / totalOvers).toFixed(2);
   };
 
-  // Format bowler display: Name - R/W [Econ]
-  const bowlerDisplay = currentBowler
-    ? `${addCaptainTag(currentBowler.name, matchData, currentTeam)} - ${currentBowler.runs || 0}/${currentBowler.wickets || 0} [${getBowlerEconomy(currentBowler)}]`
-    : addCaptainTag(bowler, matchData, currentTeam);
+  const bowlingTeam =
+  currentTeam === matchData.teamA
+    ? matchData.teamB
+    : matchData.teamA;
+
+const bowlerDisplay = currentBowler
+  ? `${addCaptainTag(currentBowler.name, matchData, bowlingTeam)} - ${currentBowler.runs || 0}/${currentBowler.wickets || 0} [${getBowlerEconomy(currentBowler)}]`
+  : addCaptainTag(bowler, matchData, bowlingTeam);
+
 
   return (
     <div className={styles.infoStrip}>
