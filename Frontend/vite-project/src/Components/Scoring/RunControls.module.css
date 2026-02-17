@@ -1,0 +1,121 @@
+/* ─── RunControls.module.css ─── */
+
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 4px 0;
+  }
+  
+  /* ─────────────────────────────────────────
+     Row 1 — Run buttons  (0 1 2 3 4 5 6)
+     Large circles, all in ONE row
+  ───────────────────────────────────────── */
+  .runRow {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+  
+  .runBtn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: none;
+    background: #4ade80;
+    color: #0a0a0a;
+    font-size: 22px;
+    font-weight: 800;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.1s ease, background 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 3px 10px rgba(74, 222, 128, 0.3);
+  }
+  
+  .runBtn:hover  { background: #22c55e; }
+  .runBtn:active { transform: scale(0.91); background: #16a34a; }
+  
+  /* ─────────────────────────────────────────
+     Row 2 — Action buttons
+     BYE  WIDE  NO BALL  WICKET  SWAP  UNDO
+     All same height, all on ONE row
+  ───────────────────────────────────────── */
+  .actionRow {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+  
+  .actionBtn {
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: transform 0.1s ease, filter 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .actionBtn:hover  { filter: brightness(1.15); }
+  .actionBtn:active { transform: scale(0.92); filter: brightness(0.9); }
+  
+  /* ── Individual colours matching Image 2 exactly ── */
+  .byeBtn     { background: #ca8a04; color: #fff; }
+  .wideBtn    { background: #ca8a04; color: #fff; }
+  .noBallBtn  { background: #dc2626; color: #fff; }
+  .wicketBtn  { background: #dc2626; color: #fff; }
+  .swapBtn    { background: #1d4ed8; color: #fff; }
+  .undoBtn    { background: #1d4ed8; color: #fff; }
+  
+  /* ─────────────────────────────────────────
+     Row 3 — RETIRED HURT
+     Same height as Row 2, purple, centered
+  ───────────────────────────────────────── */
+  .retiredHurtBtn {
+    background: #7c3aed;
+    color: #fff;
+    height: 44px;
+    padding: 0 32px;
+    font-size: 13px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+  }
+  
+  .retiredHurtBtn:hover  { filter: brightness(1.15); }
+  .retiredHurtBtn:active { transform: scale(0.93); }
+  
+  /* ─── Responsive — small phones ─── */
+  @media (max-width: 420px) {
+    .runBtn {
+      width: 48px;
+      height: 48px;
+      font-size: 18px;
+    }
+    .runRow  { gap: 6px; }
+    .actionRow { gap: 5px; }
+    .actionBtn {
+      height: 40px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+    .retiredHurtBtn {
+      height: 40px;
+      padding: 0 22px;
+    }
+  }

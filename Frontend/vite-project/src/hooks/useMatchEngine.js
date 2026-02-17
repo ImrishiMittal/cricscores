@@ -56,9 +56,9 @@ export default function useMatchEngine(matchData, swapStrike) {
     console.log(`📊 Score manually increased by ${runs} (runout)`);
   };
 /* ================= ADD RUN TO CURRENT OVER (for runouts) ================= */
-const addRunToCurrentOver = (runs) => {
-  setCurrentOver(prev => [...prev, { runs }]);
-  console.log(`📊 Added ${runs} runs to currentOver (runout)`);
+const addRunToCurrentOver = (runs, isWicket = false) => {
+  setCurrentOver(prev => [...prev, { runs, isWicket }]);
+  console.log(`📊 Added ${runs} runs to currentOver (runout, isWicket=${isWicket})`);
 };
 
   /* ================= RESTORE STATE (UNDO) ================= */
@@ -321,7 +321,7 @@ const addRunToCurrentOver = (runs) => {
   };
 
   /* ================= WICKET ================= */
-  const handleWicket = () => {
+  const handleWicket = (isRunout = false) => {
     if (matchOver) return;
 
     if (isFreeHit) {
@@ -351,18 +351,20 @@ const addRunToCurrentOver = (runs) => {
       return;
     }
 
-    setCurrentOver((prev) => [...prev, { type: "W" }]);
-    const wicketEntry = { event: "WICKET", over: overs, ball: balls };
-    completeHistoryRef.current = [...completeHistoryRef.current, wicketEntry];
-    setCompleteHistory((prev) => [...prev, wicketEntry]);
+    if (!isRunout) {
+      setCurrentOver((prev) => [...prev, { type: "W" }]);
+      const wicketEntry = { event: "WICKET", over: overs, ball: balls };
+      completeHistoryRef.current = [...completeHistoryRef.current, wicketEntry];
+      setCompleteHistory((prev) => [...prev, wicketEntry]);
+    }
 
     setWicketEvent({ out: true });
 
     const nextWickets = wickets + 1;
-    let nextBalls = balls + 1;
+    let nextBalls = isRunout ? balls : balls + 1;
     let nextOvers = overs;
 
-    if (nextBalls === 6) {
+    if (!isRunout && nextBalls === 6) {
       nextOvers++;
       nextBalls = 0;
       swapStrike();
@@ -381,8 +383,10 @@ const addRunToCurrentOver = (runs) => {
       }
     }
 
-    setBalls(nextBalls);
-    setOvers(nextOvers);
+    if (!isRunout) {
+      setBalls(nextBalls);
+      setOvers(nextOvers);
+    }
     setWickets(nextWickets);
 
     checkMatchStatus(score, nextWickets, nextBalls, nextOvers);
@@ -472,3 +476,5 @@ const addRunToCurrentOver = (runs) => {
     addRunToCurrentOver,
   };
 }
+
+

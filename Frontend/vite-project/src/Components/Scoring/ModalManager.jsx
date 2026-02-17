@@ -15,15 +15,18 @@ import ChangeOversModal from "./ChangeOversModal";
 import ChangeBowlerLimitModal from "./ChangeBowlerLimitModal";
 import DLSCalculator from "./DLSCalculator";
 import WinProbabilityModal from "./WinProbabilityModal";
+import RetiredHurtModal from "./RetiredHurtModal";
 
 function ModalManager({
   modalStates,
   wicketFlow,
   players,
   allPlayers,
+  retiredPlayers,
   bowlers,
   isWicketPending,
   isNewBowlerPending,
+  strikerIndex,
   partnershipHistory,
   innings1Data,
   innings2Data,
@@ -51,6 +54,8 @@ function ModalManager({
   onChangePlayersConfirm,
   onChangeOversConfirm,
   onChangeBowlerLimitConfirm,
+  onRetiredHurtConfirm,
+  onReturnRetiredConfirm,
 }) {
   return (
     <>
@@ -82,7 +87,11 @@ function ModalManager({
        !wicketFlow.showFielderInputModal && 
        !wicketFlow.waitingForRunoutRun &&
        wicketFlow.pendingRunoutRuns === null && (
-        <NewBatsmanModal onConfirm={onConfirmNewBatsman} />
+        <NewBatsmanModal
+          onConfirm={onConfirmNewBatsman}
+          retiredPlayers={retiredPlayers || []}
+          onReturnRetired={onReturnRetiredConfirm}
+        />
       )}
 
       {isNewBowlerPending && (
@@ -117,7 +126,11 @@ function ModalManager({
 
       {modalStates.showInningsHistory && (
         <TabbedInningsHistory
-          innings1History={innings1HistoryRef.current || innings1Data?.history || []}
+          innings1History={
+            innings === 1
+              ? completeHistory                                          // ✅ live during innings 1
+              : innings1HistoryRef.current || innings1Data?.history || [] // ✅ captured after innings 1 ends
+          }
           innings2History={innings === 2 ? completeHistory : []}
           currentInnings={innings}
           onClose={() => modalStates.setShowInningsHistory(false)}
@@ -129,7 +142,14 @@ function ModalManager({
           innings1Data={innings1Data}
           innings2Data={innings2Data}
           players={players}
-          allPlayers={allPlayers}
+          allPlayers={
+            // ✅ FIX: Exclude from allPlayers anyone currently active on the field.
+            // This prevents a returned retired-hurt batsman from showing twice
+            // (once as "retired hurt" in allPlayers and once as "not out" in players).
+            allPlayers.filter(
+              (ap) => !players.some((p) => p.name === ap.name)
+            )
+          }
           bowlers={bowlers}
           score={score}
           wickets={wickets}
@@ -222,6 +242,15 @@ function ModalManager({
         />
       )}
 
+      {/* ✅ RETIRED HURT: modal to retire the current striker and enter a replacement */}
+      {modalStates.showRetiredHurtModal && players.length >= 2 && (
+        <RetiredHurtModal
+          strikerName={players[strikerIndex]?.name || "Striker"}
+          onConfirm={onRetiredHurtConfirm}
+          onClose={() => modalStates.setShowRetiredHurtModal(false)}
+        />
+      )}
+
       {modalStates.showMoreMenu && (
         <MoreOptionsMenu
           innings={innings}
@@ -238,4 +267,3 @@ function ModalManager({
 }
 
 export default ModalManager;
-

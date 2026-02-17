@@ -41,6 +41,9 @@ function useModalStates() {
   // Win Probability Modal ✅ NEW
   const [showWinProbability, setShowWinProbability] = useState(false);
 
+  // Retired Hurt Modal ✅ NEW
+  const [showRetiredHurtModal, setShowRetiredHurtModal] = useState(false);
+
   return {
     // Start Innings
     showStartModal,
@@ -95,6 +98,10 @@ function useModalStates() {
     // Win Probability ✅ NEW
     showWinProbability,
     setShowWinProbability,
+
+    // Retired Hurt ✅ NEW
+    showRetiredHurtModal,
+    setShowRetiredHurtModal,
   };
 }
 
