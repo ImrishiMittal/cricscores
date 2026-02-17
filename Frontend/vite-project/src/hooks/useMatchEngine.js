@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 export default function useMatchEngine(matchData, swapStrike) {
   const rules = matchData.rules || {};
@@ -22,11 +22,19 @@ export default function useMatchEngine(matchData, swapStrike) {
   const [currentOver, setCurrentOver] = useState([]);
   const [completeHistory, setCompleteHistory] = useState([]);
   const [isFreeHit, setIsFreeHit] = useState(false);
+
+  // ✅ FIX: A ref that always mirrors completeHistory synchronously.
+  // Unlike state, a ref can be read inside endInnings() at call-time,
+  // before React batches and applies setCompleteHistory([]).
+  const completeHistoryRef = useRef([]);
   const [wicketEvent, setWicketEvent] = useState(null);
   const [overCompleteEvent, setOverCompleteEvent] = useState(null);
 
   const [innings1Score, setInnings1Score] = useState(null);
   const [innings2Score, setInnings2Score] = useState(null);
+
+  // ✅ FIX: Stores innings 1 history captured inside endInnings() before reset
+  const [innings1History, setInnings1History] = useState([]);
 
   const maxWickets = useMemo(() => {
     const teamACount = Number(matchData.teamAPlayers || 11);
@@ -61,6 +69,7 @@ const addRunToCurrentOver = (runs) => {
     setOvers(snap.overs);
     setCurrentOver([...snap.currentOver]);
     setCompleteHistory([...snap.completeHistory]);
+    completeHistoryRef.current = [...snap.completeHistory]; // keep ref in sync
   };
 
   /* ================= END MATCH ================= */
@@ -91,11 +100,12 @@ const addRunToCurrentOver = (runs) => {
   const endInnings = () => {
     if (innings === 1) {
       const newTarget = score + 1;
-      
-      // ⚠️ NOTE: innings1Score is now set BEFORE calling endInnings()
-      // in checkMatchStatus and Master Engine useEffect
-      // We DON'T set it here because score/wickets/overs/balls
-      // would be the OLD values, not including the last ball
+
+      // ✅ FIX: Read from the ref — it has ALL balls including the last one.
+      // completeHistoryRef.current is updated synchronously on every ball,
+      // so it reflects the true current history before any state resets.
+      console.log(`📜 Capturing innings 1 history: ${completeHistoryRef.current.length} balls`);
+      setInnings1History([...completeHistoryRef.current]);
 
       setTarget(newTarget);
       setInnings(2);
@@ -105,6 +115,7 @@ const addRunToCurrentOver = (runs) => {
       setOvers(0);
       setCurrentOver([]);
       setCompleteHistory([]);
+      completeHistoryRef.current = []; // reset ref in sync with state
       setIsFreeHit(false);
 
       setInningsChangeEvent({ target: newTarget });
@@ -285,10 +296,9 @@ const addRunToCurrentOver = (runs) => {
     }
 
     setCurrentOver((prev) => [...prev, { runs }]);
-    setCompleteHistory((prev) => [
-      ...prev,
-      { event: "RUN", runs, over: overs, ball: balls },
-    ]);
+    const runEntry = { event: "RUN", runs, over: overs, ball: balls };
+    completeHistoryRef.current = [...completeHistoryRef.current, runEntry];
+    setCompleteHistory((prev) => [...prev, runEntry]);
 
     if (nextBalls === 6) {
       nextOvers++;
@@ -316,10 +326,9 @@ const addRunToCurrentOver = (runs) => {
 
     if (isFreeHit) {
       setCurrentOver((prev) => [...prev, { type: "FH" }]);
-      setCompleteHistory((prev) => [
-        ...prev,
-        { event: "FREE_HIT", over: overs, ball: balls },
-      ]);
+      const fhEntry = { event: "FREE_HIT", over: overs, ball: balls };
+      completeHistoryRef.current = [...completeHistoryRef.current, fhEntry];
+      setCompleteHistory((prev) => [...prev, fhEntry]);
 
       let nextBalls = balls + 1;
       let nextOvers = overs;
@@ -343,10 +352,9 @@ const addRunToCurrentOver = (runs) => {
     }
 
     setCurrentOver((prev) => [...prev, { type: "W" }]);
-    setCompleteHistory((prev) => [
-      ...prev,
-      { event: "WICKET", over: overs, ball: balls },
-    ]);
+    const wicketEntry = { event: "WICKET", over: overs, ball: balls };
+    completeHistoryRef.current = [...completeHistoryRef.current, wicketEntry];
+    setCompleteHistory((prev) => [...prev, wicketEntry]);
 
     setWicketEvent({ out: true });
 
@@ -385,10 +393,9 @@ const addRunToCurrentOver = (runs) => {
     if (!rules.wide || matchOver) return;
     setScore((prev) => prev + 1);
     setCurrentOver((prev) => [...prev, { type: "WD" }]);
-    setCompleteHistory((prev) => [
-      ...prev,
-      { event: "WD", over: overs, ball: balls },
-    ]);
+    const wdEntry = { event: "WD", over: overs, ball: balls };
+    completeHistoryRef.current = [...completeHistoryRef.current, wdEntry];
+    setCompleteHistory((prev) => [...prev, wdEntry]);
   };
 
   /* ================= NO BALL ================= */
@@ -397,10 +404,9 @@ const addRunToCurrentOver = (runs) => {
     setScore((prev) => prev + 1);
     setIsFreeHit(true);
     setCurrentOver((prev) => [...prev, { type: "NB" }]);
-    setCompleteHistory((prev) => [
-      ...prev,
-      { event: "NB", over: overs, ball: balls },
-    ]);
+    const nbEntry = { event: "NB", over: overs, ball: balls };
+    completeHistoryRef.current = [...completeHistoryRef.current, nbEntry];
+    setCompleteHistory((prev) => [...prev, nbEntry]);
   };
 
   /* ================= BYE ================= */
@@ -430,10 +436,9 @@ const addRunToCurrentOver = (runs) => {
     setOvers(nextOvers);
 
     setCurrentOver((prev) => [...prev, { type: "BYE", runs }]);
-    setCompleteHistory((prev) => [
-      ...prev,
-      { event: "BYE", runs, over: overs, ball: balls },
-    ]);
+    const byeEntry = { event: "BYE", runs, over: overs, ball: balls };
+    completeHistoryRef.current = [...completeHistoryRef.current, byeEntry];
+    setCompleteHistory((prev) => [...prev, byeEntry]);
   };
 
   return {
@@ -462,6 +467,7 @@ const addRunToCurrentOver = (runs) => {
     setInningsChangeEvent,
     innings1Score,
     innings2Score,
+    innings1History,
     addScore,
     addRunToCurrentOver,
   };
