@@ -78,7 +78,8 @@ function ScoringPage() {
     playersHook.currentBowlerIndex,
     partnershipsHook.partnershipHistory,
     playersHook.isWicketPending,
-    playersHook.outBatsman
+    playersHook.outBatsman,
+    playersHook.retiredPlayers   // ✅ RETIRED HURT: include in snapshots for proper UNDO support
   );
 
   /* ================= SHOW START INNINGS MODAL ON MOUNT ================= */
@@ -168,6 +169,14 @@ function ScoringPage() {
     engine.handleRun(r);
   };
 
+  /* ================= HANDLE RETIRED HURT ================= */
+  // Opens the RetiredHurtModal — no ball is bowled, no score changes.
+  // The modal collects the replacement batsman name, then calls retireBatsman().
+  const handleRetiredHurt = () => {
+    if (playersHook.players.length < 2) return;
+    modalStates.setShowRetiredHurtModal(true);
+  };
+
   /* ================= HANDLE FIELDER CONFIRM ================= */
   const handleFielderConfirm = ({ fielder, newBatsman }) => {
     const bowlerName =
@@ -222,7 +231,8 @@ function ScoringPage() {
     partnershipsHook.resetPartnership();
 
     // Step 4: Call handleWicket
-    engine.handleWicket();
+    // For runouts: pass true so handleWicket skips currentOver/balls (already done in handleRunClick)
+    engine.handleWicket(wicketFlow.selectedWicketType === 'runout');
 
     const allWicketsFallen = nextWickets >= currentMaxWickets;
 
@@ -243,9 +253,18 @@ function ScoringPage() {
       return;
     }
 
-    // Replace batsman
+    // Replace batsman — if name matches a retired-hurt player, RESTORE their stats
+    // instead of creating a fresh entry with runs=0, balls=0
     setTimeout(() => {
-      playersHook.replaceBatsman(currentOutBatsman, newBatsman);
+      const isReturnedPlayer = playersHook.retiredPlayersRef.current.some(
+        (p) => p.name.toLowerCase().trim() === newBatsman.toLowerCase().trim()
+      );
+      if (isReturnedPlayer) {
+        console.log(`🏥 Returning retired-hurt player via fielder confirm: ${newBatsman}`);
+        playersHook.returnRetiredBatsman(newBatsman, currentOutBatsman);
+      } else {
+        playersHook.replaceBatsman(currentOutBatsman, newBatsman);
+      }
     }, 50);
 
     // Start new partnership
@@ -407,6 +426,7 @@ function ScoringPage() {
               onWicket={() => wicketFlow.startWicketFlow(engine.isFreeHit)}
               onSwapStrike={playersHook.swapStrike}
               onUndo={undoLastBall}
+              onRetiredHurt={handleRetiredHurt}
             />
           )}
         </>
@@ -466,9 +486,11 @@ function ScoringPage() {
         wicketFlow={wicketFlow}
         players={playersHook.players}
         allPlayers={playersHook.allPlayers}
+        retiredPlayers={playersHook.retiredPlayers}
         bowlers={playersHook.bowlers}
         isWicketPending={playersHook.isWicketPending}
         isNewBowlerPending={playersHook.isNewBowlerPending}
+        strikerIndex={playersHook.strikerIndex}
         partnershipHistory={partnershipsHook.partnershipHistory}
         innings1Data={inningsDataHook.innings1Data}
         innings2Data={inningsDataHook.innings2Data}
@@ -493,11 +515,50 @@ function ScoringPage() {
           modalStates.setShowStartModal(false);
         }}
         onConfirmNewBatsman={(name) => {
-          playersHook.confirmNewBatsman(name);
-          partnershipsHook.startPartnership(
-            playersHook.players[0].name,
-            playersHook.players[1].name
+          // ✅ RETIRED HURT: if the typed name matches a retired player, restore their stats
+          const isReturnedPlayer = playersHook.retiredPlayersRef.current.some(
+            (p) => p.name.toLowerCase().trim() === name.toLowerCase().trim()
           );
+          if (isReturnedPlayer) {
+            console.log(`🏥 Returning retired-hurt player via new batsman modal: ${name}`);
+            playersHook.returnRetiredBatsman(name, playersHook.outBatsman);
+            playersHook.setIsWicketPending(false);
+            setTimeout(() => {
+              partnershipsHook.startPartnership(
+                playersHook.players[0]?.name || "",
+                playersHook.players[1]?.name || ""
+              );
+            }, 50);
+          } else {
+            playersHook.confirmNewBatsman(name);
+            partnershipsHook.startPartnership(
+              playersHook.players[0].name,
+              playersHook.players[1].name
+            );
+          }
+        }}
+        onRetiredHurtConfirm={(newBatsmanName) => {
+          // Retire the striker, put newBatsmanName in their place
+          playersHook.retireBatsman(newBatsmanName);
+          modalStates.setShowRetiredHurtModal(false);
+          // Start fresh partnership with the new batsman
+          setTimeout(() => {
+            partnershipsHook.startPartnership(
+              playersHook.players[playersHook.strikerIndex]?.name || newBatsmanName,
+              playersHook.players[playersHook.nonStrikerIndex]?.name || ""
+            );
+          }, 50);
+        }}
+        onReturnRetiredConfirm={(retiredPlayerName) => {
+          // Called from NewBatsmanModal when user picks a retired player after a wicket
+          playersHook.returnRetiredBatsman(retiredPlayerName, playersHook.outBatsman);
+          playersHook.setIsWicketPending(false);
+          setTimeout(() => {
+            partnershipsHook.startPartnership(
+              playersHook.players[0]?.name || "",
+              playersHook.players[1]?.name || ""
+            );
+          }, 50);
         }}
         onConfirmNewBowler={playersHook.confirmNewBowler}
         onWicketTypeSelect={wicketFlow.handleWicketTypeSelect}
