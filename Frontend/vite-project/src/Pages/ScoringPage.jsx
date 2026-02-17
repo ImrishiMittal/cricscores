@@ -54,7 +54,8 @@ function ScoringPage() {
     partnershipsHook.restorePartnershipState,
     modalStates.setShowStartModal,
     engine.innings1Score,
-    engine.innings2Score
+    engine.innings2Score,
+    engine.innings1History  // ✅ captured inside engine before reset
   );
   
   const historySnapshotHook = useHistorySnapshot(
