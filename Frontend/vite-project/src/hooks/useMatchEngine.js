@@ -23,18 +23,18 @@ export default function useMatchEngine(matchData, swapStrike) {
   const [completeHistory, setCompleteHistory] = useState([]);
   const [isFreeHit, setIsFreeHit] = useState(false);
 
-  // ✅ FIX: A ref that always mirrors completeHistory synchronously.
-  // Unlike state, a ref can be read inside endInnings() at call-time,
-  // before React batches and applies setCompleteHistory([]).
+  // Ref that mirrors completeHistory synchronously
   const completeHistoryRef = useRef([]);
+  
   const [wicketEvent, setWicketEvent] = useState(null);
   const [overCompleteEvent, setOverCompleteEvent] = useState(null);
 
   const [innings1Score, setInnings1Score] = useState(null);
   const [innings2Score, setInnings2Score] = useState(null);
 
-  // ✅ FIX: Stores innings 1 history captured inside endInnings() before reset
+  // ✅ Innings 1 history - stored in BOTH state and ref
   const [innings1History, setInnings1History] = useState([]);
+  const innings1HistoryRef = useRef([]);  // ✅ Never cleared, always accessible
 
   const maxWickets = useMemo(() => {
     const teamACount = Number(matchData.teamAPlayers || 11);
@@ -50,18 +50,16 @@ export default function useMatchEngine(matchData, swapStrike) {
 
   const lastManBatting = matchData.lastManBatting || false;
 
-   /* ================= ADD SCORE (for runouts) ================= */
-   const addScore = (runs) => {
+  const addScore = (runs) => {
     setScore(prev => prev + runs);
     console.log(`📊 Score manually increased by ${runs} (runout)`);
   };
-/* ================= ADD RUN TO CURRENT OVER (for runouts) ================= */
-const addRunToCurrentOver = (runs, isWicket = false) => {
-  setCurrentOver(prev => [...prev, { runs, isWicket }]);
-  console.log(`📊 Added ${runs} runs to currentOver (runout, isWicket=${isWicket})`);
-};
 
-  /* ================= RESTORE STATE (UNDO) ================= */
+  const addRunToCurrentOver = (runs, isWicket = false) => {
+    setCurrentOver(prev => [...prev, { runs, isWicket }]);
+    console.log(`📊 Added ${runs} runs to currentOver (runout, isWicket=${isWicket})`);
+  };
+
   const restoreState = (snap) => {
     setScore(snap.score);
     setWickets(snap.wickets);
@@ -69,10 +67,12 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
     setOvers(snap.overs);
     setCurrentOver([...snap.currentOver]);
     setCompleteHistory([...snap.completeHistory]);
-    completeHistoryRef.current = [...snap.completeHistory]; // keep ref in sync
+    completeHistoryRef.current = [...snap.completeHistory];
+    
+    if (snap.innings !== undefined) setInnings(snap.innings);
+    if (snap.target !== undefined) setTarget(snap.target);
   };
 
-  /* ================= END MATCH ================= */
   const endMatch = (
     winningTeam,
     finalScore,
@@ -96,16 +96,18 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
 
   const [inningsChangeEvent, setInningsChangeEvent] = useState(null);
 
-  /* ================= END INNINGS ================= */
   const endInnings = () => {
     if (innings === 1) {
       const newTarget = score + 1;
 
-      // ✅ FIX: Read from the ref — it has ALL balls including the last one.
-      // completeHistoryRef.current is updated synchronously on every ball,
-      // so it reflects the true current history before any state resets.
-      console.log(`📜 Capturing innings 1 history: ${completeHistoryRef.current.length} balls`);
-      setInnings1History([...completeHistoryRef.current]);
+      // ✅ CRITICAL: Capture innings 1 history to BOTH state and ref
+      const capturedHistory = [...completeHistoryRef.current];
+      console.log(`📜 Capturing innings 1 history: ${capturedHistory.length} balls`);
+      console.log(`   First ball:`, capturedHistory[0]);
+      console.log(`   Last ball:`, capturedHistory[capturedHistory.length - 1]);
+      
+      setInnings1History(capturedHistory);
+      innings1HistoryRef.current = capturedHistory;  // ✅ Store in ref - never cleared
 
       setTarget(newTarget);
       setInnings(2);
@@ -114,15 +116,17 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
       setBalls(0);
       setOvers(0);
       setCurrentOver([]);
+      
+      // Now safe to clear for innings 2
       setCompleteHistory([]);
-      completeHistoryRef.current = []; // reset ref in sync with state
+      completeHistoryRef.current = [];
+      
       setIsFreeHit(false);
 
       setInningsChangeEvent({ target: newTarget });
     }
   };
 
-  /* ================= MATCH STATUS ================= */
   const checkMatchStatus = (newScore, nextWickets, nextBalls, nextOvers) => {
     const ballsBowled = nextOvers * 6 + nextBalls;
 
@@ -136,14 +140,12 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
       totalBalls,
     });
 
-    // Check if team 2 reached target
     if (innings === 2 && newScore >= target) {
       console.log("🏆 Team 2 wins by reaching target");
       endMatch(secondBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
       return "MATCH_OVER";
     }
 
-    // Check if all wickets fallen
     const shouldEndForWickets = lastManBatting
       ? nextWickets > maxWickets
       : nextWickets >= maxWickets;
@@ -154,7 +156,6 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
       if (innings === 2) {
         endMatch(firstBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
       } else {
-        // ✅ FIX: Save innings 1 score with FINAL values (including last ball)
         console.log("💾 Saving innings 1 score (all out):", {
           score: newScore,
           wickets: nextWickets,
@@ -173,14 +174,12 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
       return "MATCH_OVER";
     }
 
-    // Check if overs completed
     if (ballsBowled >= totalBalls) {
       console.log("⏱️ Overs completed");
 
       if (innings === 2) {
         endMatch(firstBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
       } else {
-        // ✅ FIX: Save innings 1 score with FINAL values (including last ball)
         console.log("💾 Saving innings 1 score (overs complete):", {
           score: newScore,
           wickets: nextWickets,
@@ -202,7 +201,6 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
     return "CONTINUE";
   };
 
-  /* ================= MASTER ENGINE ================= */
   useEffect(() => {
     if (matchOver) return;
 
@@ -212,14 +210,12 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
       `🔍 Match Engine Check - Innings: ${innings}, Wickets: ${wickets}/${maxWickets}, Balls: ${ballsBowled}/${totalBalls}`
     );
 
-    // Priority 1: Team 2 reached target
     if (innings === 2 && score >= target) {
       console.log("🏆 Team 2 wins - target reached");
       endMatch(secondBattingTeam, score, wickets, overs, balls);
       return;
     }
 
-    // Priority 2: All wickets fallen
     const shouldEndForWickets = lastManBatting
       ? wickets > maxWickets
       : wickets >= maxWickets;
@@ -233,7 +229,6 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
         endMatch(firstBattingTeam, score, wickets, overs, balls);
       } else {
         console.log("🔄 Innings 1 complete - all wickets down");
-        // ✅ FIX: Save innings 1 score BEFORE ending
         console.log("💾 Saving innings 1 score (master engine - all out):", {
           score,
           wickets,
@@ -246,7 +241,6 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
       return;
     }
 
-    // Priority 3: Overs completed
     if (ballsBowled >= totalBalls) {
       console.log("⏱️ Overs completed");
       if (innings === 2) {
@@ -254,7 +248,6 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
         endMatch(firstBattingTeam, score, wickets, overs, balls);
       } else {
         console.log("🔄 Innings 1 complete - overs complete");
-        // ✅ FIX: Save innings 1 score BEFORE ending
         console.log("💾 Saving innings 1 score (master engine - overs):", {
           score,
           wickets,
@@ -278,7 +271,6 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
     lastManBatting,
   ]);
 
-  /* ================= RUN ================= */
   const handleRun = (runs) => {
     if (matchOver) return;
     if (isFreeHit) setIsFreeHit(false);
@@ -320,7 +312,6 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
     checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
   };
 
-  /* ================= WICKET ================= */
   const handleWicket = (isRunout = false) => {
     if (matchOver) return;
 
@@ -392,7 +383,6 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
     checkMatchStatus(score, nextWickets, nextBalls, nextOvers);
   };
 
-  /* ================= WIDE ================= */
   const handleWide = () => {
     if (!rules.wide || matchOver) return;
     setScore((prev) => prev + 1);
@@ -402,7 +392,6 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
     setCompleteHistory((prev) => [...prev, wdEntry]);
   };
 
-  /* ================= NO BALL ================= */
   const handleNoBall = () => {
     if (!rules.noBall || matchOver) return;
     setScore((prev) => prev + 1);
@@ -413,7 +402,6 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
     setCompleteHistory((prev) => [...prev, nbEntry]);
   };
 
-  /* ================= BYE ================= */
   const handleBye = (runs = 1) => {
     if (!rules.byes || matchOver) return;
 
@@ -472,9 +460,8 @@ const addRunToCurrentOver = (runs, isWicket = false) => {
     innings1Score,
     innings2Score,
     innings1History,
+    innings1HistoryRef,  // ✅ Export the ref
     addScore,
     addRunToCurrentOver,
   };
 }
-
-
