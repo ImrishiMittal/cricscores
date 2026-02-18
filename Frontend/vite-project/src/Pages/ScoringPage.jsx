@@ -23,11 +23,10 @@ function ScoringPage() {
   const matchData = location.state || {};
   const [updatedMatchData, setUpdatedMatchData] = useState(matchData);
 
-  // ✅ FIX (Undo Bug): Use a ref instead of state for innings2SnapshotCount.
-  // A useState counter failed because triggerSnapshotWithTracking() captured
-  // a stale closure of engine.innings (still reading 1 even during innings 2).
-  // A ref is mutated synchronously so it always reflects the true live value.
+  // ✅ FIX: Use a ref for the counter AND a ref for the current innings value.
+  // This completely eliminates stale closure problems — refs are always live.
   const innings2SnapshotCountRef = useRef(0);
+  const currentInningsRef = useRef(1); // mirrors engine.innings, always current
 
   /* ================= CUSTOM HOOKS ================= */
   const modalStates = useModalStates();
@@ -36,6 +35,9 @@ function ScoringPage() {
   const playersHook = usePlayersAndBowlers(updatedMatchData);
   const partnershipsHook = usePartnerships();
   const engine = useMatchEngine(updatedMatchData, playersHook.swapStrike);
+
+  // ✅ Keep currentInningsRef in sync with engine.innings on every render
+  currentInningsRef.current = engine.innings;
 
   const inningsDataHook = useInningsData(
     engine.completeHistory,
@@ -89,7 +91,7 @@ function ScoringPage() {
     engine.innings,
   );
 
-  // Reset ref when innings goes back to 1 (safety net for future use)
+  // Reset counter when innings transitions back to 1
   useEffect(() => {
     if (engine.innings === 1) {
       innings2SnapshotCountRef.current = 0;
@@ -121,11 +123,11 @@ function ScoringPage() {
     engine.innings === 1 ? firstBattingTeam : secondBattingTeam;
 
   /* ================= SNAPSHOT HELPER ================= */
-  // Uses engine.innings directly (not a captured closure value) so the ref
-  // counter is always incremented correctly during innings 2.
+  // ✅ FIX: Reads innings from currentInningsRef.current (always live, never stale)
+  // instead of engine.innings (which is a closure-captured value and can be stale).
   const triggerSnapshotWithTracking = () => {
     historySnapshotHook.triggerSnapshot();
-    if (engine.innings === 2) {
+    if (currentInningsRef.current === 2) {
       innings2SnapshotCountRef.current += 1;
       console.log(`📸 Innings2 snapshot count: ${innings2SnapshotCountRef.current}`);
     }
@@ -153,9 +155,7 @@ function ScoringPage() {
         }
 
         engine.addScore(r);
-
-        // ✅ FIX (Runout OverBalls Bug): pass isWicket=true so the OverBalls
-        // component renders this ball as "W+1" instead of just "1".
+        // ✅ isWicket=true so OverBalls renders "W+1" not "1"
         engine.addRunToCurrentOver(r, true);
 
         if (r % 2 !== 0) {
@@ -171,20 +171,23 @@ function ScoringPage() {
     }
 
     // ── Innings 2 win condition ───────────────────────────────────────────────
-    // Capture final stats safely, then fall through so engine.handleRun()
-    // detects score >= target and calls endMatch(). Do NOT return early.
-    if (engine.innings === 2 && engine.score + r >= engine.target) {
-      const finalData = inningsDataHook.captureCurrentInningsData();
-      if (
-        finalData &&
-        finalData.battingStats &&
-        finalData.battingStats[playersHook.strikerIndex]
-      ) {
-        finalData.battingStats[playersHook.strikerIndex].runs += r;
-        finalData.battingStats[playersHook.strikerIndex].balls += 1;
-        inningsDataHook.setInnings2Data(finalData);
+    // ✅ try/catch so a crash in captureCurrentInningsData NEVER blocks engine.handleRun()
+    if (currentInningsRef.current === 2 && engine.score + r >= engine.target) {
+      try {
+        const finalData = inningsDataHook.captureCurrentInningsData();
+        if (
+          finalData &&
+          finalData.battingStats &&
+          finalData.battingStats[playersHook.strikerIndex]
+        ) {
+          finalData.battingStats[playersHook.strikerIndex].runs += r;
+          finalData.battingStats[playersHook.strikerIndex].balls += 1;
+          inningsDataHook.setInnings2Data(finalData);
+        }
+      } catch (e) {
+        console.warn("⚠️ captureCurrentInningsData failed on winning run:", e.message);
       }
-      // Intentional fall-through ↓
+      // Intentional fall-through — engine.handleRun() must still execute below
     }
 
     // ── Normal run ───────────────────────────────────────────────────────────
@@ -226,7 +229,7 @@ function ScoringPage() {
     });
 
     const currentBattingTeamKey =
-      engine.innings === 1 ? "teamAPlayers" : "teamBPlayers";
+      currentInningsRef.current === 1 ? "teamAPlayers" : "teamBPlayers";
     const currentTeamSize = Number(matchData[currentBattingTeamKey] || 11);
     const currentMaxWickets = currentTeamSize - 1;
     const nextWickets = engine.wickets + 1;
@@ -236,7 +239,6 @@ function ScoringPage() {
       newBatsman,
     ]).size;
 
-    // Step 1: Set dismissal
     playersHook.setDismissal(
       wicketFlow.selectedWicketType,
       fielder,
@@ -244,7 +246,6 @@ function ScoringPage() {
       currentOutBatsman
     );
 
-    // Step 2: Bowler stats
     if (wicketFlow.selectedWicketType !== "runout") {
       playersHook.addWicketToBowler();
     } else if (
@@ -254,7 +255,6 @@ function ScoringPage() {
       playersHook.addBallToBowler();
     }
 
-    // Step 3: Partnership
     if (
       wicketFlow.pendingRunoutRuns === null ||
       wicketFlow.pendingRunoutRuns === 0
@@ -265,7 +265,6 @@ function ScoringPage() {
     partnershipsHook.savePartnership(engine.score, nextWickets);
     partnershipsHook.resetPartnership();
 
-    // Step 4: Engine wicket
     engine.handleWicket(wicketFlow.selectedWicketType === "runout");
 
     const allWicketsFallen = nextWickets >= currentMaxWickets;
@@ -308,8 +307,8 @@ function ScoringPage() {
 
   /* ================= UNDO LAST BALL ================= */
   const undoLastBall = () => {
-    // ✅ FIX (Undo Bug): ref-based counter is always accurate — no stale closure.
-    if (engine.innings === 2 && innings2SnapshotCountRef.current === 0) {
+    // ✅ FIX: Use currentInningsRef.current (live) not engine.innings (stale closure)
+    if (currentInningsRef.current === 2 && innings2SnapshotCountRef.current === 0) {
       alert("⚠️ Cannot undo — no balls have been bowled yet in this innings.");
       return;
     }
@@ -325,7 +324,7 @@ function ScoringPage() {
 
     historySnapshotHook.popSnapshot();
 
-    if (engine.innings === 2) {
+    if (currentInningsRef.current === 2) {
       innings2SnapshotCountRef.current = Math.max(
         0,
         innings2SnapshotCountRef.current - 1
@@ -336,7 +335,6 @@ function ScoringPage() {
     engine.restoreState(last);
     playersHook.restorePlayersState(last);
     playersHook.restoreBowlersState(last);
-    // Restore partnership AFTER players so indices are consistent
     partnershipsHook.restorePartnershipState(last);
 
     wicketFlow.cancelWicketFlow();
