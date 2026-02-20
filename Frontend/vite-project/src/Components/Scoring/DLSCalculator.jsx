@@ -53,6 +53,9 @@ function DLSCalculator({
   const initialTeam2Overs = calculateOvers(currentOvers, currentBalls);
   const [team2CurrentOvers, setTeam2CurrentOvers] = useState(initialTeam2Overs);
   const [team2CurrentWickets, setTeam2CurrentWickets] = useState(currentWickets || 0);
+  
+  // ✅ FIX: Track Team 2's score at the point of calculation (not live match score)
+  const [team2CurrentScore, setTeam2CurrentScore] = useState(currentScore || 0);
 
   // G50 selection
   const [g50, setG50] = useState(G50_VALUES.international);
@@ -65,13 +68,15 @@ function DLSCalculator({
     const liveOvers = calculateOvers(currentOvers, currentBalls);
     setTeam2CurrentOvers(liveOvers);
     setTeam2CurrentWickets(currentWickets || 0);
+    setTeam2CurrentScore(currentScore || 0);
     console.log("📊 Updating live Team 2 data:", {
       overs: currentOvers,
       balls: currentBalls,
       calculated: liveOvers,
       wickets: currentWickets,
+      score: currentScore,
     });
-  }, [currentOvers, currentBalls, currentWickets]);
+  }, [currentOvers, currentBalls, currentWickets, currentScore]);
 
   // Auto-calculate on mount and when values change
   useEffect(() => {
@@ -83,6 +88,7 @@ function DLSCalculator({
     team2OversAllocated,
     team2CurrentOvers,
     team2CurrentWickets,
+    team2CurrentScore,
     g50,
   ]);
 
@@ -132,6 +138,7 @@ function DLSCalculator({
         setTeam2OversAllocated(totalOvers);
         setTeam2CurrentOvers(calculateOvers(currentOvers, currentBalls));
         setTeam2CurrentWickets(currentWickets || 0);
+        setTeam2CurrentScore(currentScore || 0);
         break;
     }
   };
@@ -235,7 +242,7 @@ function DLSCalculator({
             <div className={styles.infoRow}>
               <span className={styles.label}>Current Score:</span>
               <span className={styles.value}>
-                {currentScore}/{currentWickets}
+                {team2CurrentScore}/{team2CurrentWickets}
               </span>
             </div>
 
@@ -324,14 +331,14 @@ function DLSCalculator({
                 <div className={styles.targetBox}>
                   <span className={styles.targetLabel}>Revised Target</span>
                   <span className={styles.targetValue}>
-                    {result.revisedTarget}
+                    {Math.max(1, result.revisedTarget)}
                   </span>
                 </div>
 
                 <div className={styles.parBox}>
                   <span className={styles.parLabel}>Par Score</span>
                   <span className={styles.parValue}>
-                    {result.parScore || 0}
+                    {Math.max(0, result.parScore || 0)}
                   </span>
                 </div>
               </div>
@@ -359,22 +366,23 @@ function DLSCalculator({
                 <div className={styles.chaseInfo}>
                   <p className={styles.chaseText}>
                     Team 2 needs{" "}
-                    <strong>{result.revisedTarget - currentScore}</strong> runs
+                    <strong>{Math.max(0, result.revisedTarget - team2CurrentScore)}</strong> runs
                     from{" "}
                     <strong>
-                      {((team2OversAllocated - team2CurrentOvers) * 6).toFixed(
-                        0
-                      )}
+                      {Math.max(0, ((team2OversAllocated - team2CurrentOvers) * 6).toFixed(0))}
                     </strong>{" "}
                     balls
                   </p>
                   <p className={styles.chaseText}>
                     Required Run Rate:{" "}
                     <strong>
-                      {(
-                        (result.revisedTarget - currentScore) /
-                        (team2OversAllocated - team2CurrentOvers)
-                      ).toFixed(2)}
+                      {Math.max(
+                        0,
+                        (
+                          (result.revisedTarget - team2CurrentScore) /
+                          Math.max(0.1, team2OversAllocated - team2CurrentOvers)
+                        ).toFixed(2)
+                      )}
                     </strong>
                   </p>
                 </div>
