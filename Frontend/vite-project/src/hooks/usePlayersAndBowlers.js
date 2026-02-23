@@ -18,6 +18,10 @@ export default function usePlayersAndBowlers(matchData) {
   const [previousBowlerIndex, setPreviousBowlerIndex] = useState(null);
   const [bowlerError, setBowlerError] = useState(null);
 
+  // ✅ NEW: Track dismissed bowlers so they can't bowl again
+  const [dismissedBowlers, setDismissedBowlers] = useState([]);
+  const dismissedBowlersRef = useRef([]);
+
   /* ================= START INNINGS ================= */
   const startInnings = (strikerName, nonStrikerName, bowlerName) => {
     setPlayers([
@@ -29,6 +33,10 @@ export default function usePlayersAndBowlers(matchData) {
     setAllPlayers([]);
     setRetiredPlayers([]);
     retiredPlayersRef.current = [];
+
+    // ✅ NEW: Reset dismissed bowlers for new innings
+    setDismissedBowlers([]);
+    dismissedBowlersRef.current = [];
 
     setBowlers([{ name: bowlerName, overs: 0, balls: 0, runs: 0, wickets: 0 }]);
     setStrikerIndex(0);
@@ -238,7 +246,6 @@ export default function usePlayersAndBowlers(matchData) {
     console.log(`✅ ${retiredPlayerName} returning — resumes at ${retiredPlayer.runs}(${retiredPlayer.balls})`);
 
     // ✅ Save the dismissed batsman at replacingIndex to allPlayers BEFORE overwriting.
-    //    (Previously we called replaceBatsman which did this; now we do it explicitly.)
     setPlayers((prev) => {
       const updated = [...prev];
       const dismissed = updated[replacingIndex];
@@ -304,19 +311,19 @@ export default function usePlayersAndBowlers(matchData) {
 
   const confirmNewBowler = (name) => {
     const trimmedName = name.trim();
-  
+
     if (!trimmedName) {
       setBowlerError("Bowler name required");
       return;
     }
-  
+
     const existingIndex = bowlers.findIndex(
       (b) => b.name.toLowerCase() === trimmedName.toLowerCase()
     );
-  
+
     let selectedIndex;
     let selectedBowler;
-  
+
     if (existingIndex !== -1) {
       selectedIndex = existingIndex;
       selectedBowler = bowlers[existingIndex];
@@ -330,11 +337,11 @@ export default function usePlayersAndBowlers(matchData) {
         wickets: 0,
       };
     }
-  
+
     const completedOvers = selectedBowler.overs;
-  
+
     /* ================= VALIDATION ================= */
-  
+
     // 🚫 Prevent consecutive overs
     if (
       previousBowlerIndex !== null &&
@@ -343,7 +350,7 @@ export default function usePlayersAndBowlers(matchData) {
       setBowlerError("Same bowler cannot bowl consecutive overs!");
       return;
     }
-  
+
     // 🚫 Restrict max overs
     if (
       matchData?.maxOversPerBowler &&
@@ -355,20 +362,68 @@ export default function usePlayersAndBowlers(matchData) {
       );
       return;
     }
-  
+
+    // ✅ NEW: 🚫 Prevent dismissed bowler from bowling again
+    if (dismissedBowlersRef.current.some(
+      (d) => d.toLowerCase() === trimmedName.toLowerCase()
+    )) {
+      setBowlerError(`${trimmedName} has been dismissed and cannot bowl again.`);
+      return;
+    }
+
     /* ================= APPLY ================= */
-  
+
     if (existingIndex !== -1) {
       setCurrentBowlerIndex(existingIndex);
     } else {
       setBowlers((prev) => [...prev, selectedBowler]);
       setCurrentBowlerIndex(selectedIndex);
     }
-  
+
     setBowlerError(null); // ✅ clear previous error
     setIsNewBowlerPending(false);
-  
+
     return { success: true };
+  };
+
+  /* ================= DISMISS BOWLER ================= */
+  const dismissCurrentBowler = (newBowlerName) => {
+    const trimmedName = newBowlerName.trim();
+    const dismissedName = bowlers[currentBowlerIndex]?.name;
+
+    if (!dismissedName) {
+      console.error("❌ No current bowler to dismiss");
+      return;
+    }
+
+    console.log(`🚫 Dismissing bowler: ${dismissedName}, replacing with: ${trimmedName}`);
+
+    // 1. Blacklist the dismissed bowler
+    const updatedDismissed = [
+      ...dismissedBowlersRef.current.filter(
+        (d) => d.toLowerCase() !== dismissedName.toLowerCase()
+      ),
+      dismissedName,
+    ];
+    dismissedBowlersRef.current = updatedDismissed;
+    setDismissedBowlers([...updatedDismissed]);
+
+    // 2. Check if replacement already exists in bowlers list
+    const existingIndex = bowlers.findIndex(
+      (b) => b.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (existingIndex !== -1) {
+      // Switch to existing bowler — over continues from where it was
+      setCurrentBowlerIndex(existingIndex);
+    } else {
+      // Add new bowler — starts at 0 stats, partial over continues
+      const newBowler = { name: trimmedName, overs: 0, balls: 0, runs: 0, wickets: 0 };
+      setBowlers((prev) => [...prev, newBowler]);
+      setCurrentBowlerIndex(bowlers.length); // new bowler lands at current length
+    }
+
+    console.log(`✅ ${dismissedName} dismissed. ${trimmedName} now bowling. Over continues.`);
   };
 
   /* ================= RESTORE (FOR UNDO) ================= */
@@ -453,10 +508,12 @@ export default function usePlayersAndBowlers(matchData) {
     addWicketToBowler,
     registerWicket,
     confirmNewBatsman,
-    retireBatsman,         // ✅ RETIRED HURT
-    returnRetiredBatsman,  // ✅ RETIRED HURT
+    retireBatsman,          // ✅ RETIRED HURT
+    returnRetiredBatsman,   // ✅ RETIRED HURT
     requestNewBowler,
     confirmNewBowler,
+    dismissCurrentBowler,   // ✅ NEW
+    dismissedBowlersRef,    // ✅ NEW
     restorePlayersState,
     restoreBowlersState,
     bowlerError,

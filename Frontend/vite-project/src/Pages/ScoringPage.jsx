@@ -23,10 +23,8 @@ function ScoringPage() {
   const matchData = location.state || {};
   const [updatedMatchData, setUpdatedMatchData] = useState(matchData);
 
-  // ✅ FIX: Use a ref for the counter AND a ref for the current innings value.
-  // This completely eliminates stale closure problems — refs are always live.
   const innings2SnapshotCountRef = useRef(0);
-  const currentInningsRef = useRef(1); // mirrors engine.innings, always current
+  const currentInningsRef = useRef(1);
 
   /* ================= CUSTOM HOOKS ================= */
   const modalStates = useModalStates();
@@ -36,7 +34,6 @@ function ScoringPage() {
   const partnershipsHook = usePartnerships();
   const engine = useMatchEngine(updatedMatchData, playersHook.swapStrike);
 
-  // ✅ Keep currentInningsRef in sync with engine.innings on every render
   currentInningsRef.current = engine.innings;
 
   const inningsDataHook = useInningsData(
@@ -91,7 +88,6 @@ function ScoringPage() {
     engine.innings,
   );
 
-  // Reset counter when innings transitions back to 1
   useEffect(() => {
     if (engine.innings === 1) {
       innings2SnapshotCountRef.current = 0;
@@ -123,19 +119,15 @@ function ScoringPage() {
     engine.innings === 1 ? firstBattingTeam : secondBattingTeam;
 
   /* ================= SNAPSHOT HELPER ================= */
-  // ✅ FIX: Reads innings from currentInningsRef.current (always live, never stale)
-  // instead of engine.innings (which is a closure-captured value and can be stale).
   const triggerSnapshotWithTracking = () => {
     historySnapshotHook.triggerSnapshot();
     if (currentInningsRef.current === 2) {
       innings2SnapshotCountRef.current += 1;
-      console.log(`📸 Innings2 snapshot count: ${innings2SnapshotCountRef.current}`);
     }
   };
 
   /* ================= HANDLE RUN CLICK ================= */
   const handleRunClick = (r) => {
-    // ── Runout path ──────────────────────────────────────────────────────────
     if (wicketFlow.waitingForRunoutRun) {
       wicketFlow.handleRunoutWithRuns(r);
 
@@ -155,7 +147,6 @@ function ScoringPage() {
         }
 
         engine.addScore(r);
-        // ✅ isWicket=true so OverBalls renders "W+1" not "1"
         engine.addRunToCurrentOver(r, true);
 
         if (r % 2 !== 0) {
@@ -170,8 +161,6 @@ function ScoringPage() {
       return;
     }
 
-    // ── Innings 2 win condition ───────────────────────────────────────────────
-    // ✅ try/catch so a crash in captureCurrentInningsData NEVER blocks engine.handleRun()
     if (currentInningsRef.current === 2 && engine.score + r >= engine.target) {
       try {
         const finalData = inningsDataHook.captureCurrentInningsData();
@@ -187,10 +176,8 @@ function ScoringPage() {
       } catch (e) {
         console.warn("⚠️ captureCurrentInningsData failed on winning run:", e.message);
       }
-      // Intentional fall-through — engine.handleRun() must still execute below
     }
 
-    // ── Normal run ───────────────────────────────────────────────────────────
     triggerSnapshotWithTracking();
     playersHook.addRunsToStriker(r);
     playersHook.addRunsToBowler(r);
@@ -215,18 +202,37 @@ function ScoringPage() {
     modalStates.setShowRetiredHurtModal(true);
   };
 
+  /* ================= HANDLE DISMISS BOWLER ================= */
+  const handleDismissBowler = () => {
+    if (!playersHook.bowlers[playersHook.currentBowlerIndex]) return;
+    modalStates.setShowDismissBowlerModal(true);
+  };
+
+  const handleDismissBowlerConfirm = (newBowlerName) => {
+    playersHook.dismissCurrentBowler(newBowlerName);
+    modalStates.setShowDismissBowlerModal(false);
+    console.log(`✅ Bowler dismissed. ${newBowlerName} now bowling. Over continues.`);
+  };
+
+  /* ================= HANDLE NO RESULT ================= */
+  const handleNoResult = () => {
+    modalStates.setShowNoResultModal(true);
+  };
+
+  const handleNoResultConfirm = () => {
+    modalStates.setShowNoResultModal(false);
+    engine.endMatchNoResult();
+    // Give inningsData time to capture, then show summary
+    setTimeout(() => {
+      inningsDataHook.setMatchCompleted(true);
+    }, 100);
+  };
+
   /* ================= HANDLE FIELDER CONFIRM ================= */
   const handleFielderConfirm = ({ fielder, newBatsman }) => {
     const bowlerName =
       playersHook.bowlers[playersHook.currentBowlerIndex]?.name || "Unknown";
     const currentOutBatsman = playersHook.strikerIndex;
-
-    console.log("✅ Fielder/New Batsman confirmed:", {
-      fielder,
-      newBatsman,
-      selectedWicketType: wicketFlow.selectedWicketType,
-      currentWickets: engine.wickets,
-    });
 
     const currentBattingTeamKey =
       currentInningsRef.current === 1 ? "teamAPlayers" : "teamBPlayers";
@@ -270,7 +276,6 @@ function ScoringPage() {
     const allWicketsFallen = nextWickets >= currentMaxWickets;
 
     if (allWicketsFallen) {
-      console.log("🚫 All wickets fallen - innings will end");
       wicketFlow.completeWicketFlow();
       setTimeout(() => triggerSnapshotWithTracking(), 100);
       return;
@@ -287,7 +292,6 @@ function ScoringPage() {
         (p) => p.name.toLowerCase().trim() === newBatsman.toLowerCase().trim()
       );
       if (isReturnedPlayer) {
-        console.log(`🏥 Returning retired-hurt player via fielder confirm: ${newBatsman}`);
         playersHook.returnRetiredBatsman(newBatsman, currentOutBatsman);
       } else {
         playersHook.replaceBatsman(currentOutBatsman, newBatsman);
@@ -307,7 +311,6 @@ function ScoringPage() {
 
   /* ================= UNDO LAST BALL ================= */
   const undoLastBall = () => {
-    // ✅ FIX: Use currentInningsRef.current (live) not engine.innings (stale closure)
     if (currentInningsRef.current === 2 && innings2SnapshotCountRef.current === 0) {
       alert("⚠️ Cannot undo — no balls have been bowled yet in this innings.");
       return;
@@ -320,8 +323,6 @@ function ScoringPage() {
       return;
     }
 
-    console.log("↩️ Undoing to state:", last);
-
     historySnapshotHook.popSnapshot();
 
     if (currentInningsRef.current === 2) {
@@ -329,7 +330,6 @@ function ScoringPage() {
         0,
         innings2SnapshotCountRef.current - 1
       );
-      console.log(`↩️ Innings2 snapshot count after undo: ${innings2SnapshotCountRef.current}`);
     }
 
     engine.restoreState(last);
@@ -372,6 +372,10 @@ function ScoringPage() {
     modalStates.setShowChangeBowlerLimitModal(false);
     alert(`✅ Bowler limit changed from ${oldLimit} to ${newLimit} overs`);
   };
+
+  /* ================= MATCH SUMMARY DISPLAY ================= */
+  // For No Result, show a special summary
+  const isNoResult = engine.winner === "NO RESULT";
 
   return (
     <div className={styles.container}>
@@ -445,7 +449,28 @@ function ScoringPage() {
               onSwapStrike={playersHook.swapStrike}
               onUndo={undoLastBall}
               onRetiredHurt={handleRetiredHurt}
+              onDismissBowler={handleDismissBowler}
+              onNoResult={handleNoResult}
             />
+          )}
+
+          {/* ✅ No Result banner when match ended as no result */}
+          {engine.matchOver && isNoResult && (
+            <div style={{
+              textAlign: "center",
+              marginTop: "24px",
+              padding: "20px",
+              background: "#1a0a2e",
+              borderRadius: "12px",
+              border: "2px solid #8e44ad",
+            }}>
+              <p style={{ fontSize: "28px", fontWeight: "bold", color: "#8e44ad", margin: 0 }}>
+                🌧️ NO RESULT
+              </p>
+              <p style={{ color: "#ccc", marginTop: "8px" }}>
+                Match ended without a result
+              </p>
+            </div>
           )}
         </>
       )}
@@ -471,7 +496,7 @@ function ScoringPage() {
         <button className={styles.utilityBtn} onClick={() => modalStates.setShowMoreMenu(true)}>
           ⚙ MORE
         </button>
-        {inningsDataHook.matchCompleted && (
+        {inningsDataHook.matchCompleted && !isNoResult && (
           <button className={styles.utilityBtn} onClick={() => modalStates.setShowSummary(true)}>
             🏆 Match Summary
           </button>
@@ -485,6 +510,7 @@ function ScoringPage() {
         allPlayers={playersHook.allPlayers}
         retiredPlayers={playersHook.retiredPlayers}
         bowlers={playersHook.bowlers}
+        currentBowlerIndex={playersHook.currentBowlerIndex}
         isWicketPending={playersHook.isWicketPending}
         isNewBowlerPending={playersHook.isNewBowlerPending}
         strikerIndex={playersHook.strikerIndex}
@@ -522,7 +548,6 @@ function ScoringPage() {
             (p) => p.name.toLowerCase().trim() === name.toLowerCase().trim()
           );
           if (isReturnedPlayer) {
-            console.log(`🏥 Returning retired-hurt player via new batsman modal: ${name}`);
             playersHook.returnRetiredBatsman(name, playersHook.outBatsman);
             playersHook.setIsWicketPending(false);
             setTimeout(() => {
@@ -566,6 +591,8 @@ function ScoringPage() {
         onChangePlayersConfirm={handleChangePlayersConfirm}
         onChangeOversConfirm={handleChangeOversConfirm}
         onChangeBowlerLimitConfirm={handleChangeBowlerLimitConfirm}
+        onDismissBowlerConfirm={handleDismissBowlerConfirm}
+        onNoResultConfirm={handleNoResultConfirm}
       />
     </div>
   );

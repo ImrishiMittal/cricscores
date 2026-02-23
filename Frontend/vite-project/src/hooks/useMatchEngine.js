@@ -25,7 +25,7 @@ export default function useMatchEngine(matchData, swapStrike) {
 
   // Ref that mirrors completeHistory synchronously
   const completeHistoryRef = useRef([]);
-  
+
   const [wicketEvent, setWicketEvent] = useState(null);
   const [overCompleteEvent, setOverCompleteEvent] = useState(null);
 
@@ -40,11 +40,11 @@ export default function useMatchEngine(matchData, swapStrike) {
     const teamACount = Number(matchData.teamAPlayers || 11);
     const teamBCount = Number(matchData.teamBPlayers || 11);
     const count = innings === 1 ? teamACount - 1 : teamBCount - 1;
-    
+
     console.log(
       `🎯 Max wickets recalculated for innings ${innings}: ${count} (A: ${teamACount}, B: ${teamBCount})`
     );
-    
+
     return count;
   }, [innings, matchData.teamAPlayers, matchData.teamBPlayers]);
 
@@ -68,7 +68,7 @@ export default function useMatchEngine(matchData, swapStrike) {
     setCurrentOver([...snap.currentOver]);
     setCompleteHistory([...snap.completeHistory]);
     completeHistoryRef.current = [...snap.completeHistory];
-    
+
     if (snap.innings !== undefined) setInnings(snap.innings);
     if (snap.target !== undefined) setTarget(snap.target);
   };
@@ -89,12 +89,23 @@ export default function useMatchEngine(matchData, swapStrike) {
       });
       setInningsChangeEvent({ matchEnd: true });
     }
-    
+
     setMatchOver(true);
     setWinner(winningTeam);
   };
 
   const [inningsChangeEvent, setInningsChangeEvent] = useState(null);
+
+  // ✅ NEW: Declare No Result — ends match immediately regardless of state
+  const endMatchNoResult = () => {
+    console.log("🌧️ Match declared No Result");
+    if (innings === 2) {
+      setInnings2Score({ score, wickets, overs, balls });
+      setInningsChangeEvent({ matchEnd: true });
+    }
+    setMatchOver(true);
+    setWinner("NO RESULT");
+  };
 
   const endInnings = () => {
     if (innings === 1) {
@@ -105,7 +116,7 @@ export default function useMatchEngine(matchData, swapStrike) {
       console.log(`📜 Capturing innings 1 history: ${capturedHistory.length} balls`);
       console.log(`   First ball:`, capturedHistory[0]);
       console.log(`   Last ball:`, capturedHistory[capturedHistory.length - 1]);
-      
+
       setInnings1History(capturedHistory);
       innings1HistoryRef.current = capturedHistory;  // ✅ Store in ref - never cleared
 
@@ -116,11 +127,11 @@ export default function useMatchEngine(matchData, swapStrike) {
       setBalls(0);
       setOvers(0);
       setCurrentOver([]);
-      
+
       // Now safe to clear for innings 2
       setCompleteHistory([]);
       completeHistoryRef.current = [];
-      
+
       setIsFreeHit(false);
 
       setInningsChangeEvent({ target: newTarget });
@@ -463,5 +474,6 @@ export default function useMatchEngine(matchData, swapStrike) {
     innings1HistoryRef,  // ✅ Export the ref
     addScore,
     addRunToCurrentOver,
+    endMatchNoResult,    // ✅ NEW
   };
 }
