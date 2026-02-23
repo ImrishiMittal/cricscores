@@ -2,9 +2,8 @@ import styles from "../Scoring/scoring.module.css";
 
 /**
  * RunControls
- * Uses the existing scoring.module.css classes throughout —
- * same classes that were already working before.
- * RETIRED HURT is added as a matching eventBtn in its own row.
+ * Uses the existing scoring.module.css classes throughout.
+ * RETIRED HURT, DISMISS BOWLER, NO RESULT added as extra rows.
  */
 function RunControls({
   onRun,
@@ -15,6 +14,8 @@ function RunControls({
   onSwapStrike,
   onUndo,
   onRetiredHurt,
+  onDismissBowler,
+  onNoResult,
 }) {
   const handleBye = () => {
     const r = parseInt(prompt("Bye runs:"), 10);
@@ -36,7 +37,7 @@ function RunControls({
         ))}
       </div>
 
-      {/* ── Action buttons: BYE  WIDE  NO BALL  WICKET  SWAP  UNDO ── */}
+      {/* ── Action buttons ── */}
       <div className={styles.eventRow}>
         <button className={`${styles.eventBtn} ${styles.bye}`} onClick={handleBye}>
           BYE
@@ -58,7 +59,7 @@ function RunControls({
         </button>
       </div>
 
-      {/* ── RETIRED HURT: same eventBtn height/shape, purple colour ── */}
+      {/* ── RETIRED HURT ── */}
       {onRetiredHurt && (
         <div className={styles.eventRow}>
           <button
@@ -67,6 +68,28 @@ function RunControls({
           >
             🏥 RETIRED HURT
           </button>
+
+          {/* ── DISMISS BOWLER ── */}
+          {onDismissBowler && (
+            <button
+              className={`${styles.eventBtn}`}
+              style={{ background: "#e74c3c", color: "#fff", fontWeight: "bold" }}
+              onClick={onDismissBowler}
+            >
+              🚫 DISMISS BOWLER
+            </button>
+          )}
+
+          {/* ── NO RESULT ── */}
+          {onNoResult && (
+            <button
+              className={`${styles.eventBtn}`}
+              style={{ background: "#8e44ad", color: "#fff", fontWeight: "bold" }}
+              onClick={onNoResult}
+            >
+              🌧️ NO RESULT
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -74,4 +97,3 @@ function RunControls({
 }
 
 export default RunControls;
-

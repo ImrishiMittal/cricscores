@@ -16,6 +16,8 @@ import ChangeBowlerLimitModal from "./ChangeBowlerLimitModal";
 import DLSCalculator from "./DLSCalculator";
 import WinProbabilityModal from "./WinProbabilityModal";
 import RetiredHurtModal from "./RetiredHurtModal";
+import DismissBowlerModal from "./DismissBowlerModal"; // ✅ NEW
+import NoResultModal from "./NoResultModal";           // ✅ NEW
 
 function ModalManager({
   modalStates,
@@ -24,6 +26,7 @@ function ModalManager({
   allPlayers,
   retiredPlayers,
   bowlers,
+  currentBowlerIndex,   // ✅ NEW: needed to pass dismissed bowler's name
   isWicketPending,
   isNewBowlerPending,
   strikerIndex,
@@ -58,6 +61,8 @@ function ModalManager({
   onChangeBowlerLimitConfirm,
   onRetiredHurtConfirm,
   onReturnRetiredConfirm,
+  onDismissBowlerConfirm, // ✅ NEW
+  onNoResultConfirm,      // ✅ NEW
 }) {
   return (
     <>
@@ -100,6 +105,24 @@ function ModalManager({
         <NewBowlerModal
           onConfirm={onConfirmNewBowler}
           existingBowlers={bowlers}
+        />
+      )}
+
+      {/* ✅ NEW: Dismiss Bowler Modal */}
+      {modalStates.showDismissBowlerModal && (
+        <DismissBowlerModal
+          dismissedBowlerName={bowlers[currentBowlerIndex]?.name || "Current Bowler"}
+          existingBowlers={bowlers}
+          onConfirm={onDismissBowlerConfirm}
+          onClose={() => modalStates.setShowDismissBowlerModal(false)}
+        />
+      )}
+
+      {/* ✅ NEW: No Result Modal */}
+      {modalStates.showNoResultModal && (
+        <NoResultModal
+          onConfirm={onNoResultConfirm}
+          onClose={() => modalStates.setShowNoResultModal(false)}
         />
       )}
 
