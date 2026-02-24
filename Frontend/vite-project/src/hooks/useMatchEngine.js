@@ -99,9 +99,13 @@ export default function useMatchEngine(matchData, swapStrike) {
   // ✅ NEW: Declare No Result — ends match immediately regardless of state
   const endMatchNoResult = () => {
     console.log("🌧️ Match declared No Result");
+    // ✅ Do NOT fire inningsChangeEvent — that triggers win/loss logic in useInningsData.
+    // Just freeze the score and end cleanly.
     if (innings === 2) {
       setInnings2Score({ score, wickets, overs, balls });
-      setInningsChangeEvent({ matchEnd: true });
+    }
+    if (innings === 1) {
+      setInnings1Score({ score, wickets, overs, balls });
     }
     setMatchOver(true);
     setWinner("NO RESULT");

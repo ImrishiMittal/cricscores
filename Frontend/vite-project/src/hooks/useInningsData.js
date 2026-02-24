@@ -24,7 +24,8 @@ function useInningsData(
   setShowStartModal,
   innings1Score,
   innings2Score,
-  innings1History  // ✅ captured inside engine before reset — always complete
+  innings1History,  // ✅ captured inside engine before reset — always complete
+  winner
 ) {
   const [innings1Data, setInnings1Data] = useState(null);
   const [innings2Data, setInnings2Data] = useState(null);
@@ -182,7 +183,7 @@ function useInningsData(
   }, [inningsChangeEvent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (matchOver && !matchCompleted) {
+    if (matchOver && !matchCompleted && winner !== "NO RESULT") {
       console.log("🏁 Match Over");
       const inn2Data = captureCurrentInningsData(
         players, allPlayers, bowlers,
