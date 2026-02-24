@@ -404,6 +404,9 @@ function ScoringPage() {
             balls={engine.balls}
             totalOvers={updatedMatchData.overs}
             target={engine.target}
+            toss={`${matchData.tossWinner} elected to ${
+              matchData.battingFirst === matchData.tossWinner ? "bat" : "bowl"
+            }`}
           />
 
           <InfoStrip
