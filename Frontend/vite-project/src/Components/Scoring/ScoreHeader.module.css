@@ -15,7 +15,22 @@
   gap: 8px;
 }
 
+/* ✅ DESKTOP: Horizontal layout with absolute positioned corners */
+.topRow {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  min-height: 120px;
+}
+
+/* ✅ CENTER SECTION: Team name, toss, score */
 .topSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   text-align: center;
 }
 
@@ -28,9 +43,16 @@
   letter-spacing: 1px;
 }
 
-.team {
-  margin: 0;
-  font-size: 24px;
+.toss {
+  font-size: 11px;
+  color: #c6eeba;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.teamName {
+  margin: 0 0 8px 0;
+  font-size: 28px;
   font-weight: 900;
   color: #22c55e;
   text-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
@@ -44,7 +66,7 @@
 }
 
 .score {
-  font-size: 56px;
+  font-size: 64px;
   font-weight: 900;
   color: #22c55e;
   text-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
@@ -52,17 +74,46 @@
 }
 
 .wickets {
-  font-size: 36px;
+  font-size: 40px;
   font-weight: 700;
   color: #22c55e;
   opacity: 0.8;
 }
 
-/* ✅ PREDICTED SCORE - Top Right Corner (1st Innings) */
+/* ✅ TOTAL OVERS - Absolute positioned top-left */
+.totalOversBox {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: rgba(59, 130, 246, 0.15);
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  padding: 10px 16px;
+  text-align: center;
+  min-width: 100px;
+}
+
+.totalOversLabel {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #3b82f6;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.totalOversValue {
+  font-size: 24px;
+  font-weight: 900;
+  color: #3b82f6;
+  margin-top: 4px;
+}
+
+/* ✅ PREDICTED SCORE - Absolute positioned top-right (1st Innings) */
 .predictedBox {
   position: absolute;
-  top: -2px;
-  right: 20px;
+  top: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -72,6 +123,7 @@
   border-radius: 10px;
   padding: 10px 16px;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  min-width: 100px;
 }
 
 .predictedLabel {
@@ -83,18 +135,18 @@
 }
 
 .predictedScore {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 900;
   color: #3b82f6;
   text-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
   line-height: 1;
 }
 
-/* ✅ RUNS REQUIRED - Top Right Corner (2nd Innings) */
+/* ✅ RUNS REQUIRED - Absolute positioned top-right (2nd Innings) */
 .requiredBox {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -105,6 +157,7 @@
   padding: 10px 16px;
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
   animation: pulseGlow 2s infinite;
+  min-width: 100px;
 }
 
 .requiredLabel {
@@ -116,7 +169,7 @@
 }
 
 .requiredValue {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 900;
   color: #ef4444;
   text-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
@@ -140,14 +193,76 @@
   }
 }
 
+/* ================= TABLET RESPONSIVE ================= */
+@media (max-width: 1024px) {
+  .teamName {
+    font-size: 24px;
+  }
+
+  .score {
+    font-size: 56px;
+  }
+
+  .wickets {
+    font-size: 36px;
+  }
+
+  .totalOversBox,
+  .predictedBox,
+  .requiredBox {
+    padding: 8px 12px;
+    min-width: 80px;
+  }
+
+  .totalOversValue,
+  .predictedScore {
+    font-size: 20px;
+  }
+
+  .requiredValue {
+    font-size: 26px;
+  }
+}
+
 /* ================= MOBILE RESPONSIVE ================= */
 @media (max-width: 768px) {
   .container {
-    padding: 16px;
+    padding: 16px 12px;
   }
 
-  .team {
-    font-size: 20px;
+  .topRow {
+    /* Keep relative positioning for absolute children */
+    flex-direction: column;
+    gap: 12px;
+    min-height: auto;
+    padding-top: 70px; /* Space for top corner boxes */
+  }
+
+  /* ✅ KEEP boxes in corners on mobile too */
+  .totalOversBox {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: auto;
+    max-width: 120px;
+  }
+
+  .predictedBox,
+  .requiredBox {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: auto;
+    max-width: 120px;
+  }
+
+  .topSection {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .teamName {
+    font-size: 22px;
   }
 
   .score {
@@ -155,114 +270,82 @@
   }
 
   .wickets {
-    font-size: 30px;
+    font-size: 32px;
   }
 
-  .predictedBox,
-  .requiredBox {
-    top: 16px;
-    right: 16px;
-    padding: 8px 12px;
-  }
-
-  .predictedLabel,
-  .requiredLabel {
-    font-size: 8px;
-  }
-
-  .predictedScore {
-    font-size: 20px;
-  }
-
-  .requiredValue {
-    font-size: 24px;
-  }
-
-  .requiredBalls {
-    font-size: 9px;
+  .toss {
+    font-size: 10px;
   }
 }
 
 @media (max-width: 480px) {
   .container {
-    padding: 12px;
+    padding: 12px 8px;
     border-radius: 10px;
+  }
+
+  .topRow {
+    gap: 10px;
+    padding-top: 65px; /* Space for smaller corner boxes */
   }
 
   .label {
     font-size: 10px;
   }
 
-  .team {
-    font-size: 18px;
+  .teamName {
+    font-size: 20px;
   }
 
   .score {
-    font-size: 40px;
+    font-size: 42px;
   }
 
   .wickets {
-    font-size: 26px;
+    font-size: 28px;
+  }
+
+  .toss {
+    font-size: 9px;
+  }
+
+  /* Smaller corner boxes on very small screens */
+  .totalOversBox {
+    top: 10px;
+    left: 8px;
+    padding: 6px 10px;
+    max-width: 100px;
   }
 
   .predictedBox,
   .requiredBox {
-    top: 12px;
-    right: 12px;
+    top: 10px;
+    right: 8px;
     padding: 6px 10px;
+    max-width: 100px;
   }
 
+  .totalOversLabel,
   .predictedLabel,
   .requiredLabel {
-    font-size: 7px;
+    font-size: 8px;
   }
 
+  .totalOversValue,
   .predictedScore {
     font-size: 18px;
   }
 
   .requiredValue {
-    font-size: 20px;
+    font-size: 22px;
   }
 
   .requiredBalls {
     font-size: 8px;
   }
 }
+
+/* ================= UNUSED - Remove these ================= */
 .scoreRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 16px;
-}
-
-.scoreRow .totalOversBox{
-  align-items: start;
-}
-
-.totalOversBox {
-  position: absolute;
-  top: 6.5px;
-  left: 6px;
-
-  background: #3b83f62c;
-  border: 2px solid #3b82f6;
-  border-radius: 12px;
-  padding: 8px 14px;
-  text-align: center;
-  min-width: 80px;
-}
-
-.totalOversLabel {
-  display: block;
-  font-size: 7px;
-  letter-spacing: 1px;
-  color: #3b82f6;
-  font-weight: 700;
-}
-
-.totalOversValue {
-  font-size: 15px;
-  font-weight: 900;
-  color: #3b82f6;
+  display: none;
 }
