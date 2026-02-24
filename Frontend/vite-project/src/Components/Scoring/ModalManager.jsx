@@ -135,7 +135,7 @@ function ModalManager({
         />
       )}
 
-      {modalStates.showSummary && innings1Data && innings2Data && (
+{modalStates.showSummary && (innings1Data || innings2Data) && (
         <MatchSummary
           team1={firstBattingTeam}
           team2={secondBattingTeam}

@@ -567,4 +567,9 @@
   .momStats {
     justify-content: center;
   }
-}
+}        
+.noresult {
+  background-color: #1a0a2e;
+  border: 2px solid #8e44ad;
+  color: #8e44ad;
+}         

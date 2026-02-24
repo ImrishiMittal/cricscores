@@ -60,7 +60,8 @@ function ScoringPage() {
     modalStates.setShowStartModal,
     engine.innings1Score,
     engine.innings2Score,
-    engine.innings1History
+    engine.innings1History,
+    engine.winner
   );
 
   const historySnapshotHook = useHistorySnapshot(
@@ -222,10 +223,21 @@ function ScoringPage() {
   const handleNoResultConfirm = () => {
     modalStates.setShowNoResultModal(false);
     engine.endMatchNoResult();
-    // Give inningsData time to capture, then show summary
     setTimeout(() => {
+      const liveData = inningsDataHook.captureCurrentInningsData(
+        playersHook.players,
+        playersHook.allPlayers,
+        playersHook.bowlers,
+        engine.completeHistory,
+        engine.score,
+        engine.wickets,
+        engine.overs,
+        engine.balls
+      );
+      inningsDataHook.setInnings2Data(liveData);
       inningsDataHook.setMatchCompleted(true);
-    }, 100);
+      modalStates.setShowSummary(true);
+    }, 150);
   };
 
   /* ================= HANDLE FIELDER CONFIRM ================= */
@@ -496,7 +508,7 @@ function ScoringPage() {
         <button className={styles.utilityBtn} onClick={() => modalStates.setShowMoreMenu(true)}>
           ⚙ MORE
         </button>
-        {inningsDataHook.matchCompleted && !isNoResult && (
+        {inningsDataHook.matchCompleted && (
           <button className={styles.utilityBtn} onClick={() => modalStates.setShowSummary(true)}>
             🏆 Match Summary
           </button>

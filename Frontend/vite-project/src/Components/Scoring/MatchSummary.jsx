@@ -19,6 +19,15 @@ function MatchSummary({
   };
 
   const determineResult = () => {
+
+    if (winner === "NO RESULT") {
+      return {
+        type: 'noresult',
+        message: '🌧️ NO RESULT',
+        description: 'Match ended without a result',
+      };
+    }
+    
     const score1 = innings1Score?.score || 0;
     const score2 = innings2Score?.score || 0;
     const wickets2 = innings2Score?.wickets || 0;
