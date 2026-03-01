@@ -4,13 +4,12 @@ import styles from "./NewBowlerModal.module.css";
 function NewBowlerModal({ onConfirm, existingBowlers = [] }) {
   const [bowlerName, setBowlerName] = useState("");
   const existingBowler = existingBowlers.find(
-    (b) => b.name.toLowerCase() === bowlerName.trim().toLowerCase()
+    (b) => b.displayName.toLowerCase() === bowlerName.trim().toLowerCase() // ✅ was b.name
   );
 
   const [error, setError] = useState("");
 
   const handleConfirm = () => {
-    // ✅ FIX #1: Validation - fields cannot be empty
     if (!bowlerName.trim()) {
       setError("⚠️ Please enter bowler name");
       return;
@@ -21,7 +20,6 @@ function NewBowlerModal({ onConfirm, existingBowlers = [] }) {
       return;
     }
 
-    // Clear error and proceed
     setError("");
     onConfirm(bowlerName.trim());
     setBowlerName("");
@@ -58,14 +56,12 @@ function NewBowlerModal({ onConfirm, existingBowlers = [] }) {
           {existingBowler && (
             <div
               className={styles.suggestionBox}
-              onClick={() => onConfirm(existingBowler.name)}
+              onClick={() => onConfirm(existingBowler.displayName)} // ✅ was existingBowler.name
             >
-              <div className={styles.suggestionHeader}> <b>Existing Bowler</b></div>
-
-              <div className={styles.suggestionName}>{existingBowler.name}</div>
-
+              <div className={styles.suggestionHeader}><b>Existing Bowler</b></div>
+              <div className={styles.suggestionName}>{existingBowler.displayName}</div> {/* ✅ was existingBowler.name */}
               <div className={styles.suggestionStats}>
-                {existingBowler.overs} overs | {existingBowler.runs} runs | {' '} 
+                {existingBowler.overs} overs | {existingBowler.runs} runs |{' '}
                 {existingBowler.wickets} wkts
               </div>
             </div>
@@ -91,3 +87,4 @@ function NewBowlerModal({ onConfirm, existingBowlers = [] }) {
 }
 
 export default NewBowlerModal;
+

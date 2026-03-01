@@ -6,12 +6,15 @@ export default function usePartnerships() {
 
   const [striker1Contribution, setStriker1Contribution] = useState(0);
   const [striker2Contribution, setStriker2Contribution] = useState(0);
+
+  // ✅ Now stores { playerId, displayName } objects instead of plain name strings
   const [currentPartnershipBatsmen, setCurrentPartnershipBatsmen] = useState([]);
 
   const [partnershipHistory, setPartnershipHistory] = useState([]);
   const [showPartnershipHistory, setShowPartnershipHistory] = useState(false);
 
   /* ================= START NEW PARTNERSHIP ================= */
+  // ✅ b1 and b2 are now { playerId, displayName } objects
   const startPartnership = (b1, b2) => {
     setCurrentPartnershipBatsmen([b1, b2]);
     setPartnershipRuns(0);
@@ -21,11 +24,12 @@ export default function usePartnerships() {
   };
 
   /* ================= ADD RUN ================= */
-  const addRunsToPartnership = (runs, strikerName) => {
+  // ✅ Compare by playerId — rename-safe
+  const addRunsToPartnership = (runs, strikerId) => {
     setPartnershipRuns((p) => p + runs);
     setPartnershipBalls((p) => p + 1);
 
-    if (strikerName === currentPartnershipBatsmen[0]) {
+    if (strikerId === currentPartnershipBatsmen[0]?.playerId) {
       setStriker1Contribution((prev) => prev + runs);
     } else {
       setStriker2Contribution((prev) => prev + runs);
@@ -44,11 +48,13 @@ export default function usePartnerships() {
 
   /* ================= SAVE PARTNERSHIP ================= */
   const savePartnership = (score, wicketNumber) => {
-
     const data = {
-      batsman1: currentPartnershipBatsmen[0],
+      // ✅ Store both playerId (stable) and displayName (for rendering)
+      batsman1: currentPartnershipBatsmen[0]?.displayName ?? "",
+      batsman1Id: currentPartnershipBatsmen[0]?.playerId ?? "",
       batsman1Runs: striker1Contribution,
-      batsman2: currentPartnershipBatsmen[1],
+      batsman2: currentPartnershipBatsmen[1]?.displayName ?? "",
+      batsman2Id: currentPartnershipBatsmen[1]?.playerId ?? "",
       batsman2Runs: striker2Contribution,
       totalRuns: partnershipRuns,
       totalBalls: partnershipBalls,
@@ -68,21 +74,22 @@ export default function usePartnerships() {
   };
 
   /* ================= RESTORE (FOR UNDO) ================= */
-const restorePartnershipState = (snap) => {
-  setPartnershipRuns(snap.partnershipRuns);
-  setPartnershipBalls(snap.partnershipBalls);
-  setStriker1Contribution(snap.striker1Contribution);
-  setStriker2Contribution(snap.striker2Contribution);
-  setPartnershipHistory(JSON.parse(JSON.stringify(snap.partnershipHistory || [])));  // ✅ ADD
-};
+  const restorePartnershipState = (snap) => {
+    setPartnershipRuns(snap.partnershipRuns);
+    setPartnershipBalls(snap.partnershipBalls);
+    setStriker1Contribution(snap.striker1Contribution);
+    setStriker2Contribution(snap.striker2Contribution);
+    setPartnershipHistory(JSON.parse(JSON.stringify(snap.partnershipHistory || [])));
+  };
+
   return {
     partnershipRuns,
     partnershipBalls,
     partnershipHistory,
     showPartnershipHistory,
     setShowPartnershipHistory,
-    striker1Contribution,      // ✅ ADDED
-    striker2Contribution,      // ✅ ADDED
+    striker1Contribution,
+    striker2Contribution,
     startPartnership,
     addRunsToPartnership,
     addExtraToPartnership,

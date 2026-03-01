@@ -11,7 +11,7 @@ import styles from "./NewBatsmanModal.module.css";
  *
  * Props:
  *   onConfirm(name)           — called with new batsman name (fresh player)
- *   retiredPlayers            — array of { name, runs, balls } retired players
+ *   retiredPlayers            — array of { playerId, displayName, runs, balls } retired players
  *   onReturnRetired(name)     — called when user selects a retired player to return
  */
 function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired }) {
@@ -40,7 +40,7 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired }) {
 
   const handleReturnRetired = (player) => {
     if (onReturnRetired) {
-      onReturnRetired(player.name);
+      onReturnRetired(player.displayName); // ✅ was player.name
     }
   };
 
@@ -66,7 +66,7 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired }) {
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               {retiredPlayers.map((player) => (
                 <button
-                  key={player.name}
+                  key={player.playerId}  // ✅ was player.name
                   onClick={() => handleReturnRetired(player)}
                   style={{
                     background: "linear-gradient(135deg, #78350f, #92400e)",
@@ -82,7 +82,7 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired }) {
                     fontWeight: "600",
                   }}
                 >
-                  <span>{player.name}</span>
+                  <span>{player.displayName}</span>  {/* ✅ was player.name */}
                   <span style={{ fontSize: "12px", color: "#fcd34d" }}>
                     resumes at {player.runs}({player.balls})
                   </span>
@@ -132,3 +132,4 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired }) {
 }
 
 export default NewBatsmanModal;
+
