@@ -5,8 +5,8 @@ function InningsSummary({ players, allPlayers, bowlers, score, wickets, overs, b
 
   // ✅ Combine all dismissed players with current players
   const allBatsmen = [...(allPlayers || []), ...players];
-  
-  // Filter players who have actually batted (balls > 0 or have dismissal)
+
+  // Filter players who have actually batted
   const battedPlayers = allBatsmen.filter(p => p.balls > 0 || p.dismissal);
 
   return (
@@ -42,14 +42,14 @@ function InningsSummary({ players, allPlayers, bowlers, score, wickets, overs, b
               <div className={styles.noData}>No batting data available</div>
             )}
             {battedPlayers.map((player, idx) => {
-              const strikeRate = player.balls > 0 
-                ? ((player.runs / player.balls) * 100).toFixed(1) 
+              const strikeRate = player.balls > 0
+                ? ((player.runs / player.balls) * 100).toFixed(1)
                 : '0.0';
-              
+
               return (
-                <div key={idx} className={styles.tableRow}>
+                <div key={player.playerId || idx} className={styles.tableRow}>
                   <div className={styles.playerCol}>
-                    <div className={styles.playerName}>{player.name}</div>
+                    <div className={styles.playerName}>{player.displayName}</div>  {/* ✅ was player.name */}
                     {player.dismissal && (
                       <div className={styles.dismissal}>{player.dismissal}</div>
                     )}
@@ -82,13 +82,13 @@ function InningsSummary({ players, allPlayers, bowlers, score, wickets, overs, b
             )}
             {bowlers.map((bowler, idx) => {
               const totalOvers = bowler.overs + (bowler.balls / 6);
-              const economy = totalOvers > 0 
-                ? (bowler.runs / totalOvers).toFixed(2) 
+              const economy = totalOvers > 0
+                ? (bowler.runs / totalOvers).toFixed(2)
                 : '0.00';
-              
+
               return (
-                <div key={idx} className={styles.tableRow}>
-                  <div className={styles.playerCol}>{bowler.name}</div>
+                <div key={bowler.playerId || idx} className={styles.tableRow}>
+                  <div className={styles.playerCol}>{bowler.displayName}</div>  {/* ✅ was bowler.name */}
                   <div className={styles.statCol}>{bowler.overs}.{bowler.balls}</div>
                   <div className={styles.statCol}>{bowler.runs}</div>
                   <div className={styles.statCol}>{bowler.wickets}</div>
@@ -108,4 +108,5 @@ function InningsSummary({ players, allPlayers, bowlers, score, wickets, overs, b
 }
 
 export default InningsSummary;
+
 

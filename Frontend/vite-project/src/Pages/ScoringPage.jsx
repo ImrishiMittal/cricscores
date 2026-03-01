@@ -143,7 +143,7 @@ function ScoringPage() {
         ) {
           partnershipsHook.addRunsToPartnership(
             r,
-            playersHook.players[playersHook.strikerIndex].name
+            playersHook.players[playersHook.strikerIndex].playerId  // ✅ was .name
           );
         }
 
@@ -190,7 +190,7 @@ function ScoringPage() {
     ) {
       partnershipsHook.addRunsToPartnership(
         r,
-        playersHook.players[playersHook.strikerIndex].name
+        playersHook.players[playersHook.strikerIndex].playerId  // ✅ was .name
       );
     }
 
@@ -243,7 +243,7 @@ function ScoringPage() {
   /* ================= HANDLE FIELDER CONFIRM ================= */
   const handleFielderConfirm = ({ fielder, newBatsman }) => {
     const bowlerName =
-      playersHook.bowlers[playersHook.currentBowlerIndex]?.name || "Unknown";
+      playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName || "Unknown";  // ✅ was .name
     const currentOutBatsman = playersHook.strikerIndex;
 
     const currentBattingTeamKey =
@@ -253,7 +253,7 @@ function ScoringPage() {
     const nextWickets = engine.wickets + 1;
 
     const uniqueBatsmenCount = new Set([
-      ...playersHook.players.map((p) => p.name),
+      ...playersHook.players.map((p) => p.displayName),  // ✅ was p.name
       newBatsman,
     ]).size;
 
@@ -301,7 +301,7 @@ function ScoringPage() {
 
     setTimeout(() => {
       const isReturnedPlayer = playersHook.retiredPlayersRef.current.some(
-        (p) => p.name.toLowerCase().trim() === newBatsman.toLowerCase().trim()
+        (p) => p.displayName.toLowerCase().trim() === newBatsman.toLowerCase().trim()  // ✅ was p.name
       );
       if (isReturnedPlayer) {
         playersHook.returnRetiredBatsman(newBatsman, currentOutBatsman);
@@ -311,9 +311,12 @@ function ScoringPage() {
     }, 50);
 
     setTimeout(() => {
-      const nonStrikerName =
-        playersHook.players[playersHook.nonStrikerIndex]?.name || "Unknown";
-      partnershipsHook.startPartnership(newBatsman, nonStrikerName);
+      const nonStriker = playersHook.players[playersHook.nonStrikerIndex];
+      // ✅ Pass { playerId, displayName } objects — was passing name strings
+      partnershipsHook.startPartnership(
+        { playerId: "new-" + Date.now(), displayName: newBatsman },
+        nonStriker ? { playerId: nonStriker.playerId, displayName: nonStriker.displayName } : { playerId: "", displayName: "Unknown" }
+      );
     }, 150);
 
     wicketFlow.completeWicketFlow();
@@ -412,7 +415,7 @@ function ScoringPage() {
           <InfoStrip
             overs={engine.overs}
             balls={engine.balls}
-            bowler={playersHook.bowlers[playersHook.currentBowlerIndex]?.name}
+            bowler={playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName}  // ✅ was .name
             bowlers={playersHook.bowlers}
             currentBowlerIndex={playersHook.currentBowlerIndex}
             score={engine.score}
@@ -555,37 +558,52 @@ function ScoringPage() {
         innings={engine.innings}
         onStartInnings={(s, ns, b) => {
           playersHook.startInnings(s, ns, b);
-          partnershipsHook.startPartnership(s, ns);
+          // ✅ After startInnings, players[0] and players[1] are created with playerId
+          // But state hasn't updated yet — use a timeout to read fresh state
+          setTimeout(() => {
+            const p = playersHook.players;
+            partnershipsHook.startPartnership(
+              p[0] ? { playerId: p[0].playerId, displayName: p[0].displayName } : { playerId: "", displayName: s },
+              p[1] ? { playerId: p[1].playerId, displayName: p[1].displayName } : { playerId: "", displayName: ns }
+            );
+          }, 50);
           modalStates.setShowStartModal(false);
         }}
         onConfirmNewBatsman={(name) => {
           const isReturnedPlayer = playersHook.retiredPlayersRef.current.some(
-            (p) => p.name.toLowerCase().trim() === name.toLowerCase().trim()
+            (p) => p.displayName.toLowerCase().trim() === name.toLowerCase().trim()  // ✅ was p.name
           );
           if (isReturnedPlayer) {
             playersHook.returnRetiredBatsman(name, playersHook.outBatsman);
             playersHook.setIsWicketPending(false);
             setTimeout(() => {
+              const p = playersHook.players;
               partnershipsHook.startPartnership(
-                playersHook.players[0]?.name || "",
-                playersHook.players[1]?.name || ""
+                p[0] ? { playerId: p[0].playerId, displayName: p[0].displayName } : { playerId: "", displayName: "" },
+                p[1] ? { playerId: p[1].playerId, displayName: p[1].displayName } : { playerId: "", displayName: "" }
               );
             }, 50);
           } else {
             playersHook.confirmNewBatsman(name);
-            partnershipsHook.startPartnership(
-              playersHook.players[0].name,
-              playersHook.players[1].name
-            );
+            setTimeout(() => {
+              const p = playersHook.players;
+              partnershipsHook.startPartnership(
+                p[0] ? { playerId: p[0].playerId, displayName: p[0].displayName } : { playerId: "", displayName: "" },
+                p[1] ? { playerId: p[1].playerId, displayName: p[1].displayName } : { playerId: "", displayName: "" }
+              );
+            }, 50);
           }
         }}
         onRetiredHurtConfirm={(newBatsmanName) => {
           playersHook.retireBatsman(newBatsmanName);
           modalStates.setShowRetiredHurtModal(false);
           setTimeout(() => {
+            const p = playersHook.players;
+            const striker = p[playersHook.strikerIndex];
+            const nonStriker = p[playersHook.nonStrikerIndex];
             partnershipsHook.startPartnership(
-              playersHook.players[playersHook.strikerIndex]?.name || newBatsmanName,
-              playersHook.players[playersHook.nonStrikerIndex]?.name || ""
+              striker ? { playerId: striker.playerId, displayName: striker.displayName } : { playerId: "", displayName: newBatsmanName },  // ✅ was .name
+              nonStriker ? { playerId: nonStriker.playerId, displayName: nonStriker.displayName } : { playerId: "", displayName: "" }
             );
           }, 50);
         }}
@@ -593,9 +611,10 @@ function ScoringPage() {
           playersHook.returnRetiredBatsman(retiredPlayerName, playersHook.outBatsman);
           playersHook.setIsWicketPending(false);
           setTimeout(() => {
+            const p = playersHook.players;
             partnershipsHook.startPartnership(
-              playersHook.players[0]?.name || "",
-              playersHook.players[1]?.name || ""
+              p[0] ? { playerId: p[0].playerId, displayName: p[0].displayName } : { playerId: "", displayName: "" },  // ✅ was .name
+              p[1] ? { playerId: p[1].playerId, displayName: p[1].displayName } : { playerId: "", displayName: "" }
             );
           }, 50);
         }}
@@ -614,3 +633,4 @@ function ScoringPage() {
 }
 
 export default ScoringPage;
+

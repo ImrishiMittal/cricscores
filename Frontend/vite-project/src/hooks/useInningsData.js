@@ -58,6 +58,8 @@ function useInningsData(
     innings1History,
   };
 
+  // ✅ Build innings stats from player objects.
+  //    Uses `displayName` for display — identity is playerId internally.
   const captureCurrentInningsData = (
     playersData,
     allPlayersData,
@@ -68,6 +70,7 @@ function useInningsData(
     oversData,
     ballsData
   ) => {
+    // Merge allPlayers (dismissed/retired) + active players
     const allBattedPlayers = [...(allPlayersData || []), ...(playersData || [])];
 
     return {
@@ -78,14 +81,16 @@ function useInningsData(
       battingStats: allBattedPlayers
         .filter((p) => p.balls > 0 || p.dismissal)
         .map((p) => ({
-          name: p.name,
+          playerId: p.playerId,                                           // ✅ stable identity
+          name: p.displayName,                                            // ✅ display only
           runs: p.runs || 0,
           balls: p.balls || 0,
           strikeRate: p.balls ? ((p.runs / p.balls) * 100).toFixed(1) : "0.0",
           dismissal: p.dismissal || null,
         })),
       bowlingStats: (bowlersData || []).map((b) => ({
-        name: b.name,
+        playerId: b.playerId,                                             // ✅ stable identity
+        name: b.displayName,                                              // ✅ display only
         overs: b.overs || 0,
         balls: b.balls || 0,
         runs: b.runs || 0,

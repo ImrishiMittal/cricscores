@@ -19,14 +19,12 @@ function BatsmenRow({
     ? ((nonStriker.runs / nonStriker.balls) * 100).toFixed(1) 
     : "0.0";
 
-  
-
   return (
     <div className={styles.batsmenRow}>
       <div className={styles.batsmenSection}>
         <div className={styles.batsmanBlock}>
           <div className={styles.batsmanName}>
-            {addCaptainTag(striker.name, matchData, currentTeam)} *
+            {addCaptainTag(striker.displayName, matchData, currentTeam)} *
           </div>
           <div className={styles.batsmanScore}>
             {striker.runs}({striker.balls})
@@ -38,7 +36,7 @@ function BatsmenRow({
 
         <div className={styles.batsmanBlock}>
           <div className={styles.batsmanName}>
-            {addCaptainTag(nonStriker.name, matchData, currentTeam)}
+            {addCaptainTag(nonStriker.displayName, matchData, currentTeam)}
           </div>
           <div className={styles.batsmanScore}>
             {nonStriker.runs}({nonStriker.balls})
