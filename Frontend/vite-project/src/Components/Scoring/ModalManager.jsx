@@ -16,8 +16,9 @@ import ChangeBowlerLimitModal from "./ChangeBowlerLimitModal";
 import DLSCalculator from "./DLSCalculator";
 import WinProbabilityModal from "./WinProbabilityModal";
 import RetiredHurtModal from "./RetiredHurtModal";
-import DismissBowlerModal from "./DismissBowlerModal"; // ✅ NEW
-import NoResultModal from "./NoResultModal";           // ✅ NEW
+import DismissBowlerModal from "./DismissBowlerModal";
+import NoResultModal from "./NoResultModal";
+import RenameModal from "./RenameModal"
 
 function ModalManager({
   modalStates,
@@ -26,7 +27,7 @@ function ModalManager({
   allPlayers,
   retiredPlayers,
   bowlers,
-  currentBowlerIndex,   // ✅ NEW: needed to pass dismissed bowler's name
+  currentBowlerIndex,
   isWicketPending,
   isNewBowlerPending,
   strikerIndex,
@@ -61,8 +62,9 @@ function ModalManager({
   onChangeBowlerLimitConfirm,
   onRetiredHurtConfirm,
   onReturnRetiredConfirm,
-  onDismissBowlerConfirm, // ✅ NEW
-  onNoResultConfirm,      // ✅ NEW
+  onDismissBowlerConfirm,
+  onNoResultConfirm,
+  onRenameConfirm,
 }) {
   return (
     <>
@@ -85,11 +87,6 @@ function ModalManager({
         />
       )}
 
-      {/* ✅ FIX: Don't show NewBatsmanModal during runout flow
-          Check BOTH conditions:
-          1. Not currently in fielder input
-          2. Not in runout flow (pendingRunoutRuns !== null OR waitingForRunoutRun)
-      */}
       {isWicketPending &&
         !wicketFlow.showFielderInputModal &&
         !wicketFlow.waitingForRunoutRun &&
@@ -108,17 +105,17 @@ function ModalManager({
         />
       )}
 
-      {/* ✅ NEW: Dismiss Bowler Modal */}
       {modalStates.showDismissBowlerModal && (
         <DismissBowlerModal
-          dismissedBowlerName={bowlers[currentBowlerIndex]?.name || "Current Bowler"}
+          dismissedBowlerName={
+            bowlers[currentBowlerIndex]?.displayName || "Current Bowler"
+          } // ✅ was .name
           existingBowlers={bowlers}
           onConfirm={onDismissBowlerConfirm}
           onClose={() => modalStates.setShowDismissBowlerModal(false)}
         />
       )}
 
-      {/* ✅ NEW: No Result Modal */}
       {modalStates.showNoResultModal && (
         <NoResultModal
           onConfirm={onNoResultConfirm}
@@ -135,7 +132,7 @@ function ModalManager({
         />
       )}
 
-{modalStates.showSummary && (innings1Data || innings2Data) && (
+      {modalStates.showSummary && (innings1Data || innings2Data) && (
         <MatchSummary
           team1={firstBattingTeam}
           team2={secondBattingTeam}
@@ -149,23 +146,10 @@ function ModalManager({
         />
       )}
 
-      {/* {modalStates.showInningsHistory && (
-        <TabbedInningsHistory
-          innings1History={
-            innings === 1
-              ? completeHistory                                          // ✅ live during innings 1
-              : innings1HistoryRef.current || innings1Data?.history || [] // ✅ captured after innings 1 ends
-          }
-          innings2History={innings === 2 ? completeHistory : []}
-          currentInnings={innings}
-          onClose={() => modalStates.setShowInningsHistory(false)}
-        />
-      )} */}
-
       {modalStates.showInningsHistory && (
         <TabbedInningsHistory
-          innings1History={innings1History} // ✅ Use the prop
-          innings2History={innings2History} // ✅ Use the prop
+          innings1History={innings1History}
+          innings2History={innings2History}
           currentInnings={innings}
           onClose={() => modalStates.setShowInningsHistory(false)}
         />
@@ -177,10 +161,11 @@ function ModalManager({
           innings2Data={innings2Data}
           players={players}
           allPlayers={
-            // ✅ FIX: Exclude from allPlayers anyone currently active on the field.
-            // This prevents a returned retired-hurt batsman from showing twice
-            // (once as "retired hurt" in allPlayers and once as "not out" in players).
-            allPlayers.filter((ap) => !players.some((p) => p.name === ap.name))
+            // ✅ Exclude from allPlayers anyone currently active on the field
+            // Uses playerId for dedup — was using p.name === ap.name
+            allPlayers.filter(
+              (ap) => !players.some((p) => p.playerId === ap.playerId)
+            )
           }
           bowlers={bowlers}
           score={score}
@@ -274,10 +259,9 @@ function ModalManager({
         />
       )}
 
-      {/* ✅ RETIRED HURT: modal to retire the current striker and enter a replacement */}
       {modalStates.showRetiredHurtModal && players.length >= 2 && (
         <RetiredHurtModal
-          strikerName={players[strikerIndex]?.name || "Striker"}
+          strikerName={players[strikerIndex]?.displayName || "Striker"} // ✅ was .name
           onConfirm={onRetiredHurtConfirm}
           onClose={() => modalStates.setShowRetiredHurtModal(false)}
         />
@@ -296,6 +280,14 @@ function ModalManager({
             modalStates.setShowChangeBowlerLimitModal(true)
           }
           onOpenWinProbability={() => modalStates.setShowWinProbability(true)}
+        />
+      )}
+      {modalStates.showRenameModal && modalStates.renameTarget && (
+        <RenameModal
+          playerId={modalStates.renameTarget.playerId}
+          currentName={modalStates.renameTarget.displayName}
+          onConfirm={onRenameConfirm}
+          onClose={modalStates.closeRenameModal}
         />
       )}
     </>
