@@ -8,14 +8,14 @@ import styles from "./NewBowlerModal.module.css";
  * The over CONTINUES — only the bowler attribution changes.
  */
 function DismissBowlerModal({ dismissedBowlerName, existingBowlers = [], onConfirm, onClose }) {
-  const [step, setStep] = useState(1); // 1 = confirm, 2 = enter new bowler
+  const [step, setStep] = useState(1);
   const [newBowlerName, setNewBowlerName] = useState("");
   const [error, setError] = useState("");
 
   const existingMatch = existingBowlers.find(
     (b) =>
-      b.name.toLowerCase() === newBowlerName.trim().toLowerCase() &&
-      b.name.toLowerCase() !== dismissedBowlerName.toLowerCase()
+      b.displayName.toLowerCase() === newBowlerName.trim().toLowerCase() &&  // ✅ was b.name
+      b.displayName.toLowerCase() !== dismissedBowlerName.toLowerCase()       // ✅ was b.name
   );
 
   const handleConfirmDismiss = () => {
@@ -97,10 +97,10 @@ function DismissBowlerModal({ dismissedBowlerName, existingBowlers = [], onConfi
           {existingMatch && (
             <div
               className={styles.suggestionBox}
-              onClick={() => onConfirm(existingMatch.name)}
+              onClick={() => onConfirm(existingMatch.displayName)}  // ✅ was existingMatch.name
             >
               <div className={styles.suggestionHeader}><b>Existing Bowler</b></div>
-              <div className={styles.suggestionName}>{existingMatch.name}</div>
+              <div className={styles.suggestionName}>{existingMatch.displayName}</div>  {/* ✅ was existingMatch.name */}
               <div className={styles.suggestionStats}>
                 {existingMatch.overs} overs | {existingMatch.runs} runs |{" "}
                 {existingMatch.wickets} wkts
@@ -127,3 +127,4 @@ function DismissBowlerModal({ dismissedBowlerName, existingBowlers = [], onConfi
 }
 
 export default DismissBowlerModal;
+

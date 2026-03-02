@@ -4,7 +4,6 @@ import styles from './TabbedInningsSummary.module.css';
 function TabbedInningsSummary({ 
   innings1Data, 
   innings2Data,
-  // ✅ NEW: Live current innings data
   players,
   allPlayers,
   bowlers,
@@ -15,7 +14,6 @@ function TabbedInningsSummary({
   currentInnings,
   onClose 
 }) {
-  // ✅ Default to current innings tab
   const [activeTab, setActiveTab] = useState(currentInnings === 2 ? 'innings2' : 'innings1');
 
   const formatOvers = (oversNum, ballsNum) => {
@@ -23,11 +21,9 @@ function TabbedInningsSummary({
     return `${oversNum}.${ballsNum}`;
   };
 
-  // ✅ FIXED: Get data for active tab with proper priority
   const getData = (tab) => {
-    // ✅ PRIORITY 1: If viewing COMPLETED innings 1 from innings 2, use innings1Data
+    // ✅ PRIORITY 1: Completed innings 1 — viewed from innings 2
     if (tab === 'innings1' && currentInnings === 2 && innings1Data) {
-      console.log("📊 Loading completed Innings 1 data:", innings1Data);
       return {
         score: innings1Data.score || 0,
         wickets: innings1Data.wickets || 0,
@@ -35,10 +31,11 @@ function TabbedInningsSummary({
         balls: innings1Data.balls || 0,
         battedPlayers: innings1Data.battingStats || [],
         bowlers: innings1Data.bowlingStats || [],
+        isCompleted: true,  // ✅ flag: completed data uses .name (mapped in useInningsData)
       };
     }
 
-    // ✅ PRIORITY 2: If viewing LIVE innings 1, show live data
+    // ✅ PRIORITY 2: Live innings 1
     if (tab === 'innings1' && currentInnings === 1) {
       const battedPlayers = [...(allPlayers || []), ...players];
       return {
@@ -48,10 +45,11 @@ function TabbedInningsSummary({
         balls,
         battedPlayers: battedPlayers.filter(p => p.balls > 0 || p.dismissal),
         bowlers,
+        isCompleted: false,  // ✅ live data uses .displayName
       };
     }
-    
-    // ✅ PRIORITY 3: If viewing LIVE innings 2, show live data
+
+    // ✅ PRIORITY 3: Live innings 2
     if (tab === 'innings2' && currentInnings === 2) {
       const battedPlayers = [...(allPlayers || []), ...players];
       return {
@@ -61,10 +59,11 @@ function TabbedInningsSummary({
         balls,
         battedPlayers: battedPlayers.filter(p => p.balls > 0 || p.dismissal),
         bowlers,
+        isCompleted: false,
       };
     }
 
-    // ✅ FALLBACK: If completed innings 2 data exists
+    // ✅ FALLBACK: Completed innings 2
     if (tab === 'innings2' && innings2Data) {
       return {
         score: innings2Data.score || 0,
@@ -73,6 +72,7 @@ function TabbedInningsSummary({
         balls: innings2Data.balls || 0,
         battedPlayers: innings2Data.battingStats || [],
         bowlers: innings2Data.bowlingStats || [],
+        isCompleted: true,
       };
     }
 
@@ -95,6 +95,12 @@ function TabbedInningsSummary({
     );
   }
 
+  // ✅ Helper: get player name correctly based on data source
+  // - Completed innings data (from useInningsData) maps displayName → .name
+  // - Live innings data (raw player objects) uses .displayName
+  const getPlayerName = (player) => data.isCompleted ? player.name : player.displayName;
+  const getBowlerName = (bowler) => data.isCompleted ? bowler.name : bowler.displayName;
+
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -103,7 +109,7 @@ function TabbedInningsSummary({
           <button className={styles.closeIcon} onClick={onClose}>✕</button>
         </div>
 
-        {/* ✅ TABS - Show only if both innings have data */}
+        {/* TABS */}
         {currentInnings === 2 && (
           <div className={styles.tabContainer}>
             <button
@@ -151,9 +157,9 @@ function TabbedInningsSummary({
                 : '0.0';
               
               return (
-                <div key={idx} className={styles.tableRow}>
+                <div key={player.playerId || idx} className={styles.tableRow}>
                   <div className={styles.playerCol}>
-                    <div className={styles.playerName}>{player.name}</div>
+                    <div className={styles.playerName}>{getPlayerName(player)}</div>  {/* ✅ was player.name */}
                     {player.dismissal && (
                       <div className={styles.dismissal}>{player.dismissal}</div>
                     )}
@@ -191,8 +197,8 @@ function TabbedInningsSummary({
                 : '0.00';
               
               return (
-                <div key={idx} className={styles.tableRow}>
-                  <div className={styles.playerCol}>{bowler.name}</div>
+                <div key={bowler.playerId || idx} className={styles.tableRow}>
+                  <div className={styles.playerCol}>{getBowlerName(bowler)}</div>  {/* ✅ was bowler.name */}
                   <div className={styles.statCol}>{bowler.overs}.{bowler.balls}</div>
                   <div className={styles.statCol}>{bowler.runs}</div>
                   <div className={styles.statCol}>{bowler.wickets}</div>

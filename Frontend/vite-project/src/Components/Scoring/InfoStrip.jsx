@@ -26,10 +26,8 @@ function InfoStrip({
       ? ((target - score) / (ballsRemaining / 6)).toFixed(2)
       : null;
 
-  // Get current bowler stats
   const currentBowler = bowlers && bowlers[currentBowlerIndex];
-  
-  // Calculate bowler economy
+
   const getBowlerEconomy = (bowler) => {
     if (!bowler) return "0.00";
     const totalOvers = bowler.overs + (bowler.balls / 6);
@@ -38,14 +36,13 @@ function InfoStrip({
   };
 
   const bowlingTeam =
-  currentTeam === matchData.teamA
-    ? matchData.teamB
-    : matchData.teamA;
+    currentTeam === matchData.teamA
+      ? matchData.teamB
+      : matchData.teamA;
 
-const bowlerDisplay = currentBowler
-  ? `${addCaptainTag(currentBowler.name, matchData, bowlingTeam)} - ${currentBowler.runs || 0}/${currentBowler.wickets || 0} [${getBowlerEconomy(currentBowler)}]`
-  : addCaptainTag(bowler, matchData, bowlingTeam);
-
+  const bowlerDisplay = currentBowler
+    ? `${addCaptainTag(currentBowler.displayName, matchData, bowlingTeam)} - ${currentBowler.overs || 0}.${currentBowler.balls || 0} [${getBowlerEconomy(currentBowler)}]`  // ✅ was currentBowler.name
+    : addCaptainTag(bowler, matchData, bowlingTeam);
 
   return (
     <div className={styles.infoStrip}>
