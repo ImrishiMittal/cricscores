@@ -13,38 +13,39 @@ function OverBalls({ history }) {
 
         const ballType = ball.type || ball.event;
 
-        // Wicket
         if (ballType === "W" || ballType === "WICKET") {
           label = "W";
           dataType = "W";
         }
-        // Wide
+        else if (ballType === "HW") {                   // ✅ NEW: hit wicket
+          label = "HW";
+          dataType = "W";
+        }
         else if (ballType === "WD" || ballType === "WIDE") {
           label = ball.runs > 0 ? `${ball.runs}WD` : "WD";
           dataType = "WD";
         }
-        // No ball
         else if (ballType === "NB" || ballType === "NO_BALL") {
           label = ball.runs > 0 ? `${ball.runs}NB` : "NB";
           dataType = "NB";
         }
-        // Free hit
         else if (ballType === "FH" || ballType === "FREE_HIT") {
           label = "FH";
           dataType = "FH";
         }
-        // Bye
         else if (ballType === "BYE") {
           label = `B${ball.runs || ""}`;
           dataType = "BYE";
         }
-        // ✅ FIX: Run-out ball — has runs + isWicket flag. Render as "1+W" or "W" for dot
+        else if (ballType === "LB") {                   // ✅ already handled in engine
+          label = `LB${ball.runs || ""}`;
+          dataType = "BYE";
+        }
         else if (ball.isWicket) {
           const runs = ball.runs ?? 0;
           label = runs > 0 ? `${runs}+W` : "W";
           dataType = "RUN_WICKET";
         }
-        // Regular runs
         else if (ballType === "RUN" || ball.runs !== undefined) {
           const runs = ball.runs ?? 0;
           label = runs;
@@ -70,4 +71,3 @@ function OverBalls({ history }) {
 }
 
 export default OverBalls;
-

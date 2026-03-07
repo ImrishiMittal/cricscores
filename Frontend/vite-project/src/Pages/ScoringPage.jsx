@@ -339,6 +339,37 @@ function ScoringPage() {
     alert(`✅ Bowler limit changed from ${oldLimit} to ${newLimit} overs`);
   };
 
+  /* ================= HANDLE HIT WICKET =================  */
+  const handleWicketTypeSelectWithHitWicket = (wicketType) => {
+    wicketFlow.handleWicketTypeSelect(wicketType);
+
+    if (wicketType === "hitwicket") {
+      const bowlerName = playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName || "Unknown";
+      const currentOutBatsman = playersHook.strikerIndex;  // capture NOW before any state changes
+      const nextWickets = engine.wickets + 1;
+
+      // Set dismissal text on the batsman FIRST (before any replacements)
+      playersHook.setDismissal("hitwicket", null, bowlerName, currentOutBatsman);
+
+      // Wicket + ball counted for bowler
+      playersHook.addWicketToBowler();
+
+      // Partnership
+      partnershipsHook.addBallToPartnership();
+      partnershipsHook.savePartnership(engine.score, nextWickets);
+      partnershipsHook.resetPartnership();
+
+      // Engine wicket (advances balls/overs, logs HW event)
+      engine.handleWicket(false, true);
+
+      // Store outBatsman index so NewBatsmanModal confirm knows who to replace
+      playersHook.setOutBatsman(currentOutBatsman);
+      playersHook.setIsWicketPending(true);
+
+      triggerSnapshotWithTracking();
+    }
+  };
+
   const isNoResult = engine.winner === "NO RESULT";
 
   return (
@@ -513,7 +544,10 @@ function ScoringPage() {
               );
             }, 50);
           } else {
-            playersHook.confirmNewBatsman(name);
+            // ✅ Use replaceBatsman (not confirmNewBatsman) so dismissed player
+            //    is saved to allPlayers history — works for hit wicket and all wickets
+            playersHook.replaceBatsman(playersHook.outBatsman, name);
+            playersHook.setIsWicketPending(false);
             setTimeout(() => {
               const p = playersHook.players;
               partnershipsHook.startPartnership(
@@ -548,7 +582,7 @@ function ScoringPage() {
           }, 50);
         }}
         onConfirmNewBowler={playersHook.confirmNewBowler}
-        onWicketTypeSelect={wicketFlow.handleWicketTypeSelect}
+        onWicketTypeSelect={handleWicketTypeSelectWithHitWicket}  // ✅ NEW
         onFielderConfirm={handleFielderConfirm}
         onFielderCancel={wicketFlow.cancelWicketFlow}
         onChangePlayersConfirm={handleChangePlayersConfirm}
