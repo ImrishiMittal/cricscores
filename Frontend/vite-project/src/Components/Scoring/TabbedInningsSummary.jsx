@@ -12,6 +12,7 @@ function TabbedInningsSummary({
   overs,
   balls,
   currentInnings,
+  liveExtras,   // ✅ NEW: live extras from engine
   onClose 
 }) {
   const [activeTab, setActiveTab] = useState(currentInnings === 2 ? 'innings2' : 'innings1');
@@ -29,13 +30,13 @@ function TabbedInningsSummary({
         wickets: innings1Data.wickets || 0,
         overs: innings1Data.overs || 0,
         balls: innings1Data.balls || 0,
+        extras: innings1Data.extras || null,  // ✅ NEW
         battedPlayers: innings1Data.battingStats || [],
         bowlers: innings1Data.bowlingStats || [],
-        isCompleted: true,  // ✅ flag: completed data uses .name (mapped in useInningsData)
+        isCompleted: true,
       };
     }
 
-    // ✅ PRIORITY 2: Live innings 1
     if (tab === 'innings1' && currentInnings === 1) {
       const battedPlayers = [...(allPlayers || []), ...players];
       return {
@@ -43,13 +44,13 @@ function TabbedInningsSummary({
         wickets,
         overs,
         balls,
+        extras: liveExtras || null,  // ✅ NEW
         battedPlayers: battedPlayers.filter(p => p.balls > 0 || p.dismissal),
         bowlers,
-        isCompleted: false,  // ✅ live data uses .displayName
+        isCompleted: false,
       };
     }
 
-    // ✅ PRIORITY 3: Live innings 2
     if (tab === 'innings2' && currentInnings === 2) {
       const battedPlayers = [...(allPlayers || []), ...players];
       return {
@@ -57,19 +58,20 @@ function TabbedInningsSummary({
         wickets,
         overs,
         balls,
+        extras: liveExtras || null,  // ✅ NEW
         battedPlayers: battedPlayers.filter(p => p.balls > 0 || p.dismissal),
         bowlers,
         isCompleted: false,
       };
     }
 
-    // ✅ FALLBACK: Completed innings 2
     if (tab === 'innings2' && innings2Data) {
       return {
         score: innings2Data.score || 0,
         wickets: innings2Data.wickets || 0,
         overs: innings2Data.overs || 0,
         balls: innings2Data.balls || 0,
+        extras: innings2Data.extras || null,  // ✅ NEW
         battedPlayers: innings2Data.battingStats || [],
         bowlers: innings2Data.bowlingStats || [],
         isCompleted: true,
@@ -136,6 +138,21 @@ function TabbedInningsSummary({
           <div className={styles.oversText}>
             {formatOvers(data.overs, data.balls)} overs
           </div>
+          {/* ✅ NEW: Extras row */}
+          {data.extras && data.extras.total > 0 && (
+            <div style={{ fontSize: "13px", color: "#aaa", marginTop: "4px" }}>
+              Extras: {data.extras.total}
+              {" ("}
+              {data.extras.wides > 0 && `W ${data.extras.wides}`}
+              {data.extras.wides > 0 && (data.extras.noBalls > 0 || data.extras.byes > 0 || data.extras.legByes > 0) && ", "}
+              {data.extras.noBalls > 0 && `NB ${data.extras.noBalls}`}
+              {data.extras.noBalls > 0 && (data.extras.byes > 0 || data.extras.legByes > 0) && ", "}
+              {data.extras.byes > 0 && `B ${data.extras.byes}`}
+              {data.extras.byes > 0 && data.extras.legByes > 0 && ", "}
+              {data.extras.legByes > 0 && `LB ${data.extras.legByes}`}
+              {")"}
+            </div>
+          )}
         </div>
 
         {/* Batting Summary */}

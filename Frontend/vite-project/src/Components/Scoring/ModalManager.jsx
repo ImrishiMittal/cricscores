@@ -18,7 +18,7 @@ import WinProbabilityModal from "./WinProbabilityModal";
 import RetiredHurtModal from "./RetiredHurtModal";
 import DismissBowlerModal from "./DismissBowlerModal";
 import NoResultModal from "./NoResultModal";
-import RenameModal from "./RenameModal"
+import RenameModal from "./RenameModal";
 
 function ModalManager({
   modalStates,
@@ -64,7 +64,8 @@ function ModalManager({
   onReturnRetiredConfirm,
   onDismissBowlerConfirm,
   onNoResultConfirm,
-  onRenameConfirm,
+  onRenameConfirm,  // ✅ NEW
+  liveExtras,       // ✅ NEW: live extras from engine
 }) {
   return (
     <>
@@ -107,9 +108,7 @@ function ModalManager({
 
       {modalStates.showDismissBowlerModal && (
         <DismissBowlerModal
-          dismissedBowlerName={
-            bowlers[currentBowlerIndex]?.displayName || "Current Bowler"
-          } // ✅ was .name
+          dismissedBowlerName={bowlers[currentBowlerIndex]?.displayName || "Current Bowler"}  // ✅ was .name
           existingBowlers={bowlers}
           onConfirm={onDismissBowlerConfirm}
           onClose={() => modalStates.setShowDismissBowlerModal(false)}
@@ -163,9 +162,7 @@ function ModalManager({
           allPlayers={
             // ✅ Exclude from allPlayers anyone currently active on the field
             // Uses playerId for dedup — was using p.name === ap.name
-            allPlayers.filter(
-              (ap) => !players.some((p) => p.playerId === ap.playerId)
-            )
+            allPlayers.filter((ap) => !players.some((p) => p.playerId === ap.playerId))
           }
           bowlers={bowlers}
           score={score}
@@ -173,6 +170,7 @@ function ModalManager({
           overs={overs}
           balls={balls}
           currentInnings={innings}
+          liveExtras={liveExtras}   // ✅ NEW
           onClose={() => modalStates.setShowInningsSummary(false)}
         />
       )}
@@ -261,7 +259,7 @@ function ModalManager({
 
       {modalStates.showRetiredHurtModal && players.length >= 2 && (
         <RetiredHurtModal
-          strikerName={players[strikerIndex]?.displayName || "Striker"} // ✅ was .name
+          strikerName={players[strikerIndex]?.displayName || "Striker"}  // ✅ was .name
           onConfirm={onRetiredHurtConfirm}
           onClose={() => modalStates.setShowRetiredHurtModal(false)}
         />
@@ -272,13 +270,9 @@ function ModalManager({
           innings={innings}
           onClose={() => modalStates.setShowMoreMenu(false)}
           onOpenDLS={() => modalStates.setShowDLSCalculator(true)}
-          onOpenChangePlayers={() =>
-            modalStates.setShowChangePlayersModal(true)
-          }
+          onOpenChangePlayers={() => modalStates.setShowChangePlayersModal(true)}
           onOpenChangeOvers={() => modalStates.setShowChangeOversModal(true)}
-          onOpenChangeBowlerLimit={() =>
-            modalStates.setShowChangeBowlerLimitModal(true)
-          }
+          onOpenChangeBowlerLimit={() => modalStates.setShowChangeBowlerLimitModal(true)}
           onOpenWinProbability={() => modalStates.setShowWinProbability(true)}
         />
       )}
