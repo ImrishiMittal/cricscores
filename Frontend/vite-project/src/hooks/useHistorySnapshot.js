@@ -1,15 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 
-/**
- * Custom hook to manage undo/redo functionality via history snapshots.
- *
- * CHANGES vs original:
- * - Added `retiredPlayers` param (was passed from ScoringPage but missing from signature)
- * - Added `innings` param (critical: stored in every snapshot so ScoringPage can
- *   track innings2SnapshotCount reliably)
- * - Fixed initial snapshot: allPlayers was hardcoded to [], now uses actual allPlayers
- * - Added `innings` and `retiredPlayers` to the auto-save snapshot and dep array
- */
 function useHistorySnapshot(
   showStartModal,
   players,
@@ -31,8 +21,9 @@ function useHistorySnapshot(
   partnershipHistory,
   isWicketPending,
   outBatsman,
-  retiredPlayers, // ✅ ADDED: was passed from ScoringPage but missing from signature
-  innings,        // ✅ ADDED: critical for innings2SnapshotCount guard in ScoringPage
+  retiredPlayers,
+  innings,
+  extras,   // ✅ NEW
 ) {
   const [historyStack, setHistoryStack] = useState([]);
   const shouldSaveSnapshot = useRef(false);
@@ -45,11 +36,11 @@ function useHistorySnapshot(
         wickets: 0,
         balls: 0,
         overs: 0,
-        innings: innings ?? 1,                              // ✅ FIXED: was missing
+        innings: innings ?? 1,
         currentOver: [],
         completeHistory: [],
         players: JSON.parse(JSON.stringify(players)),
-        allPlayers: JSON.parse(JSON.stringify(allPlayers)), // ✅ FIXED: was hardcoded []
+        allPlayers: JSON.parse(JSON.stringify(allPlayers)),
         strikerIndex: 0,
         nonStrikerIndex: 1,
         partnershipRuns: 0,
@@ -61,9 +52,9 @@ function useHistorySnapshot(
         partnershipHistory: [],
         isWicketPending: false,
         outBatsman: null,
-        retiredPlayers: [],                                 // ✅ ADDED
+        retiredPlayers: [],
+        extras: { wides: 0, noBalls: 0, byes: 0, legByes: 0, total: 0 }, // ✅ NEW
       };
-
       setHistoryStack([initialSnapshot]);
     }
   }, [showStartModal, players, bowlers]);
@@ -76,7 +67,7 @@ function useHistorySnapshot(
         wickets,
         balls,
         overs,
-        innings: innings ?? 1,                                          // ✅ ADDED
+        innings: innings ?? 1,
         currentOver: [...currentOver],
         completeHistory: [...completeHistory],
         players: JSON.parse(JSON.stringify(players)),
@@ -92,7 +83,8 @@ function useHistorySnapshot(
         bowlers: JSON.parse(JSON.stringify(bowlers)),
         currentBowlerIndex,
         partnershipHistory: JSON.parse(JSON.stringify(partnershipHistory)),
-        retiredPlayers: JSON.parse(JSON.stringify(retiredPlayers ?? [])), // ✅ ADDED
+        retiredPlayers: JSON.parse(JSON.stringify(retiredPlayers ?? [])),
+        extras: extras ? { ...extras } : { wides: 0, noBalls: 0, byes: 0, legByes: 0, total: 0 }, // ✅ NEW
       };
 
       setHistoryStack((prev) => [...prev, snapshot]);
@@ -103,7 +95,7 @@ function useHistorySnapshot(
     wickets,
     balls,
     overs,
-    innings,            // ✅ ADDED
+    innings,
     players,
     strikerIndex,
     nonStrikerIndex,
@@ -115,23 +107,20 @@ function useHistorySnapshot(
     currentBowlerIndex,
     isWicketPending,
     outBatsman,
-    retiredPlayers,     // ✅ ADDED
+    retiredPlayers,
+    extras,  // ✅ NEW
   ]);
 
   /* ================= API ================= */
-
-  /** Read the last snapshot without removing it */
   const getLastSnapshot = () => {
     if (historyStack.length === 0) return null;
     return historyStack[historyStack.length - 1];
   };
 
-  /** Remove the last snapshot from the stack */
   const popSnapshot = () => {
     setHistoryStack((prev) => prev.slice(0, -1));
   };
 
-  /** Signal that a snapshot should be saved on the next state-change effect */
   const triggerSnapshot = () => {
     shouldSaveSnapshot.current = true;
   };
