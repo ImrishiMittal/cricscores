@@ -163,6 +163,9 @@ export default function usePlayersAndBowlers(matchData) {
         case "stumped":
           dismissalText = `st ${fielder} b ${bowlerDisplayName}`;
           break;
+        case "hitwicket":                                      // ✅ NEW
+          dismissalText = `hit wicket b ${bowlerDisplayName}`;
+          break;
         default:
           dismissalText = "out";
       }

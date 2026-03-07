@@ -220,7 +220,7 @@ export default function useMatchEngine(matchData, swapStrike) {
     checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
   };
 
-  const handleWicket = (isRunout = false) => {
+  const handleWicket = (isRunout = false, isHitWicket = false) => {
     if (matchOver) return;
 
     if (isFreeHit) {
@@ -250,8 +250,9 @@ export default function useMatchEngine(matchData, swapStrike) {
     }
 
     if (!isRunout) {
-      setCurrentOver((prev) => [...prev, { type: "W" }]);
-      const wicketEntry = { event: "WICKET", over: overs, ball: balls };
+      const eventType = isHitWicket ? "HW" : "WICKET";              // ✅ HW for hit wicket
+      setCurrentOver((prev) => [...prev, { type: isHitWicket ? "HW" : "W" }]);
+      const wicketEntry = { event: eventType, over: overs, ball: balls };
       completeHistoryRef.current = [...completeHistoryRef.current, wicketEntry];
       setCompleteHistory((prev) => [...prev, wicketEntry]);
     }

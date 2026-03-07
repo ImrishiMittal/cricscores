@@ -6,41 +6,49 @@ function WicketTypeModal({ onSelect, onClose }) {
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>Select Wicket Type</h2>
-        
+
         <div className={styles.wicketGrid}>
-          <button 
+          <button
             className={`${styles.wicketBtn} ${styles.runout}`}
             onClick={() => onSelect('runout')}
           >
             🏃 Run Out
           </button>
-          
-          <button 
+
+          <button
             className={`${styles.wicketBtn} ${styles.caught}`}
             onClick={() => onSelect('caught')}
           >
             🤲 Caught
           </button>
-          
-          <button 
+
+          <button
             className={`${styles.wicketBtn} ${styles.bowled}`}
             onClick={() => onSelect('bowled')}
           >
             🎯 Bowled
           </button>
-          
-          <button 
+
+          <button
             className={`${styles.wicketBtn} ${styles.lbw}`}
             onClick={() => onSelect('lbw')}
           >
             🦵 LBW
           </button>
-          
-          <button 
+
+          <button
             className={`${styles.wicketBtn} ${styles.stumped}`}
             onClick={() => onSelect('stumped')}
           >
             🧤 Stumped
+          </button>
+
+          {/* ✅ NEW: Hit Wicket */}
+          <button
+            className={`${styles.wicketBtn} ${styles.hitwicket}`}
+            onClick={() => onSelect('hitwicket')}
+          >
+            🏏 Hit Wicket
           </button>
         </div>
 

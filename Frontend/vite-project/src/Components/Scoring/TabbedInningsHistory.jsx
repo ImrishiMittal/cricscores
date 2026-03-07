@@ -18,9 +18,9 @@ function combineBalls(balls) {
     const current = balls[i];
     const next = balls[i + 1];
     if (
-      current && 
-      next && 
-      current.event === "RUN" && 
+      current &&
+      next &&
+      current.event === "RUN" &&
       next.event === "WICKET" &&
       current.ball === next.ball
     ) {
@@ -46,6 +46,8 @@ function getLabel(ball) {
   if (ball.event === "WICKET") return "W";
   if (ball.event === "FREE_HIT") return "FH";
   if (ball.event === "BYE") return `B${ball.runs}`;
+  if (ball.event === "LB") return `LB${ball.runs}`;    // ✅ NEW
+  if (ball.event === "HW") return "HW";                // ✅ NEW: hit wicket
   return "•";
 }
 
@@ -57,19 +59,19 @@ function getBallType(ball) {
   if (ball.event === "WICKET") return "W";
   if (ball.event === "FREE_HIT") return "FH";
   if (ball.event === "BYE") return "BYE";
+  if (ball.event === "LB") return "BYE";               // ✅ same styling as bye
+  if (ball.event === "HW") return "W";                 // ✅ same styling as wicket
   return "DOT";
 }
 
-function TabbedInningsHistory({ 
+function TabbedInningsHistory({
   innings1History,
   innings2History,
   currentInnings,
-  onClose 
+  onClose
 }) {
-  // ✅ Default to current innings tab
   const [activeTab, setActiveTab] = useState(currentInnings === 2 ? 'innings2' : 'innings1');
 
-  // Get history for active tab
   const getHistory = (tab) => {
     if (tab === 'innings1') return innings1History || [];
     if (tab === 'innings2') return innings2History || [];
@@ -89,7 +91,6 @@ function TabbedInningsHistory({
           </button>
         </div>
 
-        {/* ✅ TABS */}
         {currentInnings === 2 && innings1History && innings2History && (
           <div className={styles.tabContainer}>
             <button
@@ -112,7 +113,9 @@ function TabbedInningsHistory({
 
           {Object.entries(overs).map(([overNo, balls]) => {
             const runs = balls.reduce((t, b) => t + (b.runs || 0), 0);
-            const wickets = balls.filter((b) => b.event === "WICKET").length;
+            const wickets = balls.filter(
+              (b) => b.event === "WICKET" || b.event === "HW"  // ✅ count HW as wicket
+            ).length;
             const combinedBalls = combineBalls(balls);
 
             return (

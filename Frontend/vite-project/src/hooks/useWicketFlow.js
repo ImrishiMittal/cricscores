@@ -1,9 +1,5 @@
 import { useState } from "react";
 
-/**
- * Custom hook to manage wicket flow logic
- * Handles: wicket type selection, fielder input, runout handling
- */
 function useWicketFlow() {
   const [showWicketTypeModal, setShowWicketTypeModal] = useState(false);
   const [showFielderInputModal, setShowFielderInputModal] = useState(false);
@@ -11,9 +7,6 @@ function useWicketFlow() {
   const [pendingRunoutRuns, setPendingRunoutRuns] = useState(null);
   const [waitingForRunoutRun, setWaitingForRunoutRun] = useState(false);
 
-  /**
-   * Start the wicket flow
-   */
   const startWicketFlow = (isFreeHit) => {
     if (isFreeHit) {
       alert("Cannot take a wicket on a Free Hit!");
@@ -24,30 +17,29 @@ function useWicketFlow() {
     return true;
   };
 
-  /**
-   * Handle wicket type selection
-   */
   const handleWicketTypeSelect = (wicketType) => {
     console.log("🎯 Wicket type selected:", wicketType);
-    
+
     setShowWicketTypeModal(false);
     setSelectedWicketType(wicketType);
 
-    // For runout, wait for user to select runs first
     if (wicketType === "runout") {
       console.log("🏃 Runout selected - waiting for runs");
       setWaitingForRunoutRun(true);
       return;
     }
 
-    // For other wicket types, show fielder input modal immediately
+    // ✅ Hit wicket: no fielder needed — skip fielder modal, go straight to new batsman
+    if (wicketType === "hitwicket") {
+      console.log("🏏 Hit wicket — no fielder needed, proceeding directly");
+      // showFielderInputModal stays false — ScoringPage handles it via isWicketPending
+      return;
+    }
+
     console.log("📝 Showing fielder input modal for:", wicketType);
     setShowFielderInputModal(true);
   };
 
-  /**
-   * Handle runout with runs
-   */
   const handleRunoutWithRuns = (runs) => {
     console.log("🏃 Run out with", runs, "runs");
     setPendingRunoutRuns(runs);
@@ -55,9 +47,6 @@ function useWicketFlow() {
     setShowFielderInputModal(true);
   };
 
-  /**
-   * Cancel wicket flow
-   */
   const cancelWicketFlow = () => {
     setShowWicketTypeModal(false);
     setShowFielderInputModal(false);
@@ -66,9 +55,6 @@ function useWicketFlow() {
     setWaitingForRunoutRun(false);
   };
 
-  /**
-   * Complete wicket flow (called after fielder confirm)
-   */
   const completeWicketFlow = () => {
     setShowFielderInputModal(false);
     setSelectedWicketType(null);
@@ -77,21 +63,16 @@ function useWicketFlow() {
   };
 
   return {
-    // State
     showWicketTypeModal,
     showFielderInputModal,
     selectedWicketType,
     pendingRunoutRuns,
     waitingForRunoutRun,
-
-    // Actions
     startWicketFlow,
     handleWicketTypeSelect,
     handleRunoutWithRuns,
     cancelWicketFlow,
     completeWicketFlow,
-
-    // Setters (for undo functionality)
     setShowWicketTypeModal,
     setShowFielderInputModal,
     setSelectedWicketType,
