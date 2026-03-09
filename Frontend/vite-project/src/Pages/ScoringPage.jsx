@@ -24,6 +24,9 @@ function ScoringPage() {
 
   const innings2SnapshotCountRef = useRef(0);
   const currentInningsRef = useRef(1);
+  // ✅ NEW: track opening batsmen for stats history replay
+  const initialStrikerRef = useRef(null);
+  const initialNonStrikerRef = useRef(null);
 
   const modalStates = useModalStates();
   const wicketFlow = useWicketFlow();
@@ -416,7 +419,7 @@ function ScoringPage() {
               matchData={updatedMatchData}
               currentTeam={currentBattingTeam}
               wickets={engine.wickets}
-              onRenameClick={modalStates.openRenameModal}
+              onStatsClick={modalStates.openPlayerStats}   // ✅ NEW
             />
           )}
 
@@ -522,6 +525,9 @@ function ScoringPage() {
           playersHook.startInnings(s, ns, b);
           setTimeout(() => {
             const p = playersHook.players;
+            // ✅ Capture opening batsmen for stats history replay
+            initialStrikerRef.current    = p[0]?.playerId ?? null;
+            initialNonStrikerRef.current = p[1]?.playerId ?? null;
             partnershipsHook.startPartnership(
               p[0] ? { playerId: p[0].playerId, displayName: p[0].displayName } : { playerId: "", displayName: s },
               p[1] ? { playerId: p[1].playerId, displayName: p[1].displayName } : { playerId: "", displayName: ns }
@@ -592,6 +598,9 @@ function ScoringPage() {
         onNoResultConfirm={handleNoResultConfirm}
         onRenameConfirm={(playerId, newName) => playersHook.renamePlayer(playerId, newName)}
         renameModalState={modalStates}
+        onStatsClick={modalStates.openPlayerStats}                     // ✅ NEW
+        initialStrikerPlayerId={initialStrikerRef.current}             // ✅ NEW
+        initialNonStrikerPlayerId={initialNonStrikerRef.current}       // ✅ NEW
       />
     </div>
   );
