@@ -1,0 +1,159 @@
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  
+  .modal {
+    background: linear-gradient(135deg, #1a3a1a 0%, #0d1f0d 100%);
+    border: 2px solid #2ecc71;
+    border-radius: 16px;
+    padding: 32px 28px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(46, 204, 113, 0.3);
+  }
+  
+  .modalTitle {
+    color: #2ecc71;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    margin: 0 0 16px 0;
+    text-align: center;
+    opacity: 0.8;
+  }
+  
+  .playerName {
+    color: #fff;
+    font-size: 28px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  
+  .mainStats {
+    color: #2ecc71;
+    font-size: 32px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  
+  .strikeRate {
+    color: #95a5a6;
+    font-size: 16px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  
+  .srValue {
+    color: #2ecc71;
+    font-weight: bold;
+  }
+  
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #2ecc71, transparent);
+    margin: 24px 0;
+    opacity: 0.3;
+  }
+  
+  .ballAnalysis {
+    color: #7f8c8d;
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .statRow {
+    display: grid;
+    grid-template-columns: 32px 1fr 2fr 60px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 8px 0;
+  }
+  
+  .statIcon {
+    font-size: 20px;
+    text-align: center;
+  }
+  
+  .statLabel {
+    color: #ecf0f1;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  
+  .statBar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .statFill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+  
+  .statValue {
+    color: #2ecc71;
+    font-size: 15px;
+    font-weight: bold;
+    text-align: right;
+    min-width: 60px;
+  }
+  
+  .buttonRow {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+  }
+  
+  .renameBtn,
+  .closeBtn {
+    flex: 1;
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .renameBtn {
+    background: #3498db;
+    color: white;
+  }
+  
+  .renameBtn:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+  }
+  
+  .closeBtn {
+    background: #34495e;
+    color: white;
+  }
+  
+  .closeBtn:hover {
+    background: #2c3e50;
+    transform: translateY(-2px);
+  }
+  

@@ -19,6 +19,8 @@ import RetiredHurtModal from "./RetiredHurtModal";
 import DismissBowlerModal from "./DismissBowlerModal";
 import NoResultModal from "./NoResultModal";
 import RenameModal from "./RenameModal";
+import PlayerStatsModal from './PlayerStatsModal';
+import usePlayerStats from '../../hooks/usePlayerStats';
 
 function ModalManager({
   modalStates,
@@ -64,9 +66,18 @@ function ModalManager({
   onReturnRetiredConfirm,
   onDismissBowlerConfirm,
   onNoResultConfirm,
-  onRenameConfirm,  // ✅ NEW
-  liveExtras,       // ✅ NEW: live extras from engine
+  onRenameConfirm,
+  liveExtras,
+  onStatsClick,
+  initialStrikerPlayerId,
+  initialNonStrikerPlayerId,
 }) {
+  // ✅ Calculate stats for the currently selected player
+  const statsForPlayer = usePlayerStats(
+    modalStates.statsTarget,
+    completeHistory
+  );
+
   return (
     <>
       {modalStates.showStartModal && (
@@ -108,7 +119,7 @@ function ModalManager({
 
       {modalStates.showDismissBowlerModal && (
         <DismissBowlerModal
-          dismissedBowlerName={bowlers[currentBowlerIndex]?.displayName || "Current Bowler"}  // ✅ was .name
+          dismissedBowlerName={bowlers[currentBowlerIndex]?.displayName || "Current Bowler"}
           existingBowlers={bowlers}
           onConfirm={onDismissBowlerConfirm}
           onClose={() => modalStates.setShowDismissBowlerModal(false)}
@@ -160,8 +171,6 @@ function ModalManager({
           innings2Data={innings2Data}
           players={players}
           allPlayers={
-            // ✅ Exclude from allPlayers anyone currently active on the field
-            // Uses playerId for dedup — was using p.name === ap.name
             allPlayers.filter((ap) => !players.some((p) => p.playerId === ap.playerId))
           }
           bowlers={bowlers}
@@ -170,7 +179,7 @@ function ModalManager({
           overs={overs}
           balls={balls}
           currentInnings={innings}
-          liveExtras={liveExtras}   // ✅ NEW
+          liveExtras={liveExtras}
           onClose={() => modalStates.setShowInningsSummary(false)}
         />
       )}
@@ -259,7 +268,7 @@ function ModalManager({
 
       {modalStates.showRetiredHurtModal && players.length >= 2 && (
         <RetiredHurtModal
-          strikerName={players[strikerIndex]?.displayName || "Striker"}  // ✅ was .name
+          strikerName={players[strikerIndex]?.displayName || "Striker"}
           onConfirm={onRetiredHurtConfirm}
           onClose={() => modalStates.setShowRetiredHurtModal(false)}
         />
@@ -276,12 +285,26 @@ function ModalManager({
           onOpenWinProbability={() => modalStates.setShowWinProbability(true)}
         />
       )}
+
       {modalStates.showRenameModal && modalStates.renameTarget && (
         <RenameModal
           playerId={modalStates.renameTarget.playerId}
           currentName={modalStates.renameTarget.displayName}
           onConfirm={onRenameConfirm}
           onClose={modalStates.closeRenameModal}
+        />
+      )}
+
+      {/* ✅ Player Stats Modal */}
+      {modalStates.showPlayerStats && modalStates.statsTarget && (
+        <PlayerStatsModal
+          player={modalStates.statsTarget}
+          stats={statsForPlayer}
+          onRename={(playerId, displayName) => {
+            modalStates.closePlayerStats();
+            modalStates.openRenameModal(playerId, displayName);
+          }}
+          onClose={modalStates.closePlayerStats}
         />
       )}
     </>

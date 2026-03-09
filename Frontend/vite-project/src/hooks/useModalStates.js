@@ -16,14 +16,10 @@ function useModalStates() {
   const [showDLSCalculator, setShowDLSCalculator] = useState(false);
   const [showWinProbability, setShowWinProbability] = useState(false);
   const [showRetiredHurtModal, setShowRetiredHurtModal] = useState(false);
-
-  // ✅ Dismiss Bowler modal
   const [showDismissBowlerModal, setShowDismissBowlerModal] = useState(false);
-
-  // ✅ No Result modal
   const [showNoResultModal, setShowNoResultModal] = useState(false);
 
-  // ✅ NEW: Rename Player modal
+  // Rename Player modal
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameTarget, setRenameTarget] = useState(null); // { playerId, displayName }
 
@@ -35,6 +31,20 @@ function useModalStates() {
   const closeRenameModal = () => {
     setShowRenameModal(false);
     setRenameTarget(null);
+  };
+
+  // ✅ NEW: Player Stats modal
+  const [showPlayerStats, setShowPlayerStats] = useState(false);
+  const [statsTarget, setStatsTarget] = useState(null); // player object
+
+  const openPlayerStats = (player) => {
+    setStatsTarget(player);
+    setShowPlayerStats(true);
+  };
+
+  const closePlayerStats = () => {
+    setShowPlayerStats(false);
+    setStatsTarget(null);
   };
 
   return {
@@ -55,11 +65,16 @@ function useModalStates() {
     showRetiredHurtModal, setShowRetiredHurtModal,
     showDismissBowlerModal, setShowDismissBowlerModal,
     showNoResultModal, setShowNoResultModal,
-    // ✅ NEW
+    // Rename
     showRenameModal, setShowRenameModal,
     renameTarget,
     openRenameModal,
     closeRenameModal,
+    // ✅ NEW: Stats
+    showPlayerStats,
+    statsTarget,
+    openPlayerStats,
+    closePlayerStats,
   };
 }
 
