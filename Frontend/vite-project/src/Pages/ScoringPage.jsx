@@ -7,6 +7,7 @@ import OverBalls from "../Components/Scoring/OverBalls";
 import BatsmenRow from "../Components/Scoring/BatsmenRow";
 import RunControls from "../Components/Scoring/RunControls";
 import ModalManager from "../Components/Scoring/ModalManager";
+import HatTrickBanner from "../Components/Scoring/HatTrickBanner";
 import styles from "../Components/Scoring/scoring.module.css";
 
 import useMatchEngine from "../hooks/useMatchEngine";
@@ -16,6 +17,7 @@ import useModalStates from "../hooks/useModalStates";
 import useWicketFlow from "../hooks/useWicketFlow";
 import useInningsData from "../hooks/useInningsData";
 import useHistorySnapshot from "../hooks/useHistorySnapshot";
+import useHatTrick from "../hooks/useHatTrick";
 
 function ScoringPage() {
   const location = useLocation();
@@ -24,12 +26,12 @@ function ScoringPage() {
 
   const innings2SnapshotCountRef = useRef(0);
   const currentInningsRef = useRef(1);
-  // ✅ NEW: track opening batsmen for stats history replay
   const initialStrikerRef = useRef(null);
   const initialNonStrikerRef = useRef(null);
 
   const modalStates = useModalStates();
   const wicketFlow = useWicketFlow();
+  const hatTrickHook = useHatTrick();
 
   const playersHook = usePlayersAndBowlers(updatedMatchData);
   const partnershipsHook = usePartnerships();
@@ -64,7 +66,7 @@ function ScoringPage() {
     engine.innings1History,
     engine.winner,
     engine.extras,
-    engine.innings1Extras,  // ✅ NEW
+    engine.innings1Extras,
   );
 
   const historySnapshotHook = useHistorySnapshot(
@@ -90,12 +92,14 @@ function ScoringPage() {
     playersHook.outBatsman,
     playersHook.retiredPlayers,
     engine.innings,
-    engine.extras,   // ✅ NEW
+    engine.extras,
   );
 
   useEffect(() => {
     if (engine.innings === 1) {
       innings2SnapshotCountRef.current = 0;
+    } else if (engine.innings === 2) {
+      hatTrickHook.resetTracker();
     }
   }, [engine.innings]);
 
@@ -176,6 +180,10 @@ function ScoringPage() {
     }
 
     engine.handleRun(r);
+
+    // ✅ Track non-wicket legal ball for hat-trick
+    const bowlerName = playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName || "Unknown";
+    hatTrickHook.trackBall(bowlerName, false, false);
   };
 
   const handleRetiredHurt = () => {
@@ -210,7 +218,7 @@ function ScoringPage() {
         engine.wickets,
         engine.overs,
         engine.balls,
-        engine.extras,  // ✅ NEW
+        engine.extras,
       );
       inningsDataHook.setInnings2Data(liveData);
       inningsDataHook.setMatchCompleted(true);
@@ -233,6 +241,10 @@ function ScoringPage() {
     ]).size;
 
     playersHook.setDismissal(wicketFlow.selectedWicketType, fielder, bowlerName, currentOutBatsman);
+
+    // ✅ Track wicket for hat-trick
+    const isRunout = wicketFlow.selectedWicketType === 'runout';
+    hatTrickHook.trackBall(bowlerName, true, isRunout);
 
     if (wicketFlow.selectedWicketType !== "runout") {
       playersHook.addWicketToBowler();
@@ -342,30 +354,24 @@ function ScoringPage() {
     alert(`✅ Bowler limit changed from ${oldLimit} to ${newLimit} overs`);
   };
 
-  /* ================= HANDLE HIT WICKET =================  */
   const handleWicketTypeSelectWithHitWicket = (wicketType) => {
     wicketFlow.handleWicketTypeSelect(wicketType);
 
     if (wicketType === "hitwicket") {
       const bowlerName = playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName || "Unknown";
-      const currentOutBatsman = playersHook.strikerIndex;  // capture NOW before any state changes
+      const currentOutBatsman = playersHook.strikerIndex;
       const nextWickets = engine.wickets + 1;
 
-      // Set dismissal text on the batsman FIRST (before any replacements)
       playersHook.setDismissal("hitwicket", null, bowlerName, currentOutBatsman);
 
-      // Wicket + ball counted for bowler
-      playersHook.addWicketToBowler();
+      // ✅ Track hit-wicket for hat-trick
+      hatTrickHook.trackBall(bowlerName, true, false);
 
-      // Partnership
+      playersHook.addWicketToBowler();
       partnershipsHook.addBallToPartnership();
       partnershipsHook.savePartnership(engine.score, nextWickets);
       partnershipsHook.resetPartnership();
-
-      // Engine wicket (advances balls/overs, logs HW event)
       engine.handleWicket(false, true);
-
-      // Store outBatsman index so NewBatsmanModal confirm knows who to replace
       playersHook.setOutBatsman(currentOutBatsman);
       playersHook.setIsWicketPending(true);
 
@@ -419,7 +425,7 @@ function ScoringPage() {
               matchData={updatedMatchData}
               currentTeam={currentBattingTeam}
               wickets={engine.wickets}
-              onStatsClick={modalStates.openPlayerStats}   // ✅ NEW
+              onStatsClick={modalStates.openPlayerStats}
             />
           )}
 
@@ -445,7 +451,7 @@ function ScoringPage() {
                 partnershipsHook.addBallToPartnership();
                 engine.handleBye(r);
               }}
-              onLegBye={(r) => {                          // ✅ NEW
+              onLegBye={(r) => {
                 triggerSnapshotWithTracking();
                 playersHook.addBallToBowler();
                 partnershipsHook.addExtraToPartnership(r);
@@ -520,13 +526,12 @@ function ScoringPage() {
         balls={engine.balls}
         completeHistory={engine.completeHistory}
         innings={engine.innings}
-        liveExtras={engine.extras}   // ✅ NEW
+        liveExtras={engine.extras}
         onStartInnings={(s, ns, b) => {
           playersHook.startInnings(s, ns, b);
           setTimeout(() => {
             const p = playersHook.players;
-            // ✅ Capture opening batsmen for stats history replay
-            initialStrikerRef.current    = p[0]?.playerId ?? null;
+            initialStrikerRef.current = p[0]?.playerId ?? null;
             initialNonStrikerRef.current = p[1]?.playerId ?? null;
             partnershipsHook.startPartnership(
               p[0] ? { playerId: p[0].playerId, displayName: p[0].displayName } : { playerId: "", displayName: s },
@@ -550,8 +555,6 @@ function ScoringPage() {
               );
             }, 50);
           } else {
-            // ✅ Use replaceBatsman (not confirmNewBatsman) so dismissed player
-            //    is saved to allPlayers history — works for hit wicket and all wickets
             playersHook.replaceBatsman(playersHook.outBatsman, name);
             playersHook.setIsWicketPending(false);
             setTimeout(() => {
@@ -588,7 +591,7 @@ function ScoringPage() {
           }, 50);
         }}
         onConfirmNewBowler={playersHook.confirmNewBowler}
-        onWicketTypeSelect={handleWicketTypeSelectWithHitWicket}  // ✅ NEW
+        onWicketTypeSelect={handleWicketTypeSelectWithHitWicket}
         onFielderConfirm={handleFielderConfirm}
         onFielderCancel={wicketFlow.cancelWicketFlow}
         onChangePlayersConfirm={handleChangePlayersConfirm}
@@ -598,10 +601,18 @@ function ScoringPage() {
         onNoResultConfirm={handleNoResultConfirm}
         onRenameConfirm={(playerId, newName) => playersHook.renamePlayer(playerId, newName)}
         renameModalState={modalStates}
-        onStatsClick={modalStates.openPlayerStats}                     // ✅ NEW
-        initialStrikerPlayerId={initialStrikerRef.current}             // ✅ NEW
-        initialNonStrikerPlayerId={initialNonStrikerRef.current}       // ✅ NEW
+        onStatsClick={modalStates.openPlayerStats}
+        initialStrikerPlayerId={initialStrikerRef.current}
+        initialNonStrikerPlayerId={initialNonStrikerRef.current}
       />
+
+      {/* ✅ Hat-trick celebration banner */}
+      {hatTrickHook.showHatTrick && (
+        <HatTrickBanner
+          bowlerName={hatTrickHook.hatTrickBowler}
+          onClose={hatTrickHook.closeHatTrick}
+        />
+      )}
     </div>
   );
 }

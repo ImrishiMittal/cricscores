@@ -40,8 +40,9 @@ function InfoStrip({
       ? matchData.teamB
       : matchData.teamA;
 
+  // ✅ FIXED: Show wickets/runs in bowler display
   const bowlerDisplay = currentBowler
-    ? `${addCaptainTag(currentBowler.displayName, matchData, bowlingTeam)} - ${currentBowler.overs || 0}.${currentBowler.balls || 0} [${getBowlerEconomy(currentBowler)}]`  // ✅ was currentBowler.name
+    ? `${addCaptainTag(currentBowler.displayName, matchData, bowlingTeam)} - ${currentBowler.wickets || 0}/${currentBowler.runs || 0} in ${currentBowler.overs || 0}.${currentBowler.balls || 0} [${getBowlerEconomy(currentBowler)}]`
     : addCaptainTag(bowler, matchData, bowlingTeam);
 
   return (
