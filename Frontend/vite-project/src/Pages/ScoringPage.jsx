@@ -190,6 +190,7 @@ function ScoringPage() {
 
   const handleRetiredHurt = () => {
     if (playersHook.players.length < 2) return;
+    if (playersHook.isWicketPending) return;
     modalStates.setShowRetiredHurtModal(true);
   };
 
@@ -479,6 +480,7 @@ function ScoringPage() {
               onSwapStrike={playersHook.swapStrike}
               onUndo={undoLastBall}
               onRetiredHurt={handleRetiredHurt}
+              isWicketPending={playersHook.isWicketPending}
               onDismissBowler={handleDismissBowler}
               onNoResult={handleNoResult}
             />
