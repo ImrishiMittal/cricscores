@@ -1,13 +1,6 @@
 import React from 'react';
 import styles from './BatsmanCard.module.css';
 
-/**
- * PlayerStatsModal - Shows advanced stats for a batsman
- * @param {Object} player - Player object with displayName, runs, balls
- * @param {Object} stats - Stats from usePlayerStats hook
- * @param {Function} onRename - Handler to open rename modal
- * @param {Function} onClose - Handler to close stats modal
- */
 function PlayerStatsModal({ player, stats, onRename, onClose }) {
   if (!player) return null;
 
@@ -17,13 +10,13 @@ function PlayerStatsModal({ player, stats, onRename, onClose }) {
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.modalTitle}>BATSMAN</h2>
-        
+
         <div className={styles.playerName}>{player.displayName}</div>
-        
+
         <div className={styles.mainStats}>
           {player.runs} ({player.balls} balls)
         </div>
-        
+
         <div className={styles.strikeRate}>
           Strike Rate: <span className={styles.srValue}>{strikeRate}</span>
         </div>
@@ -38,13 +31,7 @@ function PlayerStatsModal({ player, stats, onRename, onClose }) {
           <span className={styles.statIcon}>💥</span>
           <span className={styles.statLabel}>Boundary %</span>
           <span className={styles.statBar}>
-            <span 
-              className={styles.statFill} 
-              style={{ 
-                width: `${Math.min(stats.boundaryPercent, 100)}%`,
-                backgroundColor: '#e74c3c'
-              }}
-            />
+            <span className={styles.statFill} style={{ width: `${Math.min(stats.boundaryPercent, 100)}%`, backgroundColor: '#e74c3c' }} />
           </span>
           <span className={styles.statValue}>{stats.boundaryPercent}%</span>
         </div>
@@ -53,13 +40,7 @@ function PlayerStatsModal({ player, stats, onRename, onClose }) {
           <span className={styles.statIcon}>⚫</span>
           <span className={styles.statLabel}>Dot Ball %</span>
           <span className={styles.statBar}>
-            <span 
-              className={styles.statFill} 
-              style={{ 
-                width: `${Math.min(stats.dotBallPercent, 100)}%`,
-                backgroundColor: '#95a5a6'
-              }}
-            />
+            <span className={styles.statFill} style={{ width: `${Math.min(stats.dotBallPercent, 100)}%`, backgroundColor: '#95a5a6' }} />
           </span>
           <span className={styles.statValue}>{stats.dotBallPercent}%</span>
         </div>
@@ -68,19 +49,23 @@ function PlayerStatsModal({ player, stats, onRename, onClose }) {
           <span className={styles.statIcon}>🔄</span>
           <span className={styles.statLabel}>Rotation %</span>
           <span className={styles.statBar}>
-            <span 
-              className={styles.statFill} 
-              style={{ 
-                width: `${Math.min(stats.rotationPercent, 100)}%`,
-                backgroundColor: '#3498db'
-              }}
-            />
+            <span className={styles.statFill} style={{ width: `${Math.min(stats.rotationPercent, 100)}%`, backgroundColor: '#3498db' }} />
           </span>
           <span className={styles.statValue}>{stats.rotationPercent}%</span>
         </div>
 
+        {/* ✅ Others % — covers 2s and other even non-boundary runs */}
+        <div className={styles.statRow}>
+          <span className={styles.statIcon}>2️⃣</span>
+          <span className={styles.statLabel}>Others %</span>
+          <span className={styles.statBar}>
+            <span className={styles.statFill} style={{ width: `${Math.min(stats.otherPercent, 100)}%`, backgroundColor: '#f39c12' }} />
+          </span>
+          <span className={styles.statValue}>{stats.otherPercent}%</span>
+        </div>
+
         <div className={styles.buttonRow}>
-          <button 
+          <button
             className={styles.renameBtn}
             onClick={() => {
               onClose();

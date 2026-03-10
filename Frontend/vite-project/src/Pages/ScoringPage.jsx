@@ -66,7 +66,7 @@ function ScoringPage() {
     engine.innings1History,
     engine.winner,
     engine.extras,
-    engine.innings1Extras,
+    engine.innings1Extras
   );
 
   const historySnapshotHook = useHistorySnapshot(
@@ -92,7 +92,7 @@ function ScoringPage() {
     playersHook.outBatsman,
     playersHook.retiredPlayers,
     engine.innings,
-    engine.extras,
+    engine.extras
   );
 
   useEffect(() => {
@@ -131,6 +131,7 @@ function ScoringPage() {
     }
   };
 
+  // ✅ FIXED: removed stray engine.handleWicket calls, correct strikerId passing
   const handleRunClick = (r) => {
     if (wicketFlow.waitingForRunoutRun) {
       wicketFlow.handleRunoutWithRuns(r);
@@ -179,7 +180,8 @@ function ScoringPage() {
       partnershipsHook.addRunsToPartnership(r, playersHook.players[playersHook.strikerIndex].playerId);
     }
 
-    engine.handleRun(r);
+    // ✅ Pass strikerId to history
+    engine.handleRun(r, playersHook.players[playersHook.strikerIndex]?.playerId);
 
     // ✅ Track non-wicket legal ball for hat-trick
     const bowlerName = playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName || "Unknown";
@@ -218,7 +220,7 @@ function ScoringPage() {
         engine.wickets,
         engine.overs,
         engine.balls,
-        engine.extras,
+        engine.extras
       );
       inningsDataHook.setInnings2Data(liveData);
       inningsDataHook.setMatchCompleted(true);
@@ -226,6 +228,7 @@ function ScoringPage() {
     }, 150);
   };
 
+  // ✅ FIXED: strikerId passed to engine.handleWicket
   const handleFielderConfirm = ({ fielder, newBatsman }) => {
     const bowlerName = playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName || "Unknown";
     const currentOutBatsman = playersHook.strikerIndex;
@@ -243,7 +246,7 @@ function ScoringPage() {
     playersHook.setDismissal(wicketFlow.selectedWicketType, fielder, bowlerName, currentOutBatsman);
 
     // ✅ Track wicket for hat-trick
-    const isRunout = wicketFlow.selectedWicketType === 'runout';
+    const isRunout = wicketFlow.selectedWicketType === "runout";
     hatTrickHook.trackBall(bowlerName, true, isRunout);
 
     if (wicketFlow.selectedWicketType !== "runout") {
@@ -258,7 +261,13 @@ function ScoringPage() {
 
     partnershipsHook.savePartnership(engine.score, nextWickets);
     partnershipsHook.resetPartnership();
-    engine.handleWicket(wicketFlow.selectedWicketType === "runout");
+
+    // ✅ Pass strikerId to handleWicket
+    engine.handleWicket(
+      wicketFlow.selectedWicketType === "runout",
+      false,
+      playersHook.players[currentOutBatsman]?.playerId
+    );
 
     const allWicketsFallen = nextWickets >= currentMaxWickets;
 
@@ -289,7 +298,9 @@ function ScoringPage() {
       const nonStriker = playersHook.players[playersHook.nonStrikerIndex];
       partnershipsHook.startPartnership(
         { playerId: "new-" + Date.now(), displayName: newBatsman },
-        nonStriker ? { playerId: nonStriker.playerId, displayName: nonStriker.displayName } : { playerId: "", displayName: "Unknown" }
+        nonStriker
+          ? { playerId: nonStriker.playerId, displayName: nonStriker.displayName }
+          : { playerId: "", displayName: "Unknown" }
       );
     }, 150);
 
@@ -354,6 +365,7 @@ function ScoringPage() {
     alert(`✅ Bowler limit changed from ${oldLimit} to ${newLimit} overs`);
   };
 
+  // ✅ FIXED: strikerId passed to engine.handleWicket
   const handleWicketTypeSelectWithHitWicket = (wicketType) => {
     wicketFlow.handleWicketTypeSelect(wicketType);
 
@@ -371,7 +383,10 @@ function ScoringPage() {
       partnershipsHook.addBallToPartnership();
       partnershipsHook.savePartnership(engine.score, nextWickets);
       partnershipsHook.resetPartnership();
-      engine.handleWicket(false, true);
+
+      // ✅ Pass strikerId to handleWicket
+      engine.handleWicket(false, true, playersHook.players[currentOutBatsman]?.playerId);
+
       playersHook.setOutBatsman(currentOutBatsman);
       playersHook.setIsWicketPending(true);
 
@@ -396,7 +411,9 @@ function ScoringPage() {
             balls={engine.balls}
             totalOvers={updatedMatchData.overs}
             target={engine.target}
-            toss={`${matchData.tossWinner} elected to ${matchData.battingFirst === matchData.tossWinner ? "bat" : "bowl"}`}
+            toss={`${matchData.tossWinner} elected to ${
+              matchData.battingFirst === matchData.tossWinner ? "bat" : "bowl"
+            }`}
           />
 
           <InfoStrip
@@ -578,6 +595,8 @@ function ScoringPage() {
               nonStriker ? { playerId: nonStriker.playerId, displayName: nonStriker.displayName } : { playerId: "", displayName: "" }
             );
           }, 50);
+          // Temporarily add inside onRetiredHurtConfirm:
+console.log('🏥 Retired players list:', playersHook.retiredPlayers);
         }}
         onReturnRetiredConfirm={(retiredPlayerName) => {
           playersHook.returnRetiredBatsman(retiredPlayerName, playersHook.outBatsman);

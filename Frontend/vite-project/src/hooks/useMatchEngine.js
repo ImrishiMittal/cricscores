@@ -185,7 +185,7 @@ export default function useMatchEngine(matchData, swapStrike) {
     }
   }, [overs, balls, wickets, score, maxWickets, innings, matchOver, target, lastManBatting]);
 
-  const handleRun = (runs) => {
+  const handleRun = (runs, strikerId) => {
     if (matchOver) return;
     if (isFreeHit) setIsFreeHit(false);
 
@@ -200,7 +200,8 @@ export default function useMatchEngine(matchData, swapStrike) {
     if (!isLastManAlone && runs % 2 === 1) swapStrike();
 
     setCurrentOver((prev) => [...prev, { runs }]);
-    const runEntry = { event: "RUN", runs, over: overs, ball: balls };
+    // ✅ Add strikerId to entry
+    const runEntry = { event: "RUN", runs, over: overs, ball: balls, strikerId };
     completeHistoryRef.current = [...completeHistoryRef.current, runEntry];
     setCompleteHistory((prev) => [...prev, runEntry]);
 
@@ -220,7 +221,7 @@ export default function useMatchEngine(matchData, swapStrike) {
     checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
   };
 
-  const handleWicket = (isRunout = false, isHitWicket = false) => {
+  const handleWicket = (isRunout = false, isHitWicket = false, strikerId = null) => {
     if (matchOver) return;
 
     if (isFreeHit) {
@@ -249,10 +250,12 @@ export default function useMatchEngine(matchData, swapStrike) {
       return;
     }
 
+    // ✅ eventType defined BEFORE wicketEntry
     if (!isRunout) {
-      const eventType = isHitWicket ? "HW" : "WICKET";              // ✅ HW for hit wicket
+      const eventType = isHitWicket ? "HW" : "WICKET";
       setCurrentOver((prev) => [...prev, { type: isHitWicket ? "HW" : "W" }]);
-      const wicketEntry = { event: eventType, over: overs, ball: balls };
+      // ✅ strikerId included here
+      const wicketEntry = { event: eventType, over: overs, ball: balls, strikerId };
       completeHistoryRef.current = [...completeHistoryRef.current, wicketEntry];
       setCompleteHistory((prev) => [...prev, wicketEntry]);
     }
