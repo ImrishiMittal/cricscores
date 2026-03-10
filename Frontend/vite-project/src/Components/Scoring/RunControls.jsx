@@ -14,6 +14,7 @@ function RunControls({
   onSwapStrike,
   onUndo,
   onRetiredHurt,
+  isWicketPending,
   onDismissBowler,
   onNoResult,
 }) {
@@ -27,11 +28,7 @@ function RunControls({
       {/* ── Run buttons: 0–6 ── */}
       <div className={styles.runRow}>
         {[0, 1, 2, 3, 4, 5, 6].map((r) => (
-          <button
-            key={r}
-            className={styles.runBtn}
-            onClick={() => onRun(r)}
-          >
+          <button key={r} className={styles.runBtn} onClick={() => onRun(r)}>
             {r}
           </button>
         ))}
@@ -39,22 +36,40 @@ function RunControls({
 
       {/* ── Action buttons ── */}
       <div className={styles.eventRow}>
-        <button className={`${styles.eventBtn} ${styles.bye}`} onClick={handleBye}>
+        <button
+          className={`${styles.eventBtn} ${styles.bye}`}
+          onClick={handleBye}
+        >
           BYE
         </button>
-        <button className={`${styles.eventBtn} ${styles.wide}`} onClick={onWide}>
+        <button
+          className={`${styles.eventBtn} ${styles.wide}`}
+          onClick={onWide}
+        >
           WIDE
         </button>
-        <button className={`${styles.eventBtn} ${styles.noBall}`} onClick={onNoBall}>
+        <button
+          className={`${styles.eventBtn} ${styles.noBall}`}
+          onClick={onNoBall}
+        >
           NO BALL
         </button>
-        <button className={`${styles.eventBtn} ${styles.wicket}`} onClick={onWicket}>
+        <button
+          className={`${styles.eventBtn} ${styles.wicket}`}
+          onClick={onWicket}
+        >
           WICKET
         </button>
-        <button className={`${styles.eventBtn} ${styles.swap}`} onClick={onSwapStrike}>
+        <button
+          className={`${styles.eventBtn} ${styles.swap}`}
+          onClick={onSwapStrike}
+        >
           SWAP
         </button>
-        <button className={`${styles.eventBtn} ${styles.undo}`} onClick={onUndo}>
+        <button
+          className={`${styles.eventBtn} ${styles.undo}`}
+          onClick={onUndo}
+        >
           UNDO
         </button>
       </div>
@@ -65,6 +80,11 @@ function RunControls({
           <button
             className={`${styles.eventBtn} ${styles.retiredHurt}`}
             onClick={onRetiredHurt}
+            disabled={isWicketPending}
+            style={{
+              opacity: isWicketPending ? 0.4 : 1,
+              cursor: isWicketPending ? "not-allowed" : "pointer",
+            }}
           >
             🏥 RETIRED HURT
           </button>
@@ -73,7 +93,11 @@ function RunControls({
           {onDismissBowler && (
             <button
               className={`${styles.eventBtn}`}
-              style={{ background: "#e74c3c", color: "#fff", fontWeight: "bold" }}
+              style={{
+                background: "#e74c3c",
+                color: "#fff",
+                fontWeight: "bold",
+              }}
               onClick={onDismissBowler}
             >
               🚫 DISMISS BOWLER
@@ -84,7 +108,11 @@ function RunControls({
           {onNoResult && (
             <button
               className={`${styles.eventBtn}`}
-              style={{ background: "#8e44ad", color: "#fff", fontWeight: "bold" }}
+              style={{
+                background: "#8e44ad",
+                color: "#fff",
+                fontWeight: "bold",
+              }}
               onClick={onNoResult}
             >
               🌧️ NO RESULT
