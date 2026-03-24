@@ -479,6 +479,25 @@ export default function usePlayersAndBowlers(matchData) {
   const getDisplayName = (list, playerId) =>
     list.find((p) => p.playerId === playerId)?.displayName ?? playerId;
 
+    const resetForNewInnings = () => {
+      console.log("🔄 Resetting players for new innings / super over");
+    
+      setPlayers([]);
+      setAllPlayers([]);
+      setBowlers([]);
+    
+      setStrikerIndex(0);
+      setNonStrikerIndex(1);
+    
+      setCurrentBowlerIndex(0);
+    
+      setIsWicketPending(false);
+      setOutBatsman(null);
+    
+      retiredPlayersRef.current = [];
+      setRetiredPlayers([]);
+    };
+
   /* ================= EXPORTS ================= */
   return {
     players,
@@ -516,5 +535,6 @@ export default function usePlayersAndBowlers(matchData) {
     getDisplayName,      // ✅ NEW — resolve displayName from playerId for UI
     bowlerError,
     setBowlerError,
+    resetForNewInnings,
   };
 }

@@ -82,6 +82,15 @@ export default function usePartnerships() {
     setPartnershipHistory(JSON.parse(JSON.stringify(snap.partnershipHistory || [])));
   };
 
+
+  const resetAll = () => {
+    setPartnershipRuns(0);
+    setPartnershipBalls(0);
+    setStriker1Contribution(0);
+    setStriker2Contribution(0);
+    setPartnershipHistory([]);
+    setCurrentPartnershipBatsmen([]);
+  };
   return {
     partnershipRuns,
     partnershipBalls,
@@ -97,5 +106,6 @@ export default function usePartnerships() {
     savePartnership,
     resetPartnership,
     restorePartnershipState,
+    resetAll,
   };
 }

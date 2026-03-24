@@ -71,6 +71,8 @@ function ModalManager({
   onStatsClick,
   initialStrikerPlayerId,
   initialNonStrikerPlayerId,
+  isSuperOver,
+  superOverNumber,
 }) {
   // ✅ Calculate stats for the currently selected player
   const statsForPlayer = usePlayerStats(
@@ -153,6 +155,8 @@ function ModalManager({
           innings2Score={innings2Score}
           matchData={updatedMatchData}
           onClose={() => modalStates.setShowSummary(false)}
+          isSuperOver={isSuperOver}
+          superOverNumber={superOverNumber}
         />
       )}
 

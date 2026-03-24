@@ -10,8 +10,9 @@ function ScoreHeader({
   totalOvers,
   target,
   toss,
+  isSuperOver,
+  superOverNumber,
 }) {
-  // ✅ Calculate Predicted Score (only for 1st innings)
   const calculatePredictedScore = () => {
     if (innings !== 1) return null;
     const ballsBowled = overs * 6 + balls;
@@ -21,7 +22,6 @@ function ScoreHeader({
     return predictedScore;
   };
 
-  // ✅ Calculate Runs Required (only for 2nd innings)
   const calculateRunsRequired = () => {
     if (innings !== 2 || !target) return null;
     const runsNeeded = target - score;
@@ -40,26 +40,35 @@ function ScoreHeader({
   return (
     <div className={styles.container}>
       <div className={styles.content}>
+
+        {/* ✅ FIX: Super Over badge placed ABOVE topRow so it doesn't
+            collide with the absolute-positioned corner boxes */}
+        {isSuperOver && (
+          <div className={styles.superOverBadge}>
+            ⚡ SUPER OVER {superOverNumber}
+          </div>
+        )}
+
         <div className={styles.topRow}>
-          {/* 🔹 LEFT: Total Overs (absolute positioned) */}
+          {/* LEFT: Total Overs (absolute positioned) */}
           <div className={styles.totalOversBox}>
             <span className={styles.totalOversLabel}>TOTAL OVERS</span>
             <span className={styles.totalOversValue}>{totalOvers}</span>
           </div>
 
-          {/* 🔹 CENTER: Team name, toss, and score */}
+          {/* CENTER: Team name, toss, and score */}
           <div className={styles.topSection}>
             <p className={styles.label}>INNINGS {innings}</p>
             <p className={styles.toss}>TOSS : {toss}</p>
             <h2 className={styles.teamName}>{teamName}</h2>
-            
+
             <div className={styles.scoreDisplay}>
               <span className={styles.score}>{score}</span>
               <span className={styles.wickets}>/{wickets}</span>
             </div>
           </div>
 
-          {/* 🔹 RIGHT: Predicted / Required (absolute positioned) */}
+          {/* RIGHT: Predicted / Required (absolute positioned) */}
           {innings === 1 && predictedScore !== null && (
             <div className={styles.predictedBox}>
               <span className={styles.predictedLabel}>PREDICTED</span>
@@ -77,6 +86,7 @@ function ScoreHeader({
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
