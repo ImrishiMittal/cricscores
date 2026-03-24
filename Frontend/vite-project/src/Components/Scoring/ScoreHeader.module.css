@@ -349,3 +349,16 @@
 .scoreRow {
   display: none;
 }
+
+.superOverBadge {
+  background: linear-gradient(135deg, #e94560 0%, #c7365f 100%);
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  text-align: center;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+  animation: pulse 1.5s infinite;
+}

@@ -33,7 +33,7 @@ function useModalStates() {
     setRenameTarget(null);
   };
 
-  // ✅ NEW: Player Stats modal
+  // Player Stats modal
   const [showPlayerStats, setShowPlayerStats] = useState(false);
   const [statsTarget, setStatsTarget] = useState(null); // player object
 
@@ -45,6 +45,19 @@ function useModalStates() {
   const closePlayerStats = () => {
     setShowPlayerStats(false);
     setStatsTarget(null);
+  };
+
+  // ✅ NEW: Super Over modal
+  const [showSuperOverModal, setShowSuperOverModal] = useState(false);
+  const [superOverNumber, setSuperOverNumber] = useState(1);
+
+  const openSuperOverModal = (soNumber = 1) => {
+    setSuperOverNumber(soNumber);
+    setShowSuperOverModal(true);
+  };
+
+  const closeSuperOverModal = () => {
+    setShowSuperOverModal(false);
   };
 
   return {
@@ -70,11 +83,16 @@ function useModalStates() {
     renameTarget,
     openRenameModal,
     closeRenameModal,
-    // ✅ NEW: Stats
+    // Stats
     showPlayerStats,
     statsTarget,
     openPlayerStats,
     closePlayerStats,
+    // ✅ NEW: Super Over
+    showSuperOverModal,
+    superOverNumber,
+    openSuperOverModal,
+    closeSuperOverModal,
   };
 }
 

@@ -24,7 +24,10 @@ function usePlayerStats(player, completeHistory) {
     let totalBalls = 0;
 
     completeHistory.forEach((entry) => {
-      if (entry.strikerId !== player.playerId) return;
+      // ✅ Match by strikerId first, fall back to strikerName
+      const matchesById = entry.strikerId && entry.strikerId === player.playerId;
+      const matchesByName = !entry.strikerId && entry.strikerName === player.displayName;
+      if (!matchesById && !matchesByName) return;
 
       if (entry.event === "RUN") {
         totalBalls++;
