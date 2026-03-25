@@ -19,10 +19,11 @@ import RetiredHurtModal from "./RetiredHurtModal";
 import DismissBowlerModal from "./DismissBowlerModal";
 import NoResultModal from "./NoResultModal";
 import RenameModal from "./RenameModal";
-import PlayerStatsModal from './PlayerStatsModal';
-import BowlerStatsModal from './BowlerStatsModal';   // ✅ NEW
-import usePlayerStats from '../../hooks/usePlayerStats';
-import useBowlerStats from '../../hooks/useBowlerStats'; // ✅ NEW
+import PlayerStatsModal from "./PlayerStatsModal";
+import BowlerStatsModal from "./BowlerStatsModal"; // ✅ NEW
+import usePlayerStats from "../../hooks/usePlayerStats";
+import useBowlerStats from "../../hooks/useBowlerStats"; // ✅ NEW
+import RunoutChoiceModal from "./RunoutChoiceModal";
 
 function ModalManager({
   modalStates,
@@ -35,6 +36,7 @@ function ModalManager({
   isWicketPending,
   isNewBowlerPending,
   strikerIndex,
+  nonStrikerIndex,
   partnershipHistory,
   innings1Data,
   innings2Data,
@@ -69,7 +71,7 @@ function ModalManager({
   onDismissBowlerConfirm,
   onNoResultConfirm,
   onRenameConfirm,
-  onRenameBowlerConfirm,   // ✅ NEW
+  onRenameBowlerConfirm, // ✅ NEW
   liveExtras,
   onStatsClick,
   initialStrikerPlayerId,
@@ -130,7 +132,9 @@ function ModalManager({
 
       {modalStates.showDismissBowlerModal && (
         <DismissBowlerModal
-          dismissedBowlerName={bowlers[currentBowlerIndex]?.displayName || "Current Bowler"}
+          dismissedBowlerName={
+            bowlers[currentBowlerIndex]?.displayName || "Current Bowler"
+          }
           existingBowlers={bowlers}
           onConfirm={onDismissBowlerConfirm}
           onClose={() => modalStates.setShowDismissBowlerModal(false)}
@@ -183,9 +187,9 @@ function ModalManager({
           innings1Data={innings1Data}
           innings2Data={innings2Data}
           players={players}
-          allPlayers={
-            allPlayers.filter((ap) => !players.some((p) => p.playerId === ap.playerId))
-          }
+          allPlayers={allPlayers.filter(
+            (ap) => !players.some((p) => p.playerId === ap.playerId)
+          )}
           bowlers={bowlers}
           score={score}
           wickets={wickets}
@@ -292,9 +296,13 @@ function ModalManager({
           innings={innings}
           onClose={() => modalStates.setShowMoreMenu(false)}
           onOpenDLS={() => modalStates.setShowDLSCalculator(true)}
-          onOpenChangePlayers={() => modalStates.setShowChangePlayersModal(true)}
+          onOpenChangePlayers={() =>
+            modalStates.setShowChangePlayersModal(true)
+          }
           onOpenChangeOvers={() => modalStates.setShowChangeOversModal(true)}
-          onOpenChangeBowlerLimit={() => modalStates.setShowChangeBowlerLimitModal(true)}
+          onOpenChangeBowlerLimit={() =>
+            modalStates.setShowChangeBowlerLimitModal(true)
+          }
           onOpenWinProbability={() => modalStates.setShowWinProbability(true)}
         />
       )}
@@ -340,10 +348,26 @@ function ModalManager({
             modalStates.openRenameModal(playerId, displayName);
             // We patch the target after opening so isBowler flag is set
             // Use a tiny helper instead — see note below
-            modalStates.setRenameTarget({ playerId, displayName, isBowler: true });
+            modalStates.setRenameTarget({
+              playerId,
+              displayName,
+              isBowler: true,
+            });
             modalStates.setShowRenameModal(true);
           }}
           onClose={modalStates.closeBowlerStats}
+        />
+      )}
+      {wicketFlow.showRunoutChoiceModal && (
+        <RunoutChoiceModal
+          striker={players[strikerIndex]?.displayName}
+          nonStriker={players[nonStrikerIndex]?.displayName}
+          onSelect={(who) => {
+            wicketFlow.setRunoutBatsmanChoice(who);
+            wicketFlow.setShowRunoutChoiceModal(false);
+            wicketFlow.setShowFielderInputModal(true);
+          }}
+          onClose={() => wicketFlow.setShowRunoutChoiceModal(false)}
         />
       )}
     </>

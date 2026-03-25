@@ -3,81 +3,101 @@ import { useState } from "react";
 function useWicketFlow() {
   const [showWicketTypeModal, setShowWicketTypeModal] = useState(false);
   const [showFielderInputModal, setShowFielderInputModal] = useState(false);
+
   const [selectedWicketType, setSelectedWicketType] = useState(null);
+
   const [pendingRunoutRuns, setPendingRunoutRuns] = useState(null);
   const [waitingForRunoutRun, setWaitingForRunoutRun] = useState(false);
 
+  const [runoutBatsmanChoice, setRunoutBatsmanChoice] = useState(null);
+  const [showRunoutChoiceModal, setShowRunoutChoiceModal] = useState(false);
+
+  // start wicket
   const startWicketFlow = (isFreeHit) => {
     if (isFreeHit) {
       alert("Cannot take a wicket on a Free Hit!");
       return false;
     }
-    console.log("🎯 Wicket button clicked");
+
     setShowWicketTypeModal(true);
     return true;
   };
 
+  // select wicket type
   const handleWicketTypeSelect = (wicketType) => {
-    console.log("🎯 Wicket type selected:", wicketType);
-
     setShowWicketTypeModal(false);
     setSelectedWicketType(wicketType);
 
     if (wicketType === "runout") {
-      console.log("🏃 Runout selected - waiting for runs");
       setWaitingForRunoutRun(true);
       return;
     }
 
-    // ✅ Hit wicket: no fielder needed — skip fielder modal, go straight to new batsman
     if (wicketType === "hitwicket") {
-      console.log("🏏 Hit wicket — no fielder needed, proceeding directly");
-      // showFielderInputModal stays false — ScoringPage handles it via isWicketPending
       return;
     }
 
-    console.log("📝 Showing fielder input modal for:", wicketType);
     setShowFielderInputModal(true);
   };
 
+  // runout runs selected
   const handleRunoutWithRuns = (runs) => {
-    console.log("🏃 Run out with", runs, "runs");
     setPendingRunoutRuns(runs);
     setWaitingForRunoutRun(false);
-    setShowFielderInputModal(true);
+
+    // show striker / non striker modal
+    setShowRunoutChoiceModal(true);
   };
 
+  // cancel
   const cancelWicketFlow = () => {
     setShowWicketTypeModal(false);
     setShowFielderInputModal(false);
+    setShowRunoutChoiceModal(false);
+
     setSelectedWicketType(null);
     setPendingRunoutRuns(null);
     setWaitingForRunoutRun(false);
+    setRunoutBatsmanChoice(null);
   };
 
+  // complete
   const completeWicketFlow = () => {
+    setShowWicketTypeModal(false);
     setShowFielderInputModal(false);
+    setShowRunoutChoiceModal(false);
+
     setSelectedWicketType(null);
     setPendingRunoutRuns(null);
     setWaitingForRunoutRun(false);
+    setRunoutBatsmanChoice(null);
   };
 
   return {
     showWicketTypeModal,
     showFielderInputModal,
+    showRunoutChoiceModal,
+
     selectedWicketType,
     pendingRunoutRuns,
     waitingForRunoutRun,
+    runoutBatsmanChoice,
+
     startWicketFlow,
     handleWicketTypeSelect,
     handleRunoutWithRuns,
+
     cancelWicketFlow,
     completeWicketFlow,
+
     setShowWicketTypeModal,
     setShowFielderInputModal,
+    setShowRunoutChoiceModal,
+
     setSelectedWicketType,
     setPendingRunoutRuns,
     setWaitingForRunoutRun,
+    setRunoutBatsmanChoice,
   };
 }
 

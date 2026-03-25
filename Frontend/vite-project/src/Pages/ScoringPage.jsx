@@ -308,7 +308,12 @@ function ScoringPage() {
     const bowlerName =
       playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName ||
       "Unknown";
-    const currentOutBatsman = playersHook.strikerIndex;
+    let currentOutBatsman = playersHook.strikerIndex;
+
+    if (wicketFlow.selectedWicketType === "runout") {
+      // default striker, but may change later
+      currentOutBatsman = playersHook.strikerIndex;
+    }
 
     const currentBattingTeamKey =
       currentInningsRef.current === 1 ? "teamAPlayers" : "teamBPlayers";
@@ -335,19 +340,11 @@ function ScoringPage() {
 
     if (wicketFlow.selectedWicketType !== "runout") {
       playersHook.addWicketToBowler();
-    } else if (
-      wicketFlow.pendingRunoutRuns === null ||
-      wicketFlow.pendingRunoutRuns === 0
-    ) {
-      playersHook.addBallToBowler();
     }
+    
+    playersHook.addBallToBowler();
 
-    if (
-      wicketFlow.pendingRunoutRuns === null ||
-      wicketFlow.pendingRunoutRuns === 0
-    ) {
-      partnershipsHook.addBallToPartnership();
-    }
+    partnershipsHook.addBallToPartnership();
 
     partnershipsHook.savePartnership(engine.score, nextWickets);
     partnershipsHook.resetPartnership();
@@ -355,7 +352,8 @@ function ScoringPage() {
     engine.handleWicket(
       wicketFlow.selectedWicketType === "runout",
       false,
-      playersHook.players[currentOutBatsman]?.playerId
+      playersHook.players[currentOutBatsman]?.playerId,
+      wicketFlow.pendingRunoutRuns !== null
     );
 
     const allWicketsFallen = nextWickets >= currentMaxWickets;
@@ -478,7 +476,13 @@ function ScoringPage() {
       const bowlerName =
         playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName ||
         "Unknown";
-      const currentOutBatsman = playersHook.strikerIndex;
+        let currentOutBatsman = playersHook.strikerIndex;
+
+        if (wicketFlow.selectedWicketType === "runout") {
+          if (wicketFlow.runoutBatsmanChoice === "nonStriker") {
+            currentOutBatsman = playersHook.nonStrikerIndex;
+          }
+        }
       const nextWickets = engine.wickets + 1;
 
       playersHook.setDismissal(
@@ -903,6 +907,7 @@ function ScoringPage() {
         onStatsClick={modalStates.openPlayerStats}
         initialStrikerPlayerId={initialStrikerRef.current}
         initialNonStrikerPlayerId={initialNonStrikerRef.current}
+        nonStrikerIndex={playersHook.nonStrikerIndex}
       />
 
       {/* Hat-trick celebration banner */}
