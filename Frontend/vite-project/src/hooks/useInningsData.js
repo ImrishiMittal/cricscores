@@ -27,12 +27,14 @@ function useInningsData(
   innings1History,
   winner,
   extras,
-  innings1Extras,  // ✅ extras snapshot from before innings reset
+  innings1Extras,
 ) {
   const [innings1Data, setInnings1Data] = useState(null);
   const [innings2Data, setInnings2Data] = useState(null);
   const [matchCompleted, setMatchCompleted] = useState(false);
 
+  // ✅ NEW: Ref to preserve innings1Data even after state resets
+  const innings1DataRef = useRef(null);
   const innings2DataRef = useRef(null);
   const innings1HistoryRef = useRef([]);
 
@@ -57,7 +59,7 @@ function useInningsData(
     innings1Score,
     innings1History,
     extras,
-    innings1Extras,  // ✅ NEW
+    innings1Extras,
   };
 
   const captureCurrentInningsData = (
@@ -69,7 +71,7 @@ function useInningsData(
     wicketsData,
     oversData,
     ballsData,
-    extrasData,   // ✅ NEW
+    extrasData,
   ) => {
     const allBattedPlayers = [...(allPlayersData || []), ...(playersData || [])];
 
@@ -78,7 +80,7 @@ function useInningsData(
       wickets: wicketsData,
       overs: oversData,
       balls: ballsData,
-      extras: extrasData || { wides: 0, noBalls: 0, byes: 0, legByes: 0, total: 0 }, // ✅ NEW
+      extras: extrasData || { wides: 0, noBalls: 0, byes: 0, legByes: 0, total: 0 },
       battingStats: allBattedPlayers
         .filter((p) => p.balls > 0 || p.dismissal)
         .map((p) => ({
@@ -113,8 +115,11 @@ function useInningsData(
         c.players, c.allPlayers, c.bowlers,
         c.completeHistory,
         c.score, c.wickets, c.overs, c.balls,
-        c.extras   // ✅ NEW
+        c.extras
       );
+      
+      // ✅ Update both state and ref
+      innings2DataRef.current = inn2Data;
       setInnings2Data(inn2Data);
 
       setTimeout(() => {
@@ -145,8 +150,11 @@ function useInningsData(
       c.players, c.allPlayers, c.bowlers,
       historyToUse,
       scoreToUse, wicketsToUse, oversToUse, ballsToUse,
-      c.innings1Extras || c.extras   // ✅ use snapshot, fallback to live
+      c.innings1Extras || c.extras
     );
+    
+    // ✅ Update both state and ref
+    innings1DataRef.current = inn1Data;
     setInnings1Data(inn1Data);
 
     setTimeout(() => {
@@ -165,12 +173,16 @@ function useInningsData(
         players, allPlayers, bowlers,
         completeHistory,
         score, wickets, overs, balls,
-        extras   // ✅ NEW
+        extras
       );
+      
+      // ✅ Update both state and ref
+      innings2DataRef.current = inn2Data;
       setInnings2Data(inn2Data);
+      
       setTimeout(() => setMatchCompleted(true), 100);
     }
-  }, [matchOver, matchCompleted, players, allPlayers, bowlers, completeHistory, score, wickets, overs, balls, extras]);
+  }, [matchOver, matchCompleted, players, allPlayers, bowlers, completeHistory, score, wickets, overs, balls, extras, winner]);
 
   return {
     innings1Data,
@@ -178,6 +190,7 @@ function useInningsData(
     matchCompleted,
     innings1HistoryRef,
     innings2DataRef,
+    innings1DataRef,  // ✅ EXPORT the ref
     captureCurrentInningsData,
     setInnings2Data,
     setMatchCompleted,

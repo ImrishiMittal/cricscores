@@ -19,6 +19,7 @@ import useInningsData from "../hooks/useInningsData";
 import useHistorySnapshot from "../hooks/useHistorySnapshot";
 import useHatTrick from "../hooks/useHatTrick";
 import SuperOverModal from "../Components/Scoring/SuperOverModal";
+import FullScorecard from "../Components/Scoring/FullScorecard";
 
 function ScoringPage() {
   const location = useLocation();
@@ -30,9 +31,13 @@ function ScoringPage() {
   const initialStrikerRef = useRef(null);
   const initialNonStrikerRef = useRef(null);
 
-  // ✅ Freeze real match innings data before super over overwrites it
+  // ✅ Real match data captured synchronously BEFORE super over resets anything
   const realMatchInnings1DataRef = useRef(null);
   const realMatchInnings2DataRef = useRef(null);
+
+  // ✅ Guards to ensure SO data save effects fire exactly ONCE per super over
+  const soInnings1SavedRef = useRef(false);
+  const soCompleteSavedRef = useRef(false);
 
   const modalStates = useModalStates();
   const wicketFlow = useWicketFlow();
@@ -121,22 +126,31 @@ function ScoringPage() {
     engine.setOverCompleteEvent(null);
   }, [engine.overCompleteEvent, playersHook.currentBowlerIndex]);
 
-  // ✅ Freeze real match innings data the moment super over starts
+  // ✅ FIX: Capture SO innings 1 data exactly once when inningsChangeEvent.superOver fires
   useEffect(() => {
-    if (engine.isSuperOver && engine.superOverNumber === 1) {
-      if (inningsDataHook.innings1Data && !realMatchInnings1DataRef.current) {
-        realMatchInnings1DataRef.current = inningsDataHook.innings1Data;
-      }
-      if (inningsDataHook.innings2Data && !realMatchInnings2DataRef.current) {
-        realMatchInnings2DataRef.current = inningsDataHook.innings2Data;
-      }
+    if (!engine.inningsChangeEvent?.superOver) return;
+    if (engine.innings !== 2) return;
+    if (soInnings1SavedRef.current) return; // guard: only once per SO
+
+    soInnings1SavedRef.current = true;
+    const soInnings1Data = inningsDataHook.innings1DataRef?.current;
+    if (soInnings1Data) {
+      engine.saveSuperOverInnings1Data(soInnings1Data);
+      console.log("📸 SO innings 1 data saved for scorecard");
     }
-  }, [
-    engine.isSuperOver,
-    engine.superOverNumber,
-    inningsDataHook.innings1Data,
-    inningsDataHook.innings2Data,
-  ]);
+  }, [engine.inningsChangeEvent, engine.innings]); // ✅ specific primitive deps, not whole objects
+
+  // ✅ FIX: Capture SO innings 2 data exactly once when matchOver fires during a super over
+  useEffect(() => {
+    if (!engine.matchOver) return;
+    if (!engine.isSuperOver) return;
+    if (soCompleteSavedRef.current) return; // guard: only once per SO
+
+    soCompleteSavedRef.current = true;
+    const soInnings2Data = inningsDataHook.innings2Data;
+    engine.saveSuperOverComplete(engine.superOverNumber, soInnings2Data);
+    console.log(`📸 SO ${engine.superOverNumber} innings 2 data saved for scorecard`);
+  }, [engine.matchOver, engine.isSuperOver, engine.superOverNumber]); // ✅ specific primitive deps
 
   const firstBattingTeam = matchData.battingFirst;
   const secondBattingTeam =
@@ -144,7 +158,6 @@ function ScoringPage() {
       ? matchData.teamB
       : matchData.teamA;
 
-  // ✅ FIXED: During super over, team that batted 2nd in main match bats 1st
   const currentBattingTeam = engine.isSuperOver
     ? engine.innings === 1
       ? secondBattingTeam
@@ -237,13 +250,11 @@ function ScoringPage() {
       );
     }
 
-    // ✅ Pass strikerId to history
     engine.handleRun(
       r,
       playersHook.players[playersHook.strikerIndex]?.playerId
     );
 
-    // ✅ Track non-wicket legal ball for hat-trick
     const bowlerName =
       playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName ||
       "Unknown";
@@ -297,7 +308,6 @@ function ScoringPage() {
       "Unknown";
     const currentOutBatsman = playersHook.strikerIndex;
 
-    // ✅ During super over, max wickets is 2 not team size - 1
     const currentBattingTeamKey =
       currentInningsRef.current === 1 ? "teamAPlayers" : "teamBPlayers";
     const currentTeamSize = engine.isSuperOver
@@ -318,7 +328,6 @@ function ScoringPage() {
       currentOutBatsman
     );
 
-    // ✅ Track wicket for hat-trick
     const isRunout = wicketFlow.selectedWicketType === "runout";
     hatTrickHook.trackBall(bowlerName, true, isRunout);
 
@@ -341,7 +350,6 @@ function ScoringPage() {
     partnershipsHook.savePartnership(engine.score, nextWickets);
     partnershipsHook.resetPartnership();
 
-    // ✅ Pass strikerId to handleWicket
     engine.handleWicket(
       wicketFlow.selectedWicketType === "runout",
       false,
@@ -500,23 +508,37 @@ function ScoringPage() {
 
   const isNoResult = engine.winner === "NO RESULT";
 
-  // ✅ Tie detected — open super over modal
   useEffect(() => {
     if (!engine.tieDetected) return;
+
     const nextSuperOverNumber = engine.isSuperOver
       ? engine.superOverNumber + 1
       : 1;
-    console.log(
-      `🏏 Tie detected — opening Super Over modal for SO ${nextSuperOverNumber}`
-    );
+
+    console.log(`🏏 Tie detected — opening Super Over modal for SO ${nextSuperOverNumber}`);
     modalStates.openSuperOverModal(nextSuperOverNumber);
     engine.setTieDetected(false);
   }, [engine.tieDetected]);
 
+  // ✅ FIX: Capture real match innings data SYNCHRONOUSLY before startSuperOver
+  // resets any state. This is done inside handleStartSuperOver, not a useEffect.
   const handleStartSuperOver = () => {
     modalStates.closeSuperOverModal();
+
+    // ✅ Snapshot real match data BEFORE engine.startSuperOver() wipes state
+    if (!realMatchInnings1DataRef.current) {
+      realMatchInnings1DataRef.current = inningsDataHook.innings1Data;
+    }
+    if (!realMatchInnings2DataRef.current) {
+      realMatchInnings2DataRef.current = inningsDataHook.innings2Data;
+    }
+
     const result = engine.startSuperOver(modalStates.superOverNumber);
     if (result === "SUPER_OVER_STARTED") {
+      // ✅ Reset per-SO guards so the save effects can fire for the new SO
+      soInnings1SavedRef.current = false;
+      soCompleteSavedRef.current = false;
+
       playersHook.resetForNewInnings();
       partnershipsHook.resetPartnership();
       partnershipsHook.restorePartnershipState({
@@ -527,6 +549,9 @@ function ScoringPage() {
         partnershipHistory: [],
       });
       hatTrickHook.resetTracker();
+
+      // ✅ Delay modal open so useInningsData's inningsChangeEvent effect
+      // doesn't race and close the modal before it opens
       setTimeout(() => {
         engine.setInningsChangeEvent(null);
         modalStates.setShowStartModal(true);
@@ -540,8 +565,7 @@ function ScoringPage() {
     engine.endMatchNoResult();
   };
 
-  // ✅ Compute innings data to pass to ModalManager
-  // During super over, show frozen real match data in summary
+  // ✅ For the scorecard summary: show real match data, not super over data
   const summaryInnings1Data = engine.isSuperOver
     ? realMatchInnings1DataRef.current
     : inningsDataHook.innings1Data;
@@ -708,6 +732,15 @@ function ScoringPage() {
         {inningsDataHook.matchCompleted && (
           <button
             className={styles.utilityBtn}
+            onClick={() => modalStates.setShowFullScorecard(true)}
+            style={{ background: "#1db954", color: "#000", fontWeight: "700" }}
+          >
+            📊 SCORECARD
+          </button>
+        )}
+        {inningsDataHook.matchCompleted && (
+          <button
+            className={styles.utilityBtn}
             onClick={() => modalStates.setShowSummary(true)}
           >
             🏆 Match Summary
@@ -727,7 +760,6 @@ function ScoringPage() {
         isNewBowlerPending={playersHook.isNewBowlerPending}
         strikerIndex={playersHook.strikerIndex}
         partnershipHistory={partnershipsHook.partnershipHistory}
-        // ✅ Always show real match data in summary, not super over data
         innings1Data={summaryInnings1Data}
         innings2Data={summaryInnings2Data}
         innings1Score={engine.realMatchInnings1Score ?? engine.innings1Score}
@@ -865,7 +897,7 @@ function ScoringPage() {
         initialNonStrikerPlayerId={initialNonStrikerRef.current}
       />
 
-      {/* ✅ Hat-trick celebration banner */}
+      {/* Hat-trick celebration banner */}
       {hatTrickHook.showHatTrick && (
         <HatTrickBanner
           bowlerName={hatTrickHook.hatTrickBowler}
@@ -873,7 +905,7 @@ function ScoringPage() {
         />
       )}
 
-      {/* ✅ Super Over confirmation modal */}
+      {/* Super Over modal */}
       {modalStates.showSuperOverModal && (
         <SuperOverModal
           teamA={matchData.teamA}
@@ -882,6 +914,23 @@ function ScoringPage() {
           superOverNumber={modalStates.superOverNumber}
           onStart={handleStartSuperOver}
           onSkip={handleSkipSuperOver}
+        />
+      )}
+
+      {/* Full Scorecard */}
+      {modalStates.showFullScorecard && (
+        <FullScorecard
+          matchData={matchData}
+          mainMatchData={{
+            innings1Data: realMatchInnings1DataRef.current ?? inningsDataHook.innings1Data,
+            innings2Data: realMatchInnings2DataRef.current ?? inningsDataHook.innings2Data,
+            realInnings1Score: engine.realMatchInnings1Score,
+            realInnings2Score: engine.realMatchInnings2Score,
+          }}
+          superOverData={engine.superOverHistory}
+          firstBattingTeam={firstBattingTeam}
+          secondBattingTeam={secondBattingTeam}
+          onClose={() => modalStates.setShowFullScorecard(false)}
         />
       )}
     </div>
