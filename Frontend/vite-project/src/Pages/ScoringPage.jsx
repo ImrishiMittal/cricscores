@@ -141,18 +141,41 @@ function ScoringPage() {
   }, [engine.inningsChangeEvent, engine.innings]); // ✅ specific primitive deps, not whole objects
 
   // ✅ FIX: Capture SO innings 2 data exactly once when matchOver fires during a super over
-  useEffect(() => {
-    if (!engine.matchOver) return;
-    if (!engine.isSuperOver) return;
-    if (soCompleteSavedRef.current) return; // guard: only once per SO
+  // ✅ FIX: Capture SO innings 2 data correctly
+useEffect(() => {
+  if (!engine.matchOver) return;
+  if (!engine.isSuperOver) return;
+  if (soCompleteSavedRef.current) return;
 
-    soCompleteSavedRef.current = true;
-    const soInnings2Data = inningsDataHook.innings2Data;
-    engine.saveSuperOverComplete(engine.superOverNumber, soInnings2Data);
-    console.log(
-      `📸 SO ${engine.superOverNumber} innings 2 data saved for scorecard`
+  soCompleteSavedRef.current = true;
+
+  const soInnings2Data =
+    inningsDataHook.captureCurrentInningsData(
+      playersHook.players,
+      playersHook.allPlayers,
+      playersHook.bowlers,
+      engine.completeHistory,
+      engine.score,
+      engine.wickets,
+      engine.overs,
+      engine.balls,
+      engine.extras
     );
-  }, [engine.matchOver, engine.isSuperOver, engine.superOverNumber]); // ✅ specific primitive deps
+
+  engine.saveSuperOverComplete(
+    engine.superOverNumber,
+    soInnings2Data
+  );
+
+  console.log(
+    `📸 SO ${engine.superOverNumber} innings 2 saved correctly`
+  );
+
+}, [
+  engine.matchOver,
+  engine.isSuperOver,
+  engine.superOverNumber,
+]);// ✅ specific primitive deps
 
   const firstBattingTeam = matchData.battingFirst;
   const secondBattingTeam =

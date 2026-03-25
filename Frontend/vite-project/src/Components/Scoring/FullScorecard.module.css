@@ -216,7 +216,7 @@
   
   .tableHeader {
     display: grid;
-    grid-template-columns: 1fr 60px 60px 70px;
+    grid-template-columns: 1fr 50px 50px 70px 50px 50px;
     gap: 8px;
     padding: 8px 12px;
     background: #0a0a0a;
@@ -234,7 +234,7 @@
   
   .tableRow {
     display: grid;
-    grid-template-columns: 1fr 60px 60px 70px;
+    grid-template-columns: 1fr 50px 50px 70px 50px 50px;
     gap: 8px;
     padding: 12px;
     border-bottom: 1px solid #1a1a1a;
@@ -312,7 +312,7 @@
   @media (max-width: 600px) {
     .tableHeader,
     .tableRow {
-      grid-template-columns: 1fr 50px 50px 60px;
+      grid-template-columns: 1fr 40px 40px 50px 40px 40px;
       gap: 4px;
       padding: 8px;
     }
