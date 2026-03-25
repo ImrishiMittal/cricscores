@@ -24,13 +24,14 @@ function ScoreHeader({
 
   const calculateRunsRequired = () => {
     if (innings !== 2 || !target) return null;
-    const runsNeeded = target - score;
+    // ✅ FIX: Prevent negative RRR
+    const runsNeeded = Math.max(0, target - score);
     const totalBalls = Number(totalOvers) * 6;
     const ballsBowled = overs * 6 + balls;
-    const ballsRemaining = totalBalls - ballsBowled;
+    const ballsRemaining = Math.max(0, totalBalls - ballsBowled);
     return {
-      runs: runsNeeded > 0 ? runsNeeded : 0,
-      balls: ballsRemaining > 0 ? ballsRemaining : 0,
+      runs: runsNeeded,
+      balls: ballsRemaining,
     };
   };
 
@@ -41,8 +42,7 @@ function ScoreHeader({
     <div className={styles.container}>
       <div className={styles.content}>
 
-        {/* ✅ FIX: Super Over badge placed ABOVE topRow so it doesn't
-            collide with the absolute-positioned corner boxes */}
+        {/* ✅ Super Over badge placed ABOVE topRow */}
         {isSuperOver && (
           <div className={styles.superOverBadge}>
             ⚡ SUPER OVER {superOverNumber}

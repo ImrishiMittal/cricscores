@@ -21,7 +21,7 @@ function useModalStates() {
 
   // Rename Player modal
   const [showRenameModal, setShowRenameModal] = useState(false);
-  const [renameTarget, setRenameTarget] = useState(null); // { playerId, displayName }
+  const [renameTarget, setRenameTarget] = useState(null);
 
   const openRenameModal = (playerId, displayName) => {
     setRenameTarget({ playerId, displayName });
@@ -35,7 +35,7 @@ function useModalStates() {
 
   // Player Stats modal
   const [showPlayerStats, setShowPlayerStats] = useState(false);
-  const [statsTarget, setStatsTarget] = useState(null); // player object
+  const [statsTarget, setStatsTarget] = useState(null);
 
   const openPlayerStats = (player) => {
     setStatsTarget(player);
@@ -47,7 +47,7 @@ function useModalStates() {
     setStatsTarget(null);
   };
 
-  // ✅ NEW: Super Over modal
+  // Super Over modal
   const [showSuperOverModal, setShowSuperOverModal] = useState(false);
   const [superOverNumber, setSuperOverNumber] = useState(1);
 
@@ -59,6 +59,9 @@ function useModalStates() {
   const closeSuperOverModal = () => {
     setShowSuperOverModal(false);
   };
+
+  // ✅ NEW: Full Scorecard modal
+  const [showFullScorecard, setShowFullScorecard] = useState(false);
 
   return {
     showStartModal, setShowStartModal,
@@ -88,11 +91,14 @@ function useModalStates() {
     statsTarget,
     openPlayerStats,
     closePlayerStats,
-    // ✅ NEW: Super Over
+    // Super Over
     showSuperOverModal,
     superOverNumber,
     openSuperOverModal,
     closeSuperOverModal,
+    // ✅ NEW: Full Scorecard
+    showFullScorecard,
+    setShowFullScorecard,
   };
 }
 
