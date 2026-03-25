@@ -14,29 +14,37 @@ function useWicketFlow() {
 
   // start wicket
   const startWicketFlow = (isFreeHit) => {
-    if (isFreeHit) {
-      alert("Cannot take a wicket on a Free Hit!");
-      return false;
-    }
-
+    // allow modal to open even on free hit
     setShowWicketTypeModal(true);
     return true;
   };
 
   // select wicket type
-  const handleWicketTypeSelect = (wicketType) => {
+  const handleWicketTypeSelect = (wicketType, isFreeHit) => {
+    // ❌ not allowed on free hit
+    if (
+      isFreeHit &&
+      wicketType !== "runout" &&
+      wicketType !== "stumped"
+    ) {
+      alert(
+        "Only Run Out or Stumping allowed on Free Hit!"
+      );
+      return;
+    }
+  
     setShowWicketTypeModal(false);
     setSelectedWicketType(wicketType);
-
+  
     if (wicketType === "runout") {
       setWaitingForRunoutRun(true);
       return;
     }
-
+  
     if (wicketType === "hitwicket") {
       return;
     }
-
+  
     setShowFielderInputModal(true);
   };
 

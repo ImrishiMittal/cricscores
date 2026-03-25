@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import styles from './TabbedInningsSummary.module.css';
+import { useState } from "react";
+import styles from "./TabbedInningsSummary.module.css";
 
-function TabbedInningsSummary({ 
-  innings1Data, 
+function TabbedInningsSummary({
+  innings1Data,
   innings2Data,
   players,
   allPlayers,
@@ -12,66 +12,68 @@ function TabbedInningsSummary({
   overs,
   balls,
   currentInnings,
-  liveExtras,   // ✅ NEW: live extras from engine
-  onClose 
+  liveExtras, // ✅ NEW: live extras from engine
+  onClose,
 }) {
-  const [activeTab, setActiveTab] = useState(currentInnings === 2 ? 'innings2' : 'innings1');
+  const [activeTab, setActiveTab] = useState(
+    currentInnings === 2 ? "innings2" : "innings1"
+  );
 
   const formatOvers = (oversNum, ballsNum) => {
-    if (oversNum === undefined || ballsNum === undefined) return '0.0';
+    if (oversNum === undefined || ballsNum === undefined) return "0.0";
     return `${oversNum}.${ballsNum}`;
   };
 
   const getData = (tab) => {
     // ✅ PRIORITY 1: Completed innings 1 — viewed from innings 2
-    if (tab === 'innings1' && currentInnings === 2 && innings1Data) {
+    if (tab === "innings1" && currentInnings === 2 && innings1Data) {
       return {
         score: innings1Data.score || 0,
         wickets: innings1Data.wickets || 0,
         overs: innings1Data.overs || 0,
         balls: innings1Data.balls || 0,
-        extras: innings1Data.extras || null,  // ✅ NEW
+        extras: innings1Data.extras || null, // ✅ NEW
         battedPlayers: innings1Data.battingStats || [],
         bowlers: innings1Data.bowlingStats || [],
         isCompleted: true,
       };
     }
 
-    if (tab === 'innings1' && currentInnings === 1) {
+    if (tab === "innings1" && currentInnings === 1) {
       const battedPlayers = [...(allPlayers || []), ...players];
       return {
         score,
         wickets,
         overs,
         balls,
-        extras: liveExtras || null,  // ✅ NEW
-        battedPlayers: battedPlayers.filter(p => p.balls > 0 || p.dismissal),
+        extras: liveExtras || null, // ✅ NEW
+        battedPlayers: battedPlayers.filter((p) => p.balls > 0 || p.dismissal),
         bowlers,
         isCompleted: false,
       };
     }
 
-    if (tab === 'innings2' && currentInnings === 2) {
+    if (tab === "innings2" && currentInnings === 2) {
       const battedPlayers = [...(allPlayers || []), ...players];
       return {
         score,
         wickets,
         overs,
         balls,
-        extras: liveExtras || null,  // ✅ NEW
-        battedPlayers: battedPlayers.filter(p => p.balls > 0 || p.dismissal),
+        extras: liveExtras || null, // ✅ NEW
+        battedPlayers: battedPlayers.filter((p) => p.balls > 0 || p.dismissal),
         bowlers,
         isCompleted: false,
       };
     }
 
-    if (tab === 'innings2' && innings2Data) {
+    if (tab === "innings2" && innings2Data) {
       return {
         score: innings2Data.score || 0,
         wickets: innings2Data.wickets || 0,
         overs: innings2Data.overs || 0,
         balls: innings2Data.balls || 0,
-        extras: innings2Data.extras || null,  // ✅ NEW
+        extras: innings2Data.extras || null, // ✅ NEW
         battedPlayers: innings2Data.battingStats || [],
         bowlers: innings2Data.bowlingStats || [],
         isCompleted: true,
@@ -89,9 +91,13 @@ function TabbedInningsSummary({
         <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
           <div className={styles.header}>
             <h2 className={styles.title}>📋 Innings Summary</h2>
-            <button className={styles.closeIcon} onClick={onClose}>✕</button>
+            <button className={styles.closeIcon} onClick={onClose}>
+              ✕
+            </button>
           </div>
-          <p style={{ textAlign: 'center', color: '#888' }}>No data available for this innings</p>
+          <p style={{ textAlign: "center", color: "#888" }}>
+            No data available for this innings
+          </p>
         </div>
       </div>
     );
@@ -100,29 +106,39 @@ function TabbedInningsSummary({
   // ✅ Helper: get player name correctly based on data source
   // - Completed innings data (from useInningsData) maps displayName → .name
   // - Live innings data (raw player objects) uses .displayName
-  const getPlayerName = (player) => data.isCompleted ? player.name : player.displayName;
-  const getBowlerName = (bowler) => data.isCompleted ? bowler.name : bowler.displayName;
+  const getPlayerName = (player) =>
+    data.isCompleted ? player.name : player.displayName;
+  const getBowlerName = (bowler) =>
+    data.isCompleted ? bowler.name : bowler.displayName;
 
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <h2 className={styles.title}>📋 Innings Summary</h2>
-          <button className={styles.closeIcon} onClick={onClose}>✕</button>
+          <button className={styles.closeIcon} onClick={onClose}>
+            ✕
+          </button>
         </div>
 
         {/* TABS */}
         {currentInnings === 2 && (
           <div className={styles.tabContainer}>
             <button
-              className={`${styles.tab} ${activeTab === 'innings1' ? styles.activeTab : ''}`}
-              onClick={() => setActiveTab('innings1')}
+              className={`${styles.tab} ${
+                activeTab === "innings1" ? styles.activeTab : ""
+              }`}
+              onClick={() => setActiveTab("innings1")}
             >
-              Innings 1 {innings1Data && `(${innings1Data.score}/${innings1Data.wickets})`}
+              Innings 1{" "}
+              {innings1Data &&
+                `(${innings1Data.score}/${innings1Data.wickets})`}
             </button>
             <button
-              className={`${styles.tab} ${activeTab === 'innings2' ? styles.activeTab : ''}`}
-              onClick={() => setActiveTab('innings2')}
+              className={`${styles.tab} ${
+                activeTab === "innings2" ? styles.activeTab : ""
+              }`}
+              onClick={() => setActiveTab("innings2")}
             >
               Innings 2 (Live)
             </button>
@@ -144,9 +160,15 @@ function TabbedInningsSummary({
               Extras: {data.extras.total}
               {" ("}
               {data.extras.wides > 0 && `W ${data.extras.wides}`}
-              {data.extras.wides > 0 && (data.extras.noBalls > 0 || data.extras.byes > 0 || data.extras.legByes > 0) && ", "}
+              {data.extras.wides > 0 &&
+                (data.extras.noBalls > 0 ||
+                  data.extras.byes > 0 ||
+                  data.extras.legByes > 0) &&
+                ", "}
               {data.extras.noBalls > 0 && `NB ${data.extras.noBalls}`}
-              {data.extras.noBalls > 0 && (data.extras.byes > 0 || data.extras.legByes > 0) && ", "}
+              {data.extras.noBalls > 0 &&
+                (data.extras.byes > 0 || data.extras.legByes > 0) &&
+                ", "}
               {data.extras.byes > 0 && `B ${data.extras.byes}`}
               {data.extras.byes > 0 && data.extras.legByes > 0 && ", "}
               {data.extras.legByes > 0 && `LB ${data.extras.legByes}`}
@@ -164,19 +186,25 @@ function TabbedInningsSummary({
               <div className={styles.statCol}>R</div>
               <div className={styles.statCol}>B</div>
               <div className={styles.statCol}>SR</div>
+              <div className={styles.statCol}>4s</div>
+              <div className={styles.statCol}>6s</div>
             </div>
             {data.battedPlayers.length === 0 && (
               <div className={styles.noData}>No batting data available</div>
             )}
             {data.battedPlayers.map((player, idx) => {
-              const strikeRate = player.balls > 0 
-                ? ((player.runs / player.balls) * 100).toFixed(1) 
-                : '0.0';
-              
+              const strikeRate =
+                player.balls > 0
+                  ? ((player.runs / player.balls) * 100).toFixed(1)
+                  : "0.0";
+
               return (
                 <div key={player.playerId || idx} className={styles.tableRow}>
                   <div className={styles.playerCol}>
-                    <div className={styles.playerName}>{getPlayerName(player)}</div>  {/* ✅ was player.name */}
+                    <div className={styles.playerName}>
+                      {getPlayerName(player)}
+                    </div>{" "}
+                    {/* ✅ was player.name */}
                     {player.dismissal && (
                       <div className={styles.dismissal}>{player.dismissal}</div>
                     )}
@@ -187,6 +215,8 @@ function TabbedInningsSummary({
                   <div className={styles.statCol}>{player.runs}</div>
                   <div className={styles.statCol}>{player.balls}</div>
                   <div className={styles.statCol}>{strikeRate}</div>
+                  <div className={styles.statCol}>{player.fours || 0}</div>
+                  <div className={styles.statCol}>{player.sixes || 0}</div>
                 </div>
               );
             })}
@@ -208,15 +238,19 @@ function TabbedInningsSummary({
               <div className={styles.noData}>No bowling data available</div>
             )}
             {data.bowlers.map((bowler, idx) => {
-              const totalOvers = bowler.overs + (bowler.balls / 6);
-              const economy = totalOvers > 0 
-                ? (bowler.runs / totalOvers).toFixed(2) 
-                : '0.00';
-              
+              const totalOvers = bowler.overs + bowler.balls / 6;
+              const economy =
+                totalOvers > 0 ? (bowler.runs / totalOvers).toFixed(2) : "0.00";
+
               return (
                 <div key={bowler.playerId || idx} className={styles.tableRow}>
-                  <div className={styles.playerCol}>{getBowlerName(bowler)}</div>  {/* ✅ was bowler.name */}
-                  <div className={styles.statCol}>{bowler.overs}.{bowler.balls}</div>
+                  <div className={styles.playerCol}>
+                    {getBowlerName(bowler)}
+                  </div>{" "}
+                  {/* ✅ was bowler.name */}
+                  <div className={styles.statCol}>
+                    {bowler.overs}.{bowler.balls}
+                  </div>
                   <div className={styles.statCol}>{bowler.runs}</div>
                   <div className={styles.statCol}>{bowler.wickets}</div>
                   <div className={styles.statCol}>{economy}</div>
