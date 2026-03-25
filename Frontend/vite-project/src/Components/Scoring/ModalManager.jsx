@@ -20,7 +20,9 @@ import DismissBowlerModal from "./DismissBowlerModal";
 import NoResultModal from "./NoResultModal";
 import RenameModal from "./RenameModal";
 import PlayerStatsModal from './PlayerStatsModal';
+import BowlerStatsModal from './BowlerStatsModal';   // ✅ NEW
 import usePlayerStats from '../../hooks/usePlayerStats';
+import useBowlerStats from '../../hooks/useBowlerStats'; // ✅ NEW
 
 function ModalManager({
   modalStates,
@@ -67,6 +69,7 @@ function ModalManager({
   onDismissBowlerConfirm,
   onNoResultConfirm,
   onRenameConfirm,
+  onRenameBowlerConfirm,   // ✅ NEW
   liveExtras,
   onStatsClick,
   initialStrikerPlayerId,
@@ -74,9 +77,15 @@ function ModalManager({
   isSuperOver,
   superOverNumber,
 }) {
-  // ✅ Calculate stats for the currently selected player
+  // Stats for the currently selected batsman
   const statsForPlayer = usePlayerStats(
     modalStates.statsTarget,
+    completeHistory
+  );
+
+  // ✅ Stats for the currently selected bowler
+  const statsForBowler = useBowlerStats(
+    modalStates.bowlerStatsTarget,
     completeHistory
   );
 
@@ -290,16 +299,24 @@ function ModalManager({
         />
       )}
 
+      {/* Rename modal — shared for both batsmen and bowlers */}
       {modalStates.showRenameModal && modalStates.renameTarget && (
         <RenameModal
           playerId={modalStates.renameTarget.playerId}
           currentName={modalStates.renameTarget.displayName}
-          onConfirm={onRenameConfirm}
+          onConfirm={(playerId, newName) => {
+            // ✅ Route to the correct rename handler based on context
+            if (modalStates.renameTarget.isBowler) {
+              onRenameBowlerConfirm(playerId, newName);
+            } else {
+              onRenameConfirm(playerId, newName);
+            }
+          }}
           onClose={modalStates.closeRenameModal}
         />
       )}
 
-      {/* ✅ Player Stats Modal */}
+      {/* Batsman Stats Modal */}
       {modalStates.showPlayerStats && modalStates.statsTarget && (
         <PlayerStatsModal
           player={modalStates.statsTarget}
@@ -309,6 +326,24 @@ function ModalManager({
             modalStates.openRenameModal(playerId, displayName);
           }}
           onClose={modalStates.closePlayerStats}
+        />
+      )}
+
+      {/* ✅ NEW: Bowler Stats Modal */}
+      {modalStates.showBowlerStats && modalStates.bowlerStatsTarget && (
+        <BowlerStatsModal
+          bowler={modalStates.bowlerStatsTarget}
+          stats={statsForBowler}
+          onRename={(playerId, displayName) => {
+            modalStates.closeBowlerStats();
+            // ✅ Tag the renameTarget as a bowler so ModalManager routes correctly
+            modalStates.openRenameModal(playerId, displayName);
+            // We patch the target after opening so isBowler flag is set
+            // Use a tiny helper instead — see note below
+            modalStates.setRenameTarget({ playerId, displayName, isBowler: true });
+            modalStates.setShowRenameModal(true);
+          }}
+          onClose={modalStates.closeBowlerStats}
         />
       )}
     </>
