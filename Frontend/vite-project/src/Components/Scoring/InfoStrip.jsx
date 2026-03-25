@@ -14,6 +14,7 @@ function InfoStrip({
   isFreeHit,
   matchData,
   currentTeam,
+  onBowlerClick,
 }) {
   const ballsBowled = overs * 6 + balls;
   const totalBalls = Number(totalOvers) * 6;
@@ -30,19 +31,21 @@ function InfoStrip({
 
   const getBowlerEconomy = (bowler) => {
     if (!bowler) return "0.00";
-    const totalOvers = bowler.overs + (bowler.balls / 6);
+    const totalOvers = bowler.overs + bowler.balls / 6;
     if (totalOvers === 0) return "0.00";
     return (bowler.runs / totalOvers).toFixed(2);
   };
 
   const bowlingTeam =
-    currentTeam === matchData.teamA
-      ? matchData.teamB
-      : matchData.teamA;
+    currentTeam === matchData.teamA ? matchData.teamB : matchData.teamA;
 
   // ✅ FIXED: Show wickets/runs in bowler display
   const bowlerDisplay = currentBowler
-    ? `${addCaptainTag(currentBowler.displayName, matchData, bowlingTeam)} - ${currentBowler.wickets || 0}/${currentBowler.runs || 0} in ${currentBowler.overs || 0}.${currentBowler.balls || 0} [${getBowlerEconomy(currentBowler)}]`
+    ? `${addCaptainTag(currentBowler.displayName, matchData, bowlingTeam)} - ${
+        currentBowler.wickets || 0
+      }/${currentBowler.runs || 0} in ${currentBowler.overs || 0}.${
+        currentBowler.balls || 0
+      } [${getBowlerEconomy(currentBowler)}]`
     : addCaptainTag(bowler, matchData, bowlingTeam);
 
   return (
@@ -81,7 +84,17 @@ function InfoStrip({
 
       <div className={styles.bowlerInfo}>
         <span className={styles.label}>BOWLER</span>
-        <span className={styles.bowlerValue}>{bowlerDisplay}</span>
+        <span
+          className={styles.bowlerValue}
+          onClick={() => {
+            if (onBowlerClick && currentBowler) {
+              onBowlerClick(currentBowler);
+            }
+          }}
+          style={{ cursor: "pointer" }}
+        >
+          {bowlerDisplay}
+        </span>
       </div>
 
       {isFreeHit && (

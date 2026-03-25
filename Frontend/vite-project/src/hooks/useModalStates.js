@@ -33,7 +33,7 @@ function useModalStates() {
     setRenameTarget(null);
   };
 
-  // Player Stats modal
+  // Player Stats modal (batsman)
   const [showPlayerStats, setShowPlayerStats] = useState(false);
   const [statsTarget, setStatsTarget] = useState(null);
 
@@ -45,6 +45,20 @@ function useModalStates() {
   const closePlayerStats = () => {
     setShowPlayerStats(false);
     setStatsTarget(null);
+  };
+
+  // ✅ NEW: Bowler Stats modal
+  const [showBowlerStats, setShowBowlerStats] = useState(false);
+  const [bowlerStatsTarget, setBowlerStatsTarget] = useState(null); // bowler object
+
+  const openBowlerStats = (bowler) => {
+    setBowlerStatsTarget(bowler);
+    setShowBowlerStats(true);
+  };
+
+  const closeBowlerStats = () => {
+    setShowBowlerStats(false);
+    setBowlerStatsTarget(null);
   };
 
   // Super Over modal
@@ -60,7 +74,7 @@ function useModalStates() {
     setShowSuperOverModal(false);
   };
 
-  // ✅ NEW: Full Scorecard modal
+  // Full Scorecard modal
   const [showFullScorecard, setShowFullScorecard] = useState(false);
 
   return {
@@ -86,17 +100,22 @@ function useModalStates() {
     renameTarget,
     openRenameModal,
     closeRenameModal,
-    // Stats
+    // Batsman Stats
     showPlayerStats,
     statsTarget,
     openPlayerStats,
     closePlayerStats,
+    // ✅ NEW: Bowler Stats
+    showBowlerStats,
+    bowlerStatsTarget,
+    openBowlerStats,
+    closeBowlerStats,
     // Super Over
     showSuperOverModal,
     superOverNumber,
     openSuperOverModal,
     closeSuperOverModal,
-    // ✅ NEW: Full Scorecard
+    // Full Scorecard
     showFullScorecard,
     setShowFullScorecard,
   };

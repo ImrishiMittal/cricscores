@@ -475,6 +475,16 @@ export default function usePlayersAndBowlers(matchData) {
     );
   };
 
+
+  const renameBowler = (playerId, newDisplayName) => {
+    setBowlers((prev) =>
+      prev.map((b) =>
+        b.playerId === playerId ? { ...b, displayName: newDisplayName } : b
+      )
+    );
+  };
+  
+
   /* ================= DISPLAY NAME LOOKUP ================= */
   const getDisplayName = (list, playerId) =>
     list.find((p) => p.playerId === playerId)?.displayName ?? playerId;

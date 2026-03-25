@@ -149,7 +149,9 @@ function ScoringPage() {
     soCompleteSavedRef.current = true;
     const soInnings2Data = inningsDataHook.innings2Data;
     engine.saveSuperOverComplete(engine.superOverNumber, soInnings2Data);
-    console.log(`📸 SO ${engine.superOverNumber} innings 2 data saved for scorecard`);
+    console.log(
+      `📸 SO ${engine.superOverNumber} innings 2 data saved for scorecard`
+    );
   }, [engine.matchOver, engine.isSuperOver, engine.superOverNumber]); // ✅ specific primitive deps
 
   const firstBattingTeam = matchData.battingFirst;
@@ -515,7 +517,9 @@ function ScoringPage() {
       ? engine.superOverNumber + 1
       : 1;
 
-    console.log(`🏏 Tie detected — opening Super Over modal for SO ${nextSuperOverNumber}`);
+    console.log(
+      `🏏 Tie detected — opening Super Over modal for SO ${nextSuperOverNumber}`
+    );
     modalStates.openSuperOverModal(nextSuperOverNumber);
     engine.setTieDetected(false);
   }, [engine.tieDetected]);
@@ -610,6 +614,7 @@ function ScoringPage() {
             isFreeHit={engine.isFreeHit}
             matchData={updatedMatchData}
             currentTeam={currentBattingTeam}
+            onBowlerClick={modalStates.openBowlerStats}
           />
 
           <OverBalls history={engine.currentOver} />
@@ -891,6 +896,9 @@ function ScoringPage() {
         onRenameConfirm={(playerId, newName) =>
           playersHook.renamePlayer(playerId, newName)
         }
+        onRenameBowlerConfirm={(playerId, newName) =>
+          playersHook.renameBowler(playerId, newName)
+        }
         renameModalState={modalStates}
         onStatsClick={modalStates.openPlayerStats}
         initialStrikerPlayerId={initialStrikerRef.current}
@@ -922,8 +930,10 @@ function ScoringPage() {
         <FullScorecard
           matchData={matchData}
           mainMatchData={{
-            innings1Data: realMatchInnings1DataRef.current ?? inningsDataHook.innings1Data,
-            innings2Data: realMatchInnings2DataRef.current ?? inningsDataHook.innings2Data,
+            innings1Data:
+              realMatchInnings1DataRef.current ?? inningsDataHook.innings1Data,
+            innings2Data:
+              realMatchInnings2DataRef.current ?? inningsDataHook.innings2Data,
             realInnings1Score: engine.realMatchInnings1Score,
             realInnings2Score: engine.realMatchInnings2Score,
           }}
