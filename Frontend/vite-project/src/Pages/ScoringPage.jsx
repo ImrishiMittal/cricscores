@@ -182,7 +182,6 @@ function ScoringPage() {
       if (r > 0) {
         playersHook.addRunsToStriker(r);
         playersHook.addRunsToBowler(r);
-        playersHook.addBallToBowler();
 
         if (
           playersHook.strikerIndex >= 0 &&
@@ -341,7 +340,7 @@ function ScoringPage() {
     if (wicketFlow.selectedWicketType !== "runout") {
       playersHook.addWicketToBowler();
     }
-    
+
     playersHook.addBallToBowler();
 
     partnershipsHook.addBallToPartnership();
@@ -470,19 +469,31 @@ function ScoringPage() {
   };
 
   const handleWicketTypeSelectWithHitWicket = (wicketType) => {
+    // ✅ FREE HIT RULE
+    if (
+      engine.isFreeHit &&
+      wicketType !== "runout" &&
+      wicketType !== "stumped"
+    ) {
+      alert("Only Run out or Stumping allowed on Free Hit");
+      return;
+    }
+
     wicketFlow.handleWicketTypeSelect(wicketType);
 
     if (wicketType === "hitwicket") {
       const bowlerName =
         playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName ||
         "Unknown";
-        let currentOutBatsman = playersHook.strikerIndex;
 
-        if (wicketFlow.selectedWicketType === "runout") {
-          if (wicketFlow.runoutBatsmanChoice === "nonStriker") {
-            currentOutBatsman = playersHook.nonStrikerIndex;
-          }
+      let currentOutBatsman = playersHook.strikerIndex;
+
+      if (wicketFlow.selectedWicketType === "runout") {
+        if (wicketFlow.runoutBatsmanChoice === "nonStriker") {
+          currentOutBatsman = playersHook.nonStrikerIndex;
         }
+      }
+
       const nextWickets = engine.wickets + 1;
 
       playersHook.setDismissal(
@@ -495,6 +506,7 @@ function ScoringPage() {
       hatTrickHook.trackBall(bowlerName, true, false);
 
       playersHook.addWicketToBowler();
+
       partnershipsHook.addBallToPartnership();
       partnershipsHook.savePartnership(engine.score, nextWickets);
       partnershipsHook.resetPartnership();
