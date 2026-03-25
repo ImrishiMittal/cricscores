@@ -104,7 +104,7 @@ function useInningsData(
         })),
       bowlingStats: (bowlersData || []).map((b) => ({
         playerId: b.playerId,
-        name: b.displayName,
+        displayName: b.displayName,
         overs: b.overs || 0,
         balls: b.balls || 0,
         runs: b.runs || 0,
