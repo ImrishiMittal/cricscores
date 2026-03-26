@@ -3,14 +3,8 @@ import styles from './FielderInputModal.module.css';
 
 function FielderInputModal({ wicketType, onConfirm, onCancel }) {
   const [fielderName, setFielderName] = useState('');
-  const [newBatsmanName, setNewBatsmanName] = useState('');
 
   const handleSubmit = () => {
-    if (!newBatsmanName.trim()) {
-      alert('Please enter new batsman name');
-      return;
-    }
-
     if ((wicketType === 'runout' || wicketType === 'caught' || wicketType === 'stumped') && !fielderName.trim()) {
       alert('Please enter fielder name');
       return;
@@ -18,7 +12,7 @@ function FielderInputModal({ wicketType, onConfirm, onCancel }) {
 
     onConfirm({
       fielder: fielderName.trim(),
-      newBatsman: newBatsmanName.trim()
+      // ✅ REMOVED: newBatsman — this is now handled by NewBatsmanModal separately
     });
   };
 
@@ -45,17 +39,7 @@ function FielderInputModal({ wicketType, onConfirm, onCancel }) {
           </div>
         )}
 
-        <div className={styles.inputGroup}>
-          <label className={styles.label}>New Batsman</label>
-          <input
-            type="text"
-            className={styles.input}
-            value={newBatsmanName}
-            onChange={(e) => setNewBatsmanName(e.target.value)}
-            placeholder="Enter batsman name"
-            autoFocus={!needsFielder}
-          />
-        </div>
+        {/* ✅ REMOVED: New Batsman input — NewBatsmanModal handles this after confirm */}
 
         <div className={styles.buttonRow}>
           <button className={styles.cancelBtn} onClick={onCancel}>
