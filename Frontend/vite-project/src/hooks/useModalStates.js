@@ -77,6 +77,8 @@ function useModalStates() {
   // Full Scorecard modal
   const [showFullScorecard, setShowFullScorecard] = useState(false);
 
+  const [showPlayerDatabase, setShowPlayerDatabase] = useState(false);
+
   return {
     showStartModal, setShowStartModal,
     showWicketTypeModal, setShowWicketTypeModal,
@@ -118,6 +120,9 @@ function useModalStates() {
     // Full Scorecard
     showFullScorecard,
     setShowFullScorecard,
+
+    showPlayerDatabase,
+    setShowPlayerDatabase,
   };
 }
 

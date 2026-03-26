@@ -1,12 +1,12 @@
 import { useState, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 
-export default function usePlayersAndBowlers(matchData) {
+export default function usePlayersAndBowlers(matchData, playerDB) {
   /* ================= PLAYERS ================= */
   const [players, setPlayers] = useState([]);
-  const [allPlayers, setAllPlayers] = useState([]); // ✅ Track all batsmen who have played
-  const [retiredPlayers, setRetiredPlayers] = useState([]); // ✅ RETIRED HURT: saved stats to restore later
-  const retiredPlayersRef = useRef([]); // ✅ mirrors retiredPlayers synchronously — no useEffect
+  const [allPlayers, setAllPlayers] = useState([]);
+  const [retiredPlayers, setRetiredPlayers] = useState([]);
+  const retiredPlayersRef = useRef([]);
   const [strikerIndex, setStrikerIndex] = useState(0);
   const [nonStrikerIndex, setNonStrikerIndex] = useState(1);
   const [isWicketPending, setIsWicketPending] = useState(false);
@@ -19,15 +19,12 @@ export default function usePlayersAndBowlers(matchData) {
   const [previousBowlerIndex, setPreviousBowlerIndex] = useState(null);
   const [bowlerError, setBowlerError] = useState(null);
 
-  // ✅ Track dismissed bowlers so they can't bowl again
   const [dismissedBowlers, setDismissedBowlers] = useState([]);
   const dismissedBowlersRef = useRef([]);
 
   /* ================= HELPERS ================= */
-
-  // ✅ Build a fresh batsman object with a stable playerId
-  const makeBatsman = (displayName) => ({
-    playerId: uuidv4(),
+  const makeBatsman = (displayName, jersey = null) => ({
+    playerId: jersey ? String(jersey) : uuidv4(),
     displayName,
     runs: 0,
     balls: 0,
@@ -36,9 +33,8 @@ export default function usePlayersAndBowlers(matchData) {
     dismissal: null,
   });
 
-  // ✅ Build a fresh bowler object with a stable playerId
-  const makeBowler = (displayName) => ({
-    playerId: uuidv4(),
+  const makeBowler = (displayName, jersey = null) => ({
+    playerId: jersey ? String(jersey) : uuidv4(),
     displayName,
     overs: 0,
     balls: 0,
@@ -46,20 +42,36 @@ export default function usePlayersAndBowlers(matchData) {
     wickets: 0,
   });
 
-  /* ================= START INNINGS ================= */
-  const startInnings = (strikerName, nonStrikerName, bowlerName) => {
-    setPlayers([makeBatsman(strikerName), makeBatsman(nonStrikerName)]);
+  // ✅ FIX BUG 1: Save player to DB whenever a new player is introduced
+  const savePlayerToDB = (displayName, jersey) => {
+    if (!playerDB || !jersey || !displayName?.trim()) return;
+  
+    playerDB.createOrGetPlayer(
+      displayName.trim(),
+      String(jersey)
+    );
+  };
 
-    // Reset allPlayers and retiredPlayers for new innings
+  /* ================= START INNINGS ================= */
+  const startInnings = (strikerData, nonStrikerData, bowlerData) => {
+    // ✅ FIX BUG 1: Save all three to DB on innings start
+    savePlayerToDB(strikerData.name, strikerData.jersey);
+    savePlayerToDB(nonStrikerData.name, nonStrikerData.jersey);
+    savePlayerToDB(bowlerData.name, bowlerData.jersey);
+
+    setPlayers([
+      makeBatsman(strikerData.name, strikerData.jersey),
+      makeBatsman(nonStrikerData.name, nonStrikerData.jersey),
+    ]);
+
     setAllPlayers([]);
     setRetiredPlayers([]);
     retiredPlayersRef.current = [];
 
-    // Reset dismissed bowlers for new innings
     setDismissedBowlers([]);
     dismissedBowlersRef.current = [];
 
-    setBowlers([makeBowler(bowlerName)]);
+    setBowlers([makeBowler(bowlerData.name, bowlerData.jersey)]);
     setStrikerIndex(0);
     setNonStrikerIndex(1);
     setPreviousBowlerIndex(null);
@@ -77,29 +89,15 @@ export default function usePlayersAndBowlers(matchData) {
   const addRunsToStriker = (runs) => {
     setPlayers((prev) => {
       const updated = [...prev];
-  
       const striker = updated[strikerIndex];
-  
       if (!striker) return prev;
-  
       updated[strikerIndex] = {
         ...striker,
-  
         runs: striker.runs + runs,
-  
         balls: striker.balls + 1,
-  
-        fours:
-          runs === 4
-            ? (striker.fours || 0) + 1
-            : striker.fours || 0,
-  
-        sixes:
-          runs === 6
-            ? (striker.sixes || 0) + 1
-            : striker.sixes || 0,
+        fours: runs === 4 ? (striker.fours || 0) + 1 : striker.fours || 0,
+        sixes: runs === 6 ? (striker.sixes || 0) + 1 : striker.sixes || 0,
       };
-  
       return updated;
     });
   };
@@ -151,23 +149,13 @@ export default function usePlayersAndBowlers(matchData) {
     setIsWicketPending(true);
   };
 
-  // ✅ Set dismissal info — lookup by index (stable within an innings)
-  const setDismissal = (
-    wicketType,
-    fielder,
-    bowlerDisplayName,
-    outBatsmanIndex
-  ) => {
+  const setDismissal = (wicketType, fielder, bowlerDisplayName, outBatsmanIndex) => {
     setPlayers((prev) => {
       const updated = [...prev];
       const batsmanIndex =
         outBatsmanIndex !== undefined ? outBatsmanIndex : outBatsman;
 
-      if (
-        batsmanIndex === null ||
-        batsmanIndex === undefined ||
-        !updated[batsmanIndex]
-      ) {
+      if (batsmanIndex === null || batsmanIndex === undefined || !updated[batsmanIndex]) {
         console.error("❌ Invalid batsman index for dismissal:", batsmanIndex);
         return prev;
       }
@@ -192,7 +180,7 @@ export default function usePlayersAndBowlers(matchData) {
         case "stumped":
           dismissalText = `st ${fielder} b ${bowlerDisplayName}`;
           break;
-        case "hitwicket": // ✅ NEW
+        case "hitwicket":
           dismissalText = `hit wicket b ${bowlerDisplayName}`;
           break;
         default:
@@ -203,55 +191,64 @@ export default function usePlayersAndBowlers(matchData) {
         ...updated[batsmanIndex],
         dismissal: dismissalText,
       };
-      console.log(
-        `✅ Dismissal set for ${updated[batsmanIndex].displayName}: ${dismissalText}`
-      );
       return updated;
     });
   };
 
-  // ✅ Replace batsman and save to history — identified by index, not name
-  const replaceBatsman = (index, newDisplayName) => {
+  // ✅ FIX BUG 1 + BUG 3: Save to DB on replace, validate jersey not already in use
+  const replaceBatsman = (index, batsmanData) => {
+
+    const name =
+      typeof batsmanData === "string"
+        ? batsmanData
+        : batsmanData.name;
+  
+    const jersey =
+      typeof batsmanData === "object"
+        ? batsmanData.jersey
+        : null;
+  
+    savePlayerToDB(name, jersey);
+  
     setPlayers((prev) => {
       const updated = [...prev];
+  
       if (index !== null && index !== undefined && updated[index]) {
+  
         const dismissedPlayer = { ...updated[index] };
-
+  
         if (dismissedPlayer.balls > 0 || dismissedPlayer.dismissal) {
           setAllPlayers((all) => {
-            // ✅ Dedup by playerId — not name
             const exists = all.some(
               (p) => p.playerId === dismissedPlayer.playerId
             );
-            if (!exists) {
-              console.log(
-                `✅ Adding dismissed player to history: ${dismissedPlayer.displayName}`
-              );
-              return [...all, dismissedPlayer];
-            }
+            if (!exists) return [...all, dismissedPlayer];
             return all;
           });
         }
-
-        // New batsman gets a fresh playerId
-        updated[index] = makeBatsman(newDisplayName);
-        console.log(
-          `✅ Replaced batsman at index ${index} with ${newDisplayName}`
-        );
-      } else {
-        console.error("❌ Invalid index for batsman replacement:", index);
+  
+        updated[index] = makeBatsman(name, jersey);  // ✅ FIX
       }
+  
       return updated;
     });
+  
   };
 
   /* ================= RETIRED HURT ================= */
-  const retireBatsman = (newBatsmanName) => {
+  const retireBatsman = (newBatsmanData) => {
+    const newBatsmanName =
+      typeof newBatsmanData === "string" ? newBatsmanData : newBatsmanData.name;
+    const jersey =
+      typeof newBatsmanData === "object" ? newBatsmanData.jersey : null;
+
+    // ✅ FIX BUG 1: Save replacement to DB
+    savePlayerToDB(newBatsmanName, jersey);
+
     setPlayers((prev) => {
       const updated = [...prev];
       const retiring = { ...updated[strikerIndex] };
 
-      // Save to allPlayers as "retired hurt"
       const retiredEntry = { ...retiring, dismissal: "retired hurt" };
       setAllPlayers((all) => {
         const exists = all.some((p) => p.playerId === retiring.playerId);
@@ -261,16 +258,12 @@ export default function usePlayersAndBowlers(matchData) {
         );
       });
 
-      // Save raw stats to ref AND state — keyed by playerId
       const savedEntry = {
         playerId: retiring.playerId,
         displayName: retiring.displayName,
         runs: retiring.runs,
         balls: retiring.balls,
       };
-      console.log(
-        `🏥 ${retiring.displayName} retired hurt on ${retiring.runs}(${retiring.balls})`
-      );
       retiredPlayersRef.current = [
         ...retiredPlayersRef.current.filter(
           (p) => p.playerId !== retiring.playerId
@@ -279,52 +272,36 @@ export default function usePlayersAndBowlers(matchData) {
       ];
       setRetiredPlayers([...retiredPlayersRef.current]);
 
-      // Put new batsman on the field with fresh identity
-      updated[strikerIndex] = makeBatsman(newBatsmanName);
+      updated[strikerIndex] = makeBatsman(newBatsmanName, jersey);
       return updated;
     });
   };
 
   const returnRetiredBatsman = (retiredPlayerName, replacingIndex) => {
-    // ✅ Find by displayName (user-facing lookup) — identity is playerId
     const retiredPlayer = retiredPlayersRef.current.find(
       (p) =>
         p.displayName.toLowerCase().trim() ===
         retiredPlayerName.toLowerCase().trim()
     );
 
-    if (!retiredPlayer) {
-      console.error("❌ Retired player not found in ref:", retiredPlayerName);
-      return;
-    }
-
-    console.log(
-      `✅ ${retiredPlayerName} returning — resumes at ${retiredPlayer.runs}(${retiredPlayer.balls})`
-    );
+    if (!retiredPlayer) return;
 
     setPlayers((prev) => {
       const updated = [...prev];
       const dismissed = updated[replacingIndex];
 
-      // Save the dismissed batsman to history before overwriting
       if (dismissed && (dismissed.balls > 0 || dismissed.dismissal)) {
         setAllPlayers((all) => {
           const exists = all.some((p) => p.playerId === dismissed.playerId);
-          if (!exists) {
-            console.log(
-              `✅ Saving dismissed player to history: ${dismissed.displayName}`
-            );
-            return [...all, { ...dismissed }];
-          }
+          if (!exists) return [...all, { ...dismissed }];
           return all.map((p) =>
             p.playerId === dismissed.playerId ? { ...dismissed } : p
           );
         });
       }
 
-      // Restore retired player — reuse original playerId so stats remain linked
       updated[replacingIndex] = {
-        playerId: retiredPlayer.playerId, // ✅ same identity restored
+        playerId: retiredPlayer.playerId,
         displayName: retiredPlayer.displayName,
         runs: retiredPlayer.runs,
         balls: retiredPlayer.balls,
@@ -333,7 +310,6 @@ export default function usePlayersAndBowlers(matchData) {
       return updated;
     });
 
-    // Remove from allPlayers (they're active again)
     setAllPlayers((all) =>
       all.filter((p) => p.playerId !== retiredPlayer.playerId)
     );
@@ -341,23 +317,35 @@ export default function usePlayersAndBowlers(matchData) {
     setStrikerIndex(replacingIndex);
     setNonStrikerIndex(replacingIndex === 0 ? 1 : 0);
 
-    // Remove from ref and state
     retiredPlayersRef.current = retiredPlayersRef.current.filter(
       (p) => p.playerId !== retiredPlayer.playerId
     );
     setRetiredPlayers([...retiredPlayersRef.current]);
   };
 
-  const confirmNewBatsman = (name) => {
+  const confirmNewBatsman = (batsmanData) => {
+    const name =
+      typeof batsmanData === "string"
+        ? batsmanData
+        : batsmanData.name;
+  
+    const jersey =
+      typeof batsmanData === "object"
+        ? batsmanData.jersey
+        : null;
+  
+    savePlayerToDB(name, jersey);
+  
     setPlayers((prev) => {
       const updated = [...prev];
-      if (outBatsman === null || outBatsman === undefined) {
-        console.error("❌ No out batsman to replace");
-        return prev;
-      }
-      updated[outBatsman] = makeBatsman(name);
+  
+      if (outBatsman === null) return prev;
+  
+      updated[outBatsman] = makeBatsman(name, jersey);
+  
       return updated;
     });
+  
     setIsWicketPending(false);
   };
 
@@ -367,39 +355,49 @@ export default function usePlayersAndBowlers(matchData) {
     setIsNewBowlerPending(true);
   };
 
-  const confirmNewBowler = (name) => {
-    const trimmedName = name.trim();
-
+  const confirmNewBowler = (bowlerData) => {
+    const name =
+      typeof bowlerData === "string"
+        ? bowlerData
+        : bowlerData.name;
+  
+    const jersey =
+      typeof bowlerData === "object"
+        ? bowlerData.jersey
+        : null;
+  
+    const trimmedName = name?.trim();
+  
     if (!trimmedName) {
       setBowlerError("Bowler name required");
       return;
     }
-
-    // ✅ Match by displayName (user input is always a name string)
+  
+    // save to DB
+    savePlayerToDB(trimmedName, jersey);
+  
     const existingIndex = bowlers.findIndex(
       (b) => b.displayName.toLowerCase() === trimmedName.toLowerCase()
     );
-
+  
     let selectedIndex;
     let selectedBowler;
-
+  
     if (existingIndex !== -1) {
       selectedIndex = existingIndex;
       selectedBowler = bowlers[existingIndex];
     } else {
       selectedIndex = bowlers.length;
-      selectedBowler = makeBowler(trimmedName);
+      selectedBowler = makeBowler(trimmedName, jersey);
     }
-
+  
     const completedOvers = selectedBowler.overs;
-
-    /* ── Validation ── */
-
+  
     if (previousBowlerIndex !== null && selectedIndex === previousBowlerIndex) {
       setBowlerError("Same bowler cannot bowl consecutive overs!");
       return;
     }
-
+  
     if (
       matchData?.maxOversPerBowler &&
       !matchData?.isTestMatch &&
@@ -410,8 +408,7 @@ export default function usePlayersAndBowlers(matchData) {
       );
       return;
     }
-
-    // ✅ Dismissed bowler check by displayName (user types names)
+  
     if (
       dismissedBowlersRef.current.some(
         (d) => d.toLowerCase() === trimmedName.toLowerCase()
@@ -422,35 +419,34 @@ export default function usePlayersAndBowlers(matchData) {
       );
       return;
     }
-
-    /* ── Apply ── */
-
+  
     if (existingIndex !== -1) {
       setCurrentBowlerIndex(existingIndex);
     } else {
       setBowlers((prev) => [...prev, selectedBowler]);
       setCurrentBowlerIndex(selectedIndex);
     }
-
+  
     setBowlerError(null);
     setIsNewBowlerPending(false);
-
+  
     return { success: true };
   };
 
   /* ================= DISMISS BOWLER ================= */
-  const dismissCurrentBowler = (newBowlerName) => {
-    const trimmedName = newBowlerName.trim();
+  const dismissCurrentBowler = (newBowlerData) => {
+    const trimmedName =
+      typeof newBowlerData === "string"
+        ? newBowlerData.trim()
+        : newBowlerData.name.trim();
+    const jersey =
+      typeof newBowlerData === "object" ? newBowlerData.jersey : null;
     const dismissedName = bowlers[currentBowlerIndex]?.displayName;
 
-    if (!dismissedName) {
-      console.error("❌ No current bowler to dismiss");
-      return;
-    }
+    if (!dismissedName) return;
 
-    console.log(
-      `🚫 Dismissing bowler: ${dismissedName}, replacing with: ${trimmedName}`
-    );
+    // ✅ FIX BUG 1: Save new bowler to DB
+    savePlayerToDB(trimmedName, jersey);
 
     const updatedDismissed = [
       ...dismissedBowlersRef.current.filter(
@@ -468,12 +464,10 @@ export default function usePlayersAndBowlers(matchData) {
     if (existingIndex !== -1) {
       setCurrentBowlerIndex(existingIndex);
     } else {
-      const newBowler = makeBowler(trimmedName);
+      const newBowler = makeBowler(trimmedName, jersey);
       setBowlers((prev) => [...prev, newBowler]);
       setCurrentBowlerIndex(bowlers.length);
     }
-
-    console.log(`✅ ${dismissedName} dismissed. ${trimmedName} now bowling.`);
   };
 
   /* ================= RESTORE (FOR UNDO) ================= */
@@ -532,7 +526,6 @@ export default function usePlayersAndBowlers(matchData) {
   };
 
   /* ================= RENAME ================= */
-  // ✅ Update displayName by playerId — stats and history never break
   const renamePlayer = (playerId, newDisplayName) => {
     setPlayers((prev) =>
       prev.map((p) =>
@@ -562,57 +555,20 @@ export default function usePlayersAndBowlers(matchData) {
     );
   };
 
-  /* ================= DISPLAY NAME LOOKUP ================= */
   const getDisplayName = (list, playerId) =>
     list.find((p) => p.playerId === playerId)?.displayName ?? playerId;
 
   const resetForNewInnings = () => {
-    console.log("🔄 Resetting players for new innings / super over");
-
     setPlayers([]);
     setAllPlayers([]);
     setBowlers([]);
-
     setStrikerIndex(0);
     setNonStrikerIndex(1);
-
     setCurrentBowlerIndex(0);
-
     setIsWicketPending(false);
     setOutBatsman(null);
-
     retiredPlayersRef.current = [];
     setRetiredPlayers([]);
-  };
-
-  const addFourToStriker = () => {
-    setPlayers(prev => {
-      const updated = [...prev];
-  
-      const s = strikerIndex;
-  
-      updated[s] = {
-        ...updated[s],
-        fours: (updated[s].fours || 0) + 1,
-      };
-  
-      return updated;
-    });
-  };
-  
-  const addSixToStriker = () => {
-    setPlayers(prev => {
-      const updated = [...prev];
-  
-      const s = strikerIndex;
-  
-      updated[s] = {
-        ...updated[s],
-        sixes: (updated[s].sixes || 0) + 1,
-      };
-  
-      return updated;
-    });
   };
 
   /* ================= EXPORTS ================= */
@@ -648,12 +604,11 @@ export default function usePlayersAndBowlers(matchData) {
     dismissedBowlersRef,
     restorePlayersState,
     restoreBowlersState,
-    renamePlayer, // ✅ NEW — update displayName safely by playerId
-    getDisplayName, // ✅ NEW — resolve displayName from playerId for UI
+    renamePlayer,
+    renameBowler,
+    getDisplayName,
     bowlerError,
     setBowlerError,
     resetForNewInnings,
-    addFourToStriker,
-    addSixToStriker,
   };
 }

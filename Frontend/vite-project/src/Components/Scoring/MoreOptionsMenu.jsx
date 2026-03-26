@@ -1,13 +1,14 @@
 import styles from "./MoreOptionsMenu.module.css";
 
-function MoreOptionsMenu({ 
-  innings, 
-  onClose, 
-  onOpenDLS, 
+function MoreOptionsMenu({
+  innings,
+  onClose,
+  onOpenDLS,
   onOpenChangePlayers,
   onOpenChangeOvers,
   onOpenChangeBowlerLimit,
-  onOpenWinProbability
+  onOpenWinProbability,
+  onOpenPlayerDatabase, // ✅ ADDED
 }) {
   return (
     <div className={styles.overlay}>
@@ -28,7 +29,7 @@ function MoreOptionsMenu({
           {/* Only show in Innings 1 */}
           {innings === 1 && (
             <>
-              <button 
+              <button
                 className={styles.optionBtn}
                 onClick={() => {
                   onClose();
@@ -38,7 +39,7 @@ function MoreOptionsMenu({
                 🏏 Change Total Overs
               </button>
 
-              <button 
+              <button
                 className={styles.optionBtn}
                 onClick={() => {
                   onClose();
@@ -62,8 +63,7 @@ function MoreOptionsMenu({
               >
                 🌧 DLS Calculator
               </button>
-
-              <button 
+              <button
                 className={styles.optionBtn}
                 onClick={() => {
                   onClose();
@@ -74,6 +74,17 @@ function MoreOptionsMenu({
               </button>
             </>
           )}
+
+          {/* ✅ Player Database - available in both innings */}
+          <button
+            className={styles.optionBtn}
+            onClick={() => {
+              onClose();
+              onOpenPlayerDatabase();
+            }}
+          >
+            👥 Player Database
+          </button>
         </div>
 
         <button className={styles.closeBtn} onClick={onClose}>
@@ -85,4 +96,3 @@ function MoreOptionsMenu({
 }
 
 export default MoreOptionsMenu;
-
