@@ -1,108 +1,231 @@
-import styles from "./scoring.module.css";
 import { useState } from "react";
+import styles from "./StartInningsModal.module.css";
 
-export default function StartInningsModal({ onStart }) {
+function StartInningsModal({ onStart, playerDB }) {
   const [striker, setStriker] = useState("");
+  const [strikerJersey, setStrikerJersey] = useState("");
+  const [strikerExisting, setStrikerExisting] = useState(null);
+
   const [nonStriker, setNonStriker] = useState("");
+  const [nonStrikerJersey, setNonStrikerJersey] = useState("");
+  const [nonStrikerExisting, setNonStrikerExisting] = useState(null);
+
   const [bowler, setBowler] = useState("");
+  const [bowlerJersey, setBowlerJersey] = useState("");
+  const [bowlerExisting, setBowlerExisting] = useState(null);
+
   const [error, setError] = useState("");
 
-  const handleStart = () => {
-    // ✅ Validation: Check if all fields are filled
-    if (!striker.trim()) {
-      setError("❌ Striker name is required");
-      return;
-    }
-    if (!nonStriker.trim()) {
-      setError("❌ Non-striker name is required");
-      return;
-    }
-    if (!bowler.trim()) {
-      setError("❌ Bowler name is required");
-      return;
-    }
-
-    // ✅ Check if names are different
-    if (striker.trim().toLowerCase() === nonStriker.trim().toLowerCase()) {
-      setError("❌ Striker and non-striker must have different names");
-      return;
-    }
-
-    // ✅ All validations passed - start innings
+  const handleStrikerJerseyChange = (val) => {
+    setStrikerJersey(val);
     setError("");
-    onStart(striker.trim(), nonStriker.trim(), bowler.trim());
+    setStrikerExisting(null);
+    if (val.trim() && playerDB) {
+      const found = playerDB.getPlayer(val.trim());
+      if (found) {
+        setStrikerExisting(found);
+        setStriker(found.name);
+      }
+    }
   };
 
-  // ✅ Allow Enter key to start
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleStart();
+  const handleNonStrikerJerseyChange = (val) => {
+    setNonStrikerJersey(val);
+    setError("");
+    setNonStrikerExisting(null);
+    if (val.trim() && playerDB) {
+      const found = playerDB.getPlayer(val.trim());
+      if (found) {
+        setNonStrikerExisting(found);
+        setNonStriker(found.name);
+      }
     }
+  };
+
+  const handleBowlerJerseyChange = (val) => {
+    setBowlerJersey(val);
+    setError("");
+    setBowlerExisting(null);
+    if (val.trim() && playerDB) {
+      const found = playerDB.getPlayer(val.trim());
+      if (found) {
+        setBowlerExisting(found);
+        setBowler(found.name);
+      }
+    }
+  };
+
+  const handleStart = () => {
+    if (!striker.trim()) { setError("⚠️ Please enter striker name"); return; }
+    if (!strikerJersey.trim()) { setError("⚠️ Please enter striker jersey number"); return; }
+    if (!nonStriker.trim()) { setError("⚠️ Please enter non-striker name"); return; }
+    if (!nonStrikerJersey.trim()) { setError("⚠️ Please enter non-striker jersey number"); return; }
+    if (!bowler.trim()) { setError("⚠️ Please enter bowler name"); return; }
+    if (!bowlerJersey.trim()) { setError("⚠️ Please enter bowler jersey number"); return; }
+
+    // ✅ FIX BUG 3: Validate no duplicate jerseys across all three
+    const jerseys = [
+      strikerJersey.trim(),
+      nonStrikerJersey.trim(),
+      bowlerJersey.trim(),
+    ];
+    const uniqueJerseys = new Set(jerseys);
+    if (uniqueJerseys.size !== jerseys.length) {
+      if (strikerJersey.trim() === nonStrikerJersey.trim()) {
+        setError("⚠️ Striker and Non-Striker cannot have the same jersey number");
+      } else if (strikerJersey.trim() === bowlerJersey.trim()) {
+        setError("⚠️ Striker and Bowler cannot have the same jersey number");
+      } else {
+        setError("⚠️ Non-Striker and Bowler cannot have the same jersey number");
+      }
+      return;
+    }
+
+    onStart(
+      { name: striker.trim(), jersey: strikerJersey.trim() },
+      { name: nonStriker.trim(), jersey: nonStrikerJersey.trim() },
+      { name: bowler.trim(), jersey: bowlerJersey.trim() }
+    );
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") handleStart();
   };
 
   return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modalBox}>
-        <h2>🏏 Start Innings</h2>
-        
-        <input 
-          placeholder="Striker Name" 
-          value={striker}
-          onChange={(e) => {
-            setStriker(e.target.value);
-            setError(""); // Clear error on input
-          }}
-          onKeyPress={handleKeyPress}
-          autoFocus
-        />
-        
-        <input 
-          placeholder="Non-Striker Name" 
-          value={nonStriker}
-          onChange={(e) => {
-            setNonStriker(e.target.value);
-            setError(""); // Clear error on input
-          }}
-          onKeyPress={handleKeyPress}
-        />
-        
-        <input 
-          placeholder="Opening Bowler" 
-          value={bowler}
-          onChange={(e) => {
-            setBowler(e.target.value);
-            setError(""); // Clear error on input
-          }}
-          onKeyPress={handleKeyPress}
-        />
+    <div className={styles.overlay}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <h2 className={styles.title}>🏏 Start Innings</h2>
+        <p className={styles.subtitle}>Enter jersey numbers to auto-fill from database</p>
 
-        {/* ✅ Error message display */}
-        {error && (
-          <div style={{
-            color: "#ef4444",
-            fontSize: "13px",
-            fontWeight: "600",
-            marginTop: "8px",
-            textAlign: "center",
-            padding: "8px",
-            background: "rgba(239, 68, 68, 0.1)",
-            borderRadius: "6px"
-          }}>
-            {error}
+        {/* STRIKER */}
+        <div className={styles.playerSection}>
+          <h3 className={styles.label}>Striker (On Strike)</h3>
+          <div className={styles.inputContainer}>
+            <input
+              className={styles.input}
+              placeholder="Jersey number (e.g. 18)"
+              value={strikerJersey}
+              onChange={(e) => handleStrikerJerseyChange(e.target.value)}
+              type="number"
+              autoFocus
+            />
           </div>
-        )}
+          {strikerExisting && (
+            <div className={styles.existingPlayer}>
+              ✅ Found: <strong>{strikerExisting.name}</strong> — {strikerExisting.runs}R, {strikerExisting.wickets}W
+            </div>
+          )}
+          <div className={styles.inputContainer}>
+            <input
+              className={styles.input}
+              placeholder="Striker name"
+              value={striker}
+              onChange={(e) => { setStriker(e.target.value); setError(""); }}
+              onKeyPress={handleKeyPress}
+            />
+          </div>
+        </div>
 
-        <button 
-          onClick={handleStart}
-          disabled={!striker.trim() || !nonStriker.trim() || !bowler.trim()}
-          style={{
-            opacity: (!striker.trim() || !nonStriker.trim() || !bowler.trim()) ? 0.5 : 1,
-            cursor: (!striker.trim() || !nonStriker.trim() || !bowler.trim()) ? "not-allowed" : "pointer"
-          }}
-        >
-          Start Match
-        </button>
+        {/* NON-STRIKER */}
+        <div className={styles.playerSection}>
+          <h3 className={styles.label}>Non-Striker</h3>
+          <div className={styles.inputContainer}>
+            <input
+              className={styles.input}
+              placeholder="Jersey number (e.g. 7)"
+              value={nonStrikerJersey}
+              onChange={(e) => handleNonStrikerJerseyChange(e.target.value)}
+              type="number"
+            />
+          </div>
+          {/* ✅ FIX BUG 3: Live duplicate warning */}
+          {nonStrikerJersey.trim() && nonStrikerJersey.trim() === strikerJersey.trim() && (
+            <div className={styles.duplicateWarning}>
+              ⚠️ Same jersey as Striker
+            </div>
+          )}
+          {nonStrikerExisting && (
+            <div className={styles.existingPlayer}>
+              ✅ Found: <strong>{nonStrikerExisting.name}</strong> — {nonStrikerExisting.runs}R, {nonStrikerExisting.wickets}W
+            </div>
+          )}
+          <div className={styles.inputContainer}>
+            <input
+              className={styles.input}
+              placeholder="Non-striker name"
+              value={nonStriker}
+              onChange={(e) => { setNonStriker(e.target.value); setError(""); }}
+              onKeyPress={handleKeyPress}
+            />
+          </div>
+        </div>
+
+        {/* BOWLER */}
+        <div className={styles.playerSection}>
+          <h3 className={styles.label}>Opening Bowler</h3>
+          <div className={styles.inputContainer}>
+            <input
+              className={styles.input}
+              placeholder="Jersey number (e.g. 99)"
+              value={bowlerJersey}
+              onChange={(e) => handleBowlerJerseyChange(e.target.value)}
+              type="number"
+            />
+          </div>
+          {/* ✅ FIX BUG 3: Live duplicate warning for bowler */}
+          {bowlerJersey.trim() && (
+            bowlerJersey.trim() === strikerJersey.trim() ||
+            bowlerJersey.trim() === nonStrikerJersey.trim()
+          ) && (
+            <div className={styles.duplicateWarning}>
+              ⚠️ Same jersey as {bowlerJersey.trim() === strikerJersey.trim() ? "Striker" : "Non-Striker"}
+            </div>
+          )}
+          {bowlerExisting && (
+            <div className={styles.existingPlayer}>
+              ✅ Found: <strong>{bowlerExisting.name}</strong> — {bowlerExisting.wickets}W, Eco:{" "}
+              {bowlerExisting.ballsBowled > 0
+                ? (bowlerExisting.runsGiven / (bowlerExisting.ballsBowled / 6)).toFixed(2)
+                : "0.00"}
+            </div>
+          )}
+          <div className={styles.inputContainer}>
+            <input
+              className={styles.input}
+              placeholder="Bowler name"
+              value={bowler}
+              onChange={(e) => { setBowler(e.target.value); setError(""); }}
+              onKeyPress={handleKeyPress}
+            />
+          </div>
+        </div>
+
+        {error && <p className={styles.errorText}>{error}</p>}
+
+        <div className={styles.buttonRow}>
+          <button
+            className={styles.startBtn}
+            onClick={handleStart}
+            disabled={
+              !striker.trim() ||
+              !nonStriker.trim() ||
+              !bowler.trim() ||
+              !strikerJersey.trim() ||
+              !nonStrikerJersey.trim() ||
+              !bowlerJersey.trim() ||
+              // ✅ FIX BUG 3: Disable button if any duplicate jerseys
+              new Set([strikerJersey.trim(), nonStrikerJersey.trim(), bowlerJersey.trim()]).size !== 3
+            }
+          >
+            Start Innings
+          </button>
+        </div>
+
+        <p className={styles.hint}>Jersey numbers are permanent player IDs</p>
       </div>
     </div>
   );
 }
+
+export default StartInningsModal;

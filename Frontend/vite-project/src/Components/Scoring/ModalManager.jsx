@@ -24,6 +24,7 @@ import BowlerStatsModal from "./BowlerStatsModal"; // ✅ NEW
 import usePlayerStats from "../../hooks/usePlayerStats";
 import useBowlerStats from "../../hooks/useBowlerStats"; // ✅ NEW
 import RunoutChoiceModal from "./RunoutChoiceModal";
+import PlayerDatabaseModal from "./PlayerDatabaseModal";
 
 function ModalManager({
   modalStates,
@@ -78,6 +79,9 @@ function ModalManager({
   initialNonStrikerPlayerId,
   isSuperOver,
   superOverNumber,
+  playerDB,
+  onOpenPlayerDatabase,
+  activePlayers = [],
 }) {
   // Stats for the currently selected batsman
   const statsForPlayer = usePlayerStats(
@@ -94,7 +98,7 @@ function ModalManager({
   return (
     <>
       {modalStates.showStartModal && (
-        <StartInningsModal onStart={onStartInnings} />
+        <StartInningsModal onStart={onStartInnings} playerDB={playerDB} />
       )}
 
       {wicketFlow.showWicketTypeModal && (
@@ -103,7 +107,6 @@ function ModalManager({
           onClose={() => wicketFlow.cancelWicketFlow()}
         />
       )}
-
       {wicketFlow.showFielderInputModal && (
         <FielderInputModal
           wicketType={wicketFlow.selectedWicketType}
@@ -111,22 +114,25 @@ function ModalManager({
           onCancel={onFielderCancel}
         />
       )}
-
       {isWicketPending &&
         !wicketFlow.showFielderInputModal &&
         !wicketFlow.waitingForRunoutRun &&
         wicketFlow.pendingRunoutRuns === null && (
           <NewBatsmanModal
-            onConfirm={onConfirmNewBatsman}
-            retiredPlayers={retiredPlayers || []}
-            onReturnRetired={onReturnRetiredConfirm}
-          />
+               onConfirm={onConfirmNewBatsman}
+               retiredPlayers={retiredPlayers || []}
+               onReturnRetired={onReturnRetiredConfirm}
+               playerDB={playerDB}
+               activePlayers={activePlayers}
+             />
+          
         )}
 
       {isNewBowlerPending && (
         <NewBowlerModal
           onConfirm={onConfirmNewBowler}
           existingBowlers={bowlers}
+          playerDB={playerDB}
         />
       )}
 
@@ -140,14 +146,12 @@ function ModalManager({
           onClose={() => modalStates.setShowDismissBowlerModal(false)}
         />
       )}
-
       {modalStates.showNoResultModal && (
         <NoResultModal
           onConfirm={onNoResultConfirm}
           onClose={() => modalStates.setShowNoResultModal(false)}
         />
       )}
-
       {modalStates.showPartnershipHistory && (
         <PartnershipHistory
           history={partnershipHistory}
@@ -156,7 +160,6 @@ function ModalManager({
           battingTeam={currentBattingTeam}
         />
       )}
-
       {modalStates.showSummary && (innings1Data || innings2Data) && (
         <MatchSummary
           team1={firstBattingTeam}
@@ -172,7 +175,6 @@ function ModalManager({
           superOverNumber={superOverNumber}
         />
       )}
-
       {modalStates.showInningsHistory && (
         <TabbedInningsHistory
           innings1History={innings1History}
@@ -181,7 +183,6 @@ function ModalManager({
           onClose={() => modalStates.setShowInningsHistory(false)}
         />
       )}
-
       {modalStates.showInningsSummary && (
         <TabbedInningsSummary
           innings1Data={innings1Data}
@@ -200,7 +201,6 @@ function ModalManager({
           onClose={() => modalStates.setShowInningsSummary(false)}
         />
       )}
-
       {modalStates.showComparisonGraph && (
         <ComparisonGraph
           team1Name={firstBattingTeam}
@@ -224,7 +224,6 @@ function ModalManager({
           onClose={() => modalStates.setShowComparisonGraph(false)}
         />
       )}
-
       {modalStates.showChangePlayersModal && (
         <ChangePlayersModal
           matchData={updatedMatchData}
@@ -236,7 +235,6 @@ function ModalManager({
           onClose={() => modalStates.setShowChangePlayersModal(false)}
         />
       )}
-
       {modalStates.showChangeOversModal && (
         <ChangeOversModal
           matchData={updatedMatchData}
@@ -246,7 +244,6 @@ function ModalManager({
           onClose={() => modalStates.setShowChangeOversModal(false)}
         />
       )}
-
       {modalStates.showChangeBowlerLimitModal && (
         <ChangeBowlerLimitModal
           matchData={updatedMatchData}
@@ -254,7 +251,6 @@ function ModalManager({
           onClose={() => modalStates.setShowChangeBowlerLimitModal(false)}
         />
       )}
-
       {modalStates.showDLSCalculator && innings === 2 && (
         <DLSCalculator
           onClose={() => modalStates.setShowDLSCalculator(false)}
@@ -269,7 +265,6 @@ function ModalManager({
           team1Balls={innings1Score?.balls || 0}
         />
       )}
-
       {modalStates.showWinProbability && innings === 2 && (
         <WinProbabilityModal
           onClose={() => modalStates.setShowWinProbability(false)}
@@ -282,7 +277,6 @@ function ModalManager({
           currentBalls={balls}
         />
       )}
-
       {modalStates.showRetiredHurtModal && players.length >= 2 && (
         <RetiredHurtModal
           strikerName={players[strikerIndex]?.displayName || "Striker"}
@@ -290,7 +284,6 @@ function ModalManager({
           onClose={() => modalStates.setShowRetiredHurtModal(false)}
         />
       )}
-
       {modalStates.showMoreMenu && (
         <MoreOptionsMenu
           innings={innings}
@@ -304,9 +297,9 @@ function ModalManager({
             modalStates.setShowChangeBowlerLimitModal(true)
           }
           onOpenWinProbability={() => modalStates.setShowWinProbability(true)}
+          onOpenPlayerDatabase={onOpenPlayerDatabase}
         />
       )}
-
       {/* Rename modal — shared for both batsmen and bowlers */}
       {modalStates.showRenameModal && modalStates.renameTarget && (
         <RenameModal
@@ -323,7 +316,6 @@ function ModalManager({
           onClose={modalStates.closeRenameModal}
         />
       )}
-
       {/* Batsman Stats Modal */}
       {modalStates.showPlayerStats && modalStates.statsTarget && (
         <PlayerStatsModal
@@ -336,7 +328,6 @@ function ModalManager({
           onClose={modalStates.closePlayerStats}
         />
       )}
-
       {/* ✅ NEW: Bowler Stats Modal */}
       {modalStates.showBowlerStats && modalStates.bowlerStatsTarget && (
         <BowlerStatsModal
@@ -368,6 +359,12 @@ function ModalManager({
             wicketFlow.setShowFielderInputModal(true);
           }}
           onClose={() => wicketFlow.setShowRunoutChoiceModal(false)}
+        />
+      )}
+      {modalStates.showPlayerDatabase && (
+        <PlayerDatabaseModal
+          playerDB={playerDB}
+          onClose={() => modalStates.setShowPlayerDatabase(false)}
         />
       )}
     </>

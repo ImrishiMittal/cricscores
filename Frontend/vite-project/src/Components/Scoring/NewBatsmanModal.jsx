@@ -1,73 +1,73 @@
 import { useState } from "react";
 import styles from "./NewBatsmanModal.module.css";
 
-/**
- * NewBatsmanModal
- *
- * Shown after a wicket falls.
- * If there are retired-hurt players available, they are shown as quick-return buttons.
- * The user can either pick a retired player (who resumes their exact score)
- * or type a new batsman's name.
- *
- * Props:
- *   onConfirm(name)           — called with new batsman name (fresh player)
- *   retiredPlayers            — array of { playerId, displayName, runs, balls } retired players
- *   onReturnRetired(name)     — called when user selects a retired player to return
- */
-function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired }) {
-  const [batsmanName, setBatsmanName] = useState("");
+// ✅ activePlayers: the current two players on the field, to check for duplicate jerseys
+function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, playerDB, activePlayers = [] }) {
+  const [name, setName] = useState("");
+  const [jersey, setJersey] = useState("");
   const [error, setError] = useState("");
+  const [existingPlayer, setExistingPlayer] = useState(null);
+
+  const handleJerseyChange = (val) => {
+    setJersey(val);
+    setError("");
+    setExistingPlayer(null);
+
+    if (val.trim() && playerDB) {
+      const found = playerDB.getPlayer(val.trim());
+      if (found) {
+        setExistingPlayer(found);
+        setName(found.name);
+      }
+    }
+  };
+
+  // ✅ FIX BUG 3: Check if jersey is already used by the non-striker on field
+  const isDuplicateJersey =
+    jersey.trim() &&
+    activePlayers.some((p) => p?.playerId === String(jersey.trim()));
 
   const handleConfirm = () => {
-    if (!batsmanName.trim()) {
-      setError("⚠️ Please enter batsman name");
+    if (!name.trim()) {
+      setError("⚠️ Please enter player name");
       return;
     }
-    if (batsmanName.trim().length < 2) {
-      setError("⚠️ Name must be at least 2 characters");
+    if (!jersey.trim()) {
+      setError("⚠️ Please enter jersey number");
       return;
     }
-    setError("");
-    onConfirm(batsmanName.trim());
-    setBatsmanName("");
+    // ✅ FIX BUG 3: Block duplicate jersey
+    if (isDuplicateJersey) {
+      setError("⚠️ This jersey number is already in use by the non-striker");
+      return;
+    }
+
+    onConfirm({ name: name.trim(), jersey: jersey.trim(), existingPlayer });
+    setName("");
+    setJersey("");
+    setExistingPlayer(null);
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === "Enter" && batsmanName.trim()) {
-      handleConfirm();
-    }
-  };
-
-  const handleReturnRetired = (player) => {
-    if (onReturnRetired) {
-      onReturnRetired(player.displayName); // ✅ was player.name
-    }
+    if (e.key === "Enter") handleConfirm();
   };
 
   return (
-    <div className={styles.overlay} onClick={(e) => {
-      if (e.target === e.currentTarget) return;
-    }}>
+    <div className={styles.overlay}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>🏏 New Batsman</h2>
 
-        {/* ✅ RETIRED HURT: Show retired players as quick-return options */}
+        {/* Retired players quick-return */}
         {retiredPlayers.length > 0 && (
           <div style={{ marginBottom: "16px" }}>
-            <p style={{
-              fontSize: "12px",
-              color: "#f59e0b",
-              textAlign: "center",
-              marginBottom: "8px",
-              fontWeight: "600",
-            }}>
+            <p style={{ color: "#f1c40f", fontSize: "13px", textAlign: "center", marginBottom: "8px", fontWeight: "600" }}>
               🏥 Retired Hurt — tap to return:
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               {retiredPlayers.map((player) => (
                 <button
-                  key={player.playerId}  // ✅ was player.name
-                  onClick={() => handleReturnRetired(player)}
+                  key={player.playerId}
+                  onClick={() => onReturnRetired(player.displayName)}
                   style={{
                     background: "linear-gradient(135deg, #78350f, #92400e)",
                     border: "1px solid #f59e0b",
@@ -82,35 +82,69 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired }) {
                     fontWeight: "600",
                   }}
                 >
-                  <span>{player.displayName}</span>  {/* ✅ was player.name */}
+                  <span>{player.displayName}</span>
                   <span style={{ fontSize: "12px", color: "#fcd34d" }}>
                     resumes at {player.runs}({player.balls})
                   </span>
                 </button>
               ))}
             </div>
-            <p style={{
-              fontSize: "11px",
-              color: "#6b7280",
-              textAlign: "center",
-              margin: "8px 0 4px",
-            }}>
+            <p style={{ fontSize: "11px", color: "#6b7280", textAlign: "center", margin: "8px 0 4px" }}>
               — or enter a new batsman below —
             </p>
+          </div>
+        )}
+
+        {/* Jersey field */}
+        <div className={styles.inputContainer}>
+          <input
+            className={styles.input}
+            placeholder="Jersey number (e.g. 18)"
+            value={jersey}
+            onChange={(e) => handleJerseyChange(e.target.value)}
+            onKeyPress={handleKeyPress}
+            type="number"
+            autoFocus
+          />
+        </div>
+
+        {/* ✅ FIX BUG 3: Live duplicate warning */}
+        {isDuplicateJersey && (
+          <div style={{
+            background: "rgba(239,68,68,0.1)",
+            border: "1px solid #ef4444",
+            borderRadius: "8px",
+            padding: "8px 12px",
+            marginBottom: "8px",
+            fontSize: "13px",
+            color: "#ef4444",
+          }}>
+            ⚠️ Jersey #{jersey} is already in use by the non-striker
+          </div>
+        )}
+
+        {/* Existing player info */}
+        {existingPlayer && !isDuplicateJersey && (
+          <div style={{
+            background: "rgba(34,197,94,0.1)",
+            border: "1px solid #22c55e",
+            borderRadius: "8px",
+            padding: "10px 14px",
+            marginBottom: "12px",
+            fontSize: "13px",
+            color: "#22c55e",
+          }}>
+            ✅ Found: <strong>{existingPlayer.name}</strong> — Career: {existingPlayer.runs}R, {existingPlayer.wickets}W
           </div>
         )}
 
         <div className={styles.inputContainer}>
           <input
             className={`${styles.input} ${error ? styles.errorInput : ""}`}
-            placeholder="Enter batsman name"
-            value={batsmanName}
-            onChange={(e) => {
-              setBatsmanName(e.target.value);
-              setError("");
-            }}
+            placeholder="Player name"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setError(""); }}
             onKeyPress={handleKeyPress}
-            autoFocus
           />
           {error && <p className={styles.errorText}>{error}</p>}
         </div>
@@ -119,17 +153,16 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired }) {
           <button
             className={styles.confirmBtn}
             onClick={handleConfirm}
-            disabled={!batsmanName.trim()}
+            disabled={!name.trim() || !jersey.trim() || isDuplicateJersey}
           >
-            Confirm
+            {existingPlayer ? "Use Existing Player" : "Add New Player"}
           </button>
         </div>
 
-        <p className={styles.hint}>Press Enter to confirm</p>
+        <p className={styles.hint}>Jersey number is permanent ID</p>
       </div>
     </div>
   );
 }
 
 export default NewBatsmanModal;
-
