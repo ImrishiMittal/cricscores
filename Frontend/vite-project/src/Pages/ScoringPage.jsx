@@ -369,15 +369,11 @@ function ScoringPage() {
     }, 150);
   };
 
-  const handleFielderConfirm = ({ fielder, newBatsman }) => {
+  const handleFielderConfirm = ({ fielder }) => {
     const bowlerName =
       playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName ||
       "Unknown";
     let currentOutBatsman = playersHook.strikerIndex;
-  
-    if (wicketFlow.selectedWicketType === "runout") {
-      currentOutBatsman = playersHook.strikerIndex;
-    }
   
     const currentBattingTeamKey =
       currentInningsRef.current === 1 ? "teamAPlayers" : "teamBPlayers";
@@ -386,11 +382,7 @@ function ScoringPage() {
       : Number(matchData[currentBattingTeamKey] || 11);
     const currentMaxWickets = engine.isSuperOver ? 2 : currentTeamSize - 1;
     const nextWickets = engine.wickets + 1;
-  
-    const uniqueBatsmenCount = new Set([
-      ...playersHook.players.map((p) => p.displayName),
-      newBatsman,
-    ]).size;
+    const uniqueBatsmenCount = playersHook.players.length;
   
     playersHook.setDismissal(
       wicketFlow.selectedWicketType,
@@ -398,6 +390,7 @@ function ScoringPage() {
       bowlerName,
       currentOutBatsman
     );
+    playersHook.registerWicket();
   
     const isRunout = wicketFlow.selectedWicketType === "runout";
     hatTrickHook.trackBall(bowlerName, true, isRunout);
@@ -418,56 +411,23 @@ function ScoringPage() {
       wicketFlow.pendingRunoutRuns !== null
     );
   
+    // ✅ Complete wicket flow ONCE
+    wicketFlow.completeWicketFlow();
+  
     const allWicketsFallen = nextWickets >= currentMaxWickets;
   
     if (allWicketsFallen) {
-      wicketFlow.completeWicketFlow();
+      // ✅ Snapshot ONCE, no NewBatsmanModal needed
       setTimeout(() => triggerSnapshotWithTracking(), 100);
       return;
     }
   
-    if (!engine.isSuperOver && uniqueBatsmenCount > currentTeamSize) {
-      alert(`❌ Cannot add new batsman! Team only has ${currentTeamSize} players.`);
-      wicketFlow.completeWicketFlow();
+    if (!engine.isSuperOver && uniqueBatsmenCount >= currentTeamSize) {
       return;
     }
   
-    setTimeout(() => {
-
-      const isReturnedPlayer = playersHook.retiredPlayersRef.current.some(
-        (p) =>
-          p.displayName.toLowerCase().trim() ===
-          newBatsman.toLowerCase().trim()
-      );
-    
-      // ✅ store which batsman got out
-      playersHook.setOutBatsman(currentOutBatsman);
-    
-      // ✅ mark wicket pending so NewBatsmanModal opens
-      playersHook.setIsWicketPending(true);
-    
-      // ✅ if returned player, store name so modal can use it
-      if (isReturnedPlayer) {
-        playersHook.setReturningPlayerName(newBatsman);
-      }
-    
-    }, 50);
-  
-    setTimeout(() => {
-      const nonStriker = playersHook.players[playersHook.nonStrikerIndex];
-      partnershipsHook.startPartnership(
-        { playerId: "new-" + Date.now(), displayName: newBatsman },
-        nonStriker
-          ? { playerId: nonStriker.playerId, displayName: nonStriker.displayName }
-          : { playerId: "", displayName: "Unknown" }
-      );
-    }, 150);
-  
-    wicketFlow.completeWicketFlow();
-    // ✅ FIX BUG 2: LINE REMOVED — do NOT call setIsWicketPending(false) here.
-    // replaceBatsman/confirmNewBatsman in usePlayersAndBowlers handles this
-    // after the 50ms timeout. Calling it here fired synchronously and hid
-    // the NewBatsmanModal before it could render.
+    // ✅ Show NewBatsmanModal — snapshot ONCE after delay
+    playersHook.setIsWicketPending(true);
     setTimeout(() => triggerSnapshotWithTracking(), 200);
   };
 
@@ -898,41 +858,48 @@ function ScoringPage() {
         
 
         onConfirmNewBatsman={(batsmanData) => {
-          const name = typeof batsmanData === 'string' ? batsmanData : batsmanData.name;
-          
-          const isReturnedPlayer = playersHook.retiredPlayersRef.current.some(
-            (p) =>
-              p.displayName.toLowerCase().trim() === name.toLowerCase().trim()
-          );
+          const name =
+            typeof batsmanData === "string"
+              ? batsmanData
+              : batsmanData.name;
+        
+          const isReturnedPlayer =
+            playersHook.retiredPlayersRef.current.some(
+              (p) =>
+                p.displayName.toLowerCase().trim() ===
+                name.toLowerCase().trim()
+            );
+        
           if (isReturnedPlayer) {
-            playersHook.returnRetiredBatsman(name, playersHook.outBatsman);
-            playersHook.setIsWicketPending(false);
-            setTimeout(() => {
-              const p = playersHook.players;
-              partnershipsHook.startPartnership(
-                p[0]
-                  ? { playerId: p[0].playerId, displayName: p[0].displayName }
-                  : { playerId: "", displayName: "" },
-                p[1]
-                  ? { playerId: p[1].playerId, displayName: p[1].displayName }
-                  : { playerId: "", displayName: "" }
-              );
-            }, 50);
+            playersHook.returnRetiredBatsman(
+              name,
+              playersHook.outBatsman
+            );
           } else {
-            playersHook.replaceBatsman(playersHook.outBatsman, batsmanData);
-            playersHook.setIsWicketPending(false);
-            setTimeout(() => {
-              const p = playersHook.players;
-              partnershipsHook.startPartnership(
-                p[0]
-                  ? { playerId: p[0].playerId, displayName: p[0].displayName }
-                  : { playerId: "", displayName: "" },
-                p[1]
-                  ? { playerId: p[1].playerId, displayName: p[1].displayName }
-                  : { playerId: "", displayName: "" }
-              );
-            }, 50);
+            playersHook.replaceBatsman(
+              playersHook.outBatsman,
+              batsmanData
+            );
           }
+        
+          // ✅ CRITICAL — close the NewBatsmanModal
+          playersHook.setIsWicketPending(false);
+        
+          // ✅ finish wicket flow
+          wicketFlow.completeWicketFlow();
+        
+          // ✅ restart partnership after state update
+          setTimeout(() => {
+            const p = playersHook.players;
+            partnershipsHook.startPartnership(
+              p[0]
+                ? { playerId: p[0].playerId, displayName: p[0].displayName }
+                : { playerId: "", displayName: "" },
+              p[1]
+                ? { playerId: p[1].playerId, displayName: p[1].displayName }
+                : { playerId: "", displayName: "" }
+            );
+          }, 50);
         }}
         
         onRetiredHurtConfirm={(newBatsmanName) => {
@@ -996,9 +963,9 @@ function ScoringPage() {
         initialStrikerPlayerId={initialStrikerRef.current}
         initialNonStrikerPlayerId={initialNonStrikerRef.current}
         nonStrikerIndex={playersHook.nonStrikerIndex}
-
-        onOpenPlayerDatabase={() => modalStates.setShowPlayerDatabase(true)}
+        activePlayers={playersHook.players}
         playerDB={playerDBHook}
+        onOpenPlayerDatabase={() => modalStates.setShowPlayerDatabase(true)}
       />
 
       {/* Hat-trick celebration banner */}
