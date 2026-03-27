@@ -41,7 +41,6 @@ function PlayerDatabaseModal({ playerDB, onClose }) {
           {allPlayers.length} players registered · Jersey = permanent ID
         </p>
 
-        {/* Search */}
         <input
           className={styles.searchInput}
           placeholder="Search by name or jersey..."
@@ -57,7 +56,6 @@ function PlayerDatabaseModal({ playerDB, onClose }) {
           </div>
         )}
 
-        {/* Player list */}
         <div className={styles.playerList}>
           {filtered.map((player) => (
             <div key={player.jersey} className={styles.playerCard}>
@@ -66,16 +64,27 @@ function PlayerDatabaseModal({ playerDB, onClose }) {
 
               <div className={styles.playerInfo}>
                 <div className={styles.playerName}>{player.name}</div>
+
+                {/* Batting stats */}
                 <div className={styles.playerStats}>
                   <span>🏏 {player.runs}R ({player.balls}B)</span>
                   <span>SR: {formatSR(player.runs, player.balls)}</span>
                   <span>4s: {player.fours || 0}</span>
                   <span>6s: {player.sixes || 0}</span>
                 </div>
+
+                {/* Bowling stats */}
                 <div className={styles.playerStats}>
                   <span>🎳 {player.wickets}W</span>
                   <span>Eco: {formatEconomy(player.runsGiven, player.ballsBowled)}</span>
                   <span>Matches: {player.matches || 0}</span>
+                </div>
+
+                {/* ✅ Fielding stats */}
+                <div className={styles.playerStats}>
+                  <span>🤲 {player.catches || 0} ct</span>
+                  <span>🏃 {player.runouts || 0} ro</span>
+                  <span>🧤 {player.stumpings || 0} st</span>
                 </div>
               </div>
 
@@ -90,7 +99,6 @@ function PlayerDatabaseModal({ playerDB, onClose }) {
           ))}
         </div>
 
-        {/* Delete confirmation */}
         {confirmDelete && (
           <div className={styles.confirmOverlay}>
             <div className={styles.confirmBox}>
