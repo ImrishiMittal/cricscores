@@ -18,20 +18,16 @@ function usePlayerDatabase() {
 
   const [playersDB, setPlayersDB] = useState(loadDB);
 
-  // ✅ Get player by jersey number
   const getPlayer = useCallback((jersey) => {
     const db = loadDB();
     return db[String(jersey)] || null;
   }, []);
 
-  // ✅ Create or get existing player
-  // Returns { player, isNew, isDuplicate }
   const createOrGetPlayer = useCallback((name, jersey) => {
     const db = loadDB();
     const key = String(jersey);
 
     if (db[key]) {
-      // Jersey exists — return existing player
       return {
         player: { ...db[key], playerId: key, jersey: key },
         isNew: false,
@@ -39,7 +35,6 @@ function usePlayerDatabase() {
       };
     }
 
-    // New player
     const newPlayer = {
       playerId: key,
       jersey: key,
@@ -52,6 +47,9 @@ function usePlayerDatabase() {
       ballsBowled: 0,
       runsGiven: 0,
       matches: 0,
+      catches: 0,
+      runouts: 0,
+      stumpings: 0,
     };
 
     const updatedDB = { ...db, [key]: newPlayer };
@@ -61,7 +59,6 @@ function usePlayerDatabase() {
     return { player: newPlayer, isNew: true, isDuplicate: false };
   }, []);
 
-  // ✅ Update player stats after innings
   const updatePlayerStats = useCallback((jersey, statsDelta) => {
     const db = loadDB();
     const key = String(jersey);
@@ -83,7 +80,24 @@ function usePlayerDatabase() {
     setPlayersDB({ ...db });
   }, []);
 
-  // ✅ Rename player (name only, jersey/playerId never changes)
+  // ✅ NEW: Track fielding stats
+  const updateFieldingStats = useCallback((jersey, wicketType) => {
+    if (!jersey) return;
+    const db = loadDB();
+    const key = String(jersey);
+    if (!db[key]) return;
+
+    db[key] = {
+      ...db[key],
+      catches: (db[key].catches || 0) + (wicketType === 'caught' ? 1 : 0),
+      runouts: (db[key].runouts || 0) + (wicketType === 'runout' ? 1 : 0),
+      stumpings: (db[key].stumpings || 0) + (wicketType === 'stumped' ? 1 : 0),
+    };
+
+    saveDB(db);
+    setPlayersDB({ ...db });
+  }, []);
+
   const renamePlayerInDB = useCallback((jersey, newName) => {
     const db = loadDB();
     const key = String(jersey);
@@ -95,7 +109,6 @@ function usePlayerDatabase() {
     return true;
   }, []);
 
-  // ✅ Delete player — frees up jersey number
   const deletePlayer = useCallback((jersey) => {
     const db = loadDB();
     const key = String(jersey);
@@ -107,7 +120,6 @@ function usePlayerDatabase() {
     return true;
   }, []);
 
-  // ✅ Get all players as array sorted by jersey number
   const getAllPlayers = useCallback(() => {
     const db = loadDB();
     return Object.values(db).sort(
@@ -115,7 +127,6 @@ function usePlayerDatabase() {
     );
   }, []);
 
-  // ✅ Check if jersey exists
   const jerseyExists = useCallback((jersey) => {
     const db = loadDB();
     return !!db[String(jersey)];
@@ -126,6 +137,7 @@ function usePlayerDatabase() {
     getPlayer,
     createOrGetPlayer,
     updatePlayerStats,
+    updateFieldingStats,
     renamePlayerInDB,
     deletePlayer,
     getAllPlayers,
