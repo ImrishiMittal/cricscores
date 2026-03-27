@@ -23,6 +23,26 @@ function usePlayerDatabase() {
     return db[String(jersey)] || null;
   }, []);
 
+  // ✅ NEW: Search players by name (autocomplete)
+  const searchPlayersByName = useCallback((searchTerm) => {
+    if (!searchTerm || searchTerm.trim().length === 0) return [];
+    
+    const db = loadDB();
+    const term = searchTerm.toLowerCase().trim();
+    
+    return Object.values(db)
+      .filter(player => player.name.toLowerCase().startsWith(term))
+      .sort((a, b) => {
+        // Sort by: exact match first, then alphabetically
+        const aExact = a.name.toLowerCase() === term;
+        const bExact = b.name.toLowerCase() === term;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 5); // Return max 5 suggestions
+  }, []);
+
   const createOrGetPlayer = useCallback((name, jersey) => {
     const db = loadDB();
     const key = String(jersey);
@@ -80,7 +100,6 @@ function usePlayerDatabase() {
     setPlayersDB({ ...db });
   }, []);
 
-  // ✅ NEW: Track fielding stats
   const updateFieldingStats = useCallback((jersey, wicketType) => {
     if (!jersey) return;
     const db = loadDB();
@@ -135,6 +154,7 @@ function usePlayerDatabase() {
   return {
     playersDB,
     getPlayer,
+    searchPlayersByName, // ✅ NEW
     createOrGetPlayer,
     updatePlayerStats,
     updateFieldingStats,

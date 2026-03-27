@@ -1,99 +1,75 @@
 import { useState } from "react";
 import styles from "./NewBatsmanModal.module.css";
 
-function NewBatsmanModal({
-  onConfirm,
-  retiredPlayers = [],
-  onReturnRetired,
-  playerDB,
-  activePlayers = [],
-  matchTeamLock = {},
-  currentTeam,
-}) {
+function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, playerDB, activePlayers = [] }) {
   const [name, setName] = useState("");
   const [jersey, setJersey] = useState("");
   const [error, setError] = useState("");
   const [existingPlayer, setExistingPlayer] = useState(null);
-  const [teamLockError, setTeamLockError] = useState("");
+  const [nameSuggestions, setNameSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // ✅ DEFINED FIRST — before any usage
-  const getTeamLockError = (jerseyVal) => {
-    if (!jerseyVal?.trim() || !matchTeamLock) return null;
-    const locked = matchTeamLock[String(jerseyVal.trim())];
-    if (locked && locked !== currentTeam) {
-      return `Jersey #${jerseyVal.trim()} belongs to ${locked}`;
-    }
-    return null;
-  };
-
+  /* ── JERSEY LOOKUP ── */
   const handleJerseyChange = (val) => {
     setJersey(val);
     setError("");
     setExistingPlayer(null);
-    setTeamLockError("");
-
-    const lockErr = getTeamLockError(val);
-    if (lockErr) {
-      setTeamLockError(lockErr);
-      return;
-    }
-
+    setShowSuggestions(false);
     if (val.trim() && playerDB) {
       const found = playerDB.getPlayer(val.trim());
-      if (found) {
-        setExistingPlayer(found);
-        setName(found.name);
-      }
+      if (found) { setExistingPlayer(found); setName(found.name); }
     }
   };
 
+  /* ── NAME AUTOCOMPLETE ── */
+  const handleNameChange = (val) => {
+    setName(val);
+    setError("");
+    setExistingPlayer(null);
+    if (val.trim() && playerDB) {
+      const suggestions = playerDB.searchPlayersByName(val);
+      setNameSuggestions(suggestions);
+      setShowSuggestions(suggestions.length > 0);
+    } else {
+      setNameSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSelectSuggestion = (player) => {
+    setName(player.name);
+    setJersey(player.jersey);
+    setExistingPlayer(player);
+    setShowSuggestions(false);
+    setNameSuggestions([]);
+  };
+
+  /* ── DUPLICATE CHECK ── */
   const isDuplicateJersey =
     jersey.trim() &&
     activePlayers.some((p) => p?.playerId === String(jersey.trim()));
 
+  /* ── CONFIRM ── */
   const handleConfirm = () => {
-    if (!name.trim()) {
-      setError("⚠️ Please enter player name");
-      return;
-    }
-    if (!jersey.trim()) {
-      setError("⚠️ Please enter jersey number");
-      return;
-    }
-    if (isDuplicateJersey) {
-      setError("⚠️ This jersey number is already in use by the non-striker");
-      return;
-    }
-    if (teamLockError) {
-      return;
-    }
-
+    if (!name.trim()) { setError("⚠️ Please enter player name"); return; }
+    if (!jersey.trim()) { setError("⚠️ Please enter jersey number"); return; }
+    if (isDuplicateJersey) { setError("⚠️ This jersey number is already in use by the non-striker"); return; }
     onConfirm({ name: name.trim(), jersey: jersey.trim(), existingPlayer });
-    setName("");
-    setJersey("");
-    setExistingPlayer(null);
-    setTeamLockError("");
+    setName(""); setJersey(""); setExistingPlayer(null);
+    setNameSuggestions([]); setShowSuggestions(false);
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") handleConfirm();
-  };
+  const handleKeyPress = (e) => { if (e.key === "Enter") handleConfirm(); };
 
   return (
-    <div className={styles.overlay}>
+    <div className={styles.overlay} onClick={() => setShowSuggestions(false)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>🏏 New Batsman</h2>
 
         {/* Retired players quick-return */}
         {retiredPlayers.length > 0 && (
           <div style={{ marginBottom: "16px" }}>
-            <p style={{
-              color: "#f1c40f",
-              fontSize: "13px",
-              textAlign: "center",
-              marginBottom: "8px",
-              fontWeight: "600",
-            }}>
+            <p style={{ color: "#f1c40f", fontSize: "13px", textAlign: "center", marginBottom: "8px", fontWeight: "600" }}>
               🏥 Retired Hurt — tap to return:
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -122,12 +98,7 @@ function NewBatsmanModal({
                 </button>
               ))}
             </div>
-            <p style={{
-              fontSize: "11px",
-              color: "#6b7280",
-              textAlign: "center",
-              margin: "8px 0 4px",
-            }}>
+            <p style={{ fontSize: "11px", color: "#6b7280", textAlign: "center", margin: "8px 0 4px" }}>
               — or enter a new batsman below —
             </p>
           </div>
@@ -146,60 +117,49 @@ function NewBatsmanModal({
           />
         </div>
 
-        {/* Team lock error */}
-        {teamLockError && (
-          <div style={{
-            background: "rgba(239,68,68,0.1)",
-            border: "1px solid #ef4444",
-            borderRadius: "8px",
-            padding: "8px 12px",
-            marginBottom: "8px",
-            fontSize: "13px",
-            color: "#ef4444",
-          }}>
-            🚫 {teamLockError}
-          </div>
-        )}
-
-        {/* Duplicate jersey warning */}
-        {isDuplicateJersey && !teamLockError && (
-          <div style={{
-            background: "rgba(239,68,68,0.1)",
-            border: "1px solid #ef4444",
-            borderRadius: "8px",
-            padding: "8px 12px",
-            marginBottom: "8px",
-            fontSize: "13px",
-            color: "#ef4444",
-          }}>
+        {isDuplicateJersey && (
+          <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444", borderRadius: "8px", padding: "8px 12px", marginBottom: "8px", fontSize: "13px", color: "#ef4444" }}>
             ⚠️ Jersey #{jersey} is already in use by the non-striker
           </div>
         )}
 
-        {/* Existing player info */}
-        {existingPlayer && !isDuplicateJersey && !teamLockError && (
-          <div style={{
-            background: "rgba(34,197,94,0.1)",
-            border: "1px solid #22c55e",
-            borderRadius: "8px",
-            padding: "10px 14px",
-            marginBottom: "12px",
-            fontSize: "13px",
-            color: "#22c55e",
-          }}>
-            ✅ Found: <strong>{existingPlayer.name}</strong> — Career:{" "}
-            {existingPlayer.runs}R, {existingPlayer.wickets}W
+        {existingPlayer && !isDuplicateJersey && (
+          <div className={styles.existingPlayerBanner}>
+            ✅ Found: <strong>{existingPlayer.name}</strong> — {existingPlayer.runs}R ({existingPlayer.balls}B), {existingPlayer.wickets}W, {existingPlayer.matches || 0} matches
           </div>
         )}
 
-        <div className={styles.inputContainer}>
+        {/* Name field with autocomplete */}
+        <div className={styles.inputContainer} style={{ position: "relative" }}>
           <input
             className={`${styles.input} ${error ? styles.errorInput : ""}`}
-            placeholder="Player name"
+            placeholder="Player name (type for suggestions)"
             value={name}
-            onChange={(e) => { setName(e.target.value); setError(""); }}
+            onChange={(e) => handleNameChange(e.target.value)}
             onKeyPress={handleKeyPress}
+            onFocus={() => nameSuggestions.length > 0 && setShowSuggestions(true)}
           />
+
+          {showSuggestions && nameSuggestions.length > 0 && (
+            <div className={styles.suggestionsDropdown}>
+              {nameSuggestions.map((player) => (
+                <div
+                  key={player.jersey}
+                  className={styles.suggestionItem}
+                  onMouseDown={(e) => { e.preventDefault(); handleSelectSuggestion(player); }}
+                >
+                  <div className={styles.suggestionMain}>
+                    <span className={styles.suggestionJersey}>#{player.jersey}</span>
+                    <span className={styles.suggestionName}>{player.name}</span>
+                  </div>
+                  <div className={styles.suggestionStats}>
+                    🏏 {player.runs}R ({player.balls}B) • 🎳 {player.wickets}W • 📊 {player.matches || 0} matches
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {error && <p className={styles.errorText}>{error}</p>}
         </div>
 
@@ -207,18 +167,13 @@ function NewBatsmanModal({
           <button
             className={styles.confirmBtn}
             onClick={handleConfirm}
-            disabled={
-              !name.trim() ||
-              !jersey.trim() ||
-              !!isDuplicateJersey ||
-              !!teamLockError
-            }
+            disabled={!name.trim() || !jersey.trim() || isDuplicateJersey}
           >
             {existingPlayer ? "Use Existing Player" : "Add New Player"}
           </button>
         </div>
 
-        <p className={styles.hint}>Jersey number is permanent ID</p>
+        <p className={styles.hint}>Type name for suggestions • Jersey is permanent ID</p>
       </div>
     </div>
   );

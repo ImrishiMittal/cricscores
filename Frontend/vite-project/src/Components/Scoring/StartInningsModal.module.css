@@ -168,3 +168,69 @@
     color: #ef4444;
     font-weight: 600;
   }
+
+  .suggestionsDropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1a1a1a;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 8px;
+    margin-top: 4px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  }
+  
+  .suggestionItem {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.15s ease;
+  }
+  
+  .suggestionItem:last-child {
+    border-bottom: none;
+  }
+  
+  .suggestionItem:hover {
+    background: rgba(0, 255, 136, 0.1);
+  }
+  
+  .suggestionMain {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  
+  .suggestionJersey {
+    background: #00ff88;
+    color: #000;
+    font-weight: 900;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    min-width: 36px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  
+  .suggestionName {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  
+  .suggestionStats {
+    color: #888;
+    font-size: 11px;
+    padding-left: 46px;
+  }
+  
+  .suggestionsDropdown::-webkit-scrollbar { width: 5px; }
+  .suggestionsDropdown::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+  .suggestionsDropdown::-webkit-scrollbar-thumb { background: rgba(0,255,136,0.4); border-radius: 10px; }
+  
