@@ -1,16 +1,40 @@
 import { useState } from "react";
 import styles from "./NewBowlerModal.module.css";
 
-function NewBowlerModal({ onConfirm, existingBowlers = [], playerDB }) {
+function NewBowlerModal({
+  onConfirm,
+  existingBowlers = [],
+  playerDB,
+  matchTeamLock = {},
+  currentTeam,
+}) {
   const [name, setName] = useState("");
   const [jersey, setJersey] = useState("");
   const [error, setError] = useState("");
   const [existingPlayer, setExistingPlayer] = useState(null);
+  const [teamLockError, setTeamLockError] = useState("");
+
+  // ✅ DEFINED FIRST — before any usage
+  const getTeamLockError = (jerseyVal) => {
+    if (!jerseyVal?.trim() || !matchTeamLock) return null;
+    const locked = matchTeamLock[String(jerseyVal.trim())];
+    if (locked && locked !== currentTeam) {
+      return `Jersey #${jerseyVal.trim()} belongs to ${locked}`;
+    }
+    return null;
+  };
 
   const handleJerseyChange = (val) => {
     setJersey(val);
     setError("");
     setExistingPlayer(null);
+    setTeamLockError("");
+
+    const lockErr = getTeamLockError(val);
+    if (lockErr) {
+      setTeamLockError(lockErr);
+      return;
+    }
 
     if (val.trim() && playerDB) {
       const found = playerDB.getPlayer(val.trim());
@@ -21,7 +45,6 @@ function NewBowlerModal({ onConfirm, existingBowlers = [], playerDB }) {
     }
   };
 
-  // ✅ Also check existing bowlers in this innings by name
   const existingBowlerInInnings = existingBowlers.find(
     (b) => b.displayName.toLowerCase() === name.trim().toLowerCase()
   );
@@ -35,11 +58,15 @@ function NewBowlerModal({ onConfirm, existingBowlers = [], playerDB }) {
       setError("⚠️ Please enter jersey number");
       return;
     }
+    if (teamLockError) {
+      return;
+    }
     setError("");
     onConfirm({ name: name.trim(), jersey: jersey.trim(), existingPlayer });
     setName("");
     setJersey("");
     setExistingPlayer(null);
+    setTeamLockError("");
   };
 
   const handleKeyPress = (e) => {
@@ -56,7 +83,7 @@ function NewBowlerModal({ onConfirm, existingBowlers = [], playerDB }) {
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>🎯 New Bowler</h2>
 
-        {/* ✅ Jersey field first */}
+        {/* Jersey field */}
         <div className={styles.inputContainer}>
           <input
             className={styles.input}
@@ -69,8 +96,23 @@ function NewBowlerModal({ onConfirm, existingBowlers = [], playerDB }) {
           />
         </div>
 
-        {/* ✅ Existing player found in DB */}
-        {existingPlayer && (
+        {/* Team lock error */}
+        {teamLockError && (
+          <div style={{
+            background: "rgba(239,68,68,0.1)",
+            border: "1px solid #ef4444",
+            borderRadius: "8px",
+            padding: "8px 12px",
+            marginBottom: "8px",
+            fontSize: "13px",
+            color: "#ef4444",
+          }}>
+            🚫 {teamLockError}
+          </div>
+        )}
+
+        {/* Existing player found in DB */}
+        {existingPlayer && !teamLockError && (
           <div style={{
             background: "rgba(34,197,94,0.1)",
             border: "1px solid #22c55e",
@@ -80,25 +122,38 @@ function NewBowlerModal({ onConfirm, existingBowlers = [], playerDB }) {
             fontSize: "13px",
             color: "#22c55e",
           }}>
-            ✅ Found: <strong>{existingPlayer.name}</strong> — Career: {existingPlayer.wickets}W, Eco: {existingPlayer.ballsBowled > 0 ? ((existingPlayer.runsGiven / (existingPlayer.ballsBowled / 6))).toFixed(2) : "0.00"}
+            ✅ Found: <strong>{existingPlayer.name}</strong> — Career:{" "}
+            {existingPlayer.wickets}W, Eco:{" "}
+            {existingPlayer.ballsBowled > 0
+              ? (existingPlayer.runsGiven / (existingPlayer.ballsBowled / 6)).toFixed(2)
+              : "0.00"}
           </div>
         )}
 
-        {/* ✅ Existing bowler in this innings */}
-        {existingBowlerInInnings && !existingPlayer && (
-          <div style={{
-            background: "rgba(59,130,246,0.1)",
-            border: "1px solid #3b82f6",
-            borderRadius: "8px",
-            padding: "10px 14px",
-            marginBottom: "12px",
-            fontSize: "13px",
-            color: "#3b82f6",
-            cursor: "pointer",
-          }}
-            onClick={() => onConfirm({ name: existingBowlerInInnings.displayName, jersey: jersey.trim(), existingPlayer: null })}
+        {/* Existing bowler in this innings */}
+        {existingBowlerInInnings && !existingPlayer && !teamLockError && (
+          <div
+            style={{
+              background: "rgba(59,130,246,0.1)",
+              border: "1px solid #3b82f6",
+              borderRadius: "8px",
+              padding: "10px 14px",
+              marginBottom: "12px",
+              fontSize: "13px",
+              color: "#3b82f6",
+              cursor: "pointer",
+            }}
+            onClick={() =>
+              onConfirm({
+                name: existingBowlerInInnings.displayName,
+                jersey: jersey.trim(),
+                existingPlayer: null,
+              })
+            }
           >
-            🔄 Returning: <strong>{existingBowlerInInnings.displayName}</strong> — {existingBowlerInInnings.overs}.{existingBowlerInInnings.balls} ov | {existingBowlerInInnings.runs}R | {existingBowlerInInnings.wickets}W
+            🔄 Returning: <strong>{existingBowlerInInnings.displayName}</strong>{" "}
+            — {existingBowlerInInnings.overs}.{existingBowlerInInnings.balls} ov
+            | {existingBowlerInInnings.runs}R | {existingBowlerInInnings.wickets}W
           </div>
         )}
 
@@ -117,7 +172,7 @@ function NewBowlerModal({ onConfirm, existingBowlers = [], playerDB }) {
           <button
             className={styles.confirmBtn}
             onClick={handleConfirm}
-            disabled={!name.trim() || !jersey.trim()}
+            disabled={!name.trim() || !jersey.trim() || !!teamLockError}
           >
             {existingPlayer ? "Use Existing Bowler" : "Add New Bowler"}
           </button>

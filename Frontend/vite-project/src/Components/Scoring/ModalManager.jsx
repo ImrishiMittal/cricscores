@@ -82,6 +82,7 @@ function ModalManager({
   playerDB,
   onOpenPlayerDatabase,
   activePlayers = [],
+  matchTeamLock = {},
 }) {
   const statsForPlayer = usePlayerStats(
     modalStates.statsTarget,
@@ -96,7 +97,15 @@ function ModalManager({
   return (
     <>
       {modalStates.showStartModal && (
-        <StartInningsModal onStart={onStartInnings} playerDB={playerDB} />
+        <StartInningsModal
+          onStart={onStartInnings}
+          playerDB={playerDB}
+          matchTeamLock={matchTeamLock}
+          currentBattingTeam={currentBattingTeam}
+          firstBattingTeam={firstBattingTeam}
+          secondBattingTeam={secondBattingTeam}
+          currentInnings={innings}
+        />
       )}
 
       {wicketFlow.showWicketTypeModal && (
@@ -108,11 +117,13 @@ function ModalManager({
 
       {wicketFlow.showFielderInputModal && (
         <FielderInputModal
-          wicketType={wicketFlow.selectedWicketType}
-          onConfirm={onFielderConfirm}
-          onCancel={onFielderCancel}
-          playerDB={playerDB}
-        />
+        wicketType={wicketFlow.selectedWicketType}
+        onConfirm={onFielderConfirm}
+        onCancel={onFielderCancel}
+        playerDB={playerDB}
+        matchTeamLock={matchTeamLock}
+        currentBattingTeam={currentBattingTeam}
+      />
       )}
 
       {isWicketPending &&
@@ -125,15 +136,19 @@ function ModalManager({
             onReturnRetired={onReturnRetiredConfirm}
             playerDB={playerDB}
             activePlayers={activePlayers}
+            matchTeamLock={matchTeamLock}
+            currentTeam={currentBattingTeam}
           />
         )}
 
       {isNewBowlerPending && (
         <NewBowlerModal
-          onConfirm={onConfirmNewBowler}
-          existingBowlers={bowlers}
-          playerDB={playerDB}
-        />
+        onConfirm={onConfirmNewBowler}
+        existingBowlers={bowlers}
+        playerDB={playerDB}
+        matchTeamLock={matchTeamLock}
+        currentTeam={currentBattingTeam === firstBattingTeam ? secondBattingTeam : firstBattingTeam}
+      />
       )}
 
       {modalStates.showDismissBowlerModal && (
@@ -302,9 +317,13 @@ function ModalManager({
           innings={innings}
           onClose={() => modalStates.setShowMoreMenu(false)}
           onOpenDLS={() => modalStates.setShowDLSCalculator(true)}
-          onOpenChangePlayers={() => modalStates.setShowChangePlayersModal(true)}
+          onOpenChangePlayers={() =>
+            modalStates.setShowChangePlayersModal(true)
+          }
           onOpenChangeOvers={() => modalStates.setShowChangeOversModal(true)}
-          onOpenChangeBowlerLimit={() => modalStates.setShowChangeBowlerLimitModal(true)}
+          onOpenChangeBowlerLimit={() =>
+            modalStates.setShowChangeBowlerLimitModal(true)
+          }
           onOpenWinProbability={() => modalStates.setShowWinProbability(true)}
           onOpenPlayerDatabase={onOpenPlayerDatabase}
         />

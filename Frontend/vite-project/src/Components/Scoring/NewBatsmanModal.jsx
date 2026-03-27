@@ -1,17 +1,42 @@
 import { useState } from "react";
 import styles from "./NewBatsmanModal.module.css";
 
-// ✅ activePlayers: the current two players on the field, to check for duplicate jerseys
-function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, playerDB, activePlayers = [] }) {
+function NewBatsmanModal({
+  onConfirm,
+  retiredPlayers = [],
+  onReturnRetired,
+  playerDB,
+  activePlayers = [],
+  matchTeamLock = {},
+  currentTeam,
+}) {
   const [name, setName] = useState("");
   const [jersey, setJersey] = useState("");
   const [error, setError] = useState("");
   const [existingPlayer, setExistingPlayer] = useState(null);
+  const [teamLockError, setTeamLockError] = useState("");
+
+  // ✅ DEFINED FIRST — before any usage
+  const getTeamLockError = (jerseyVal) => {
+    if (!jerseyVal?.trim() || !matchTeamLock) return null;
+    const locked = matchTeamLock[String(jerseyVal.trim())];
+    if (locked && locked !== currentTeam) {
+      return `Jersey #${jerseyVal.trim()} belongs to ${locked}`;
+    }
+    return null;
+  };
 
   const handleJerseyChange = (val) => {
     setJersey(val);
     setError("");
     setExistingPlayer(null);
+    setTeamLockError("");
+
+    const lockErr = getTeamLockError(val);
+    if (lockErr) {
+      setTeamLockError(lockErr);
+      return;
+    }
 
     if (val.trim() && playerDB) {
       const found = playerDB.getPlayer(val.trim());
@@ -22,7 +47,6 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, play
     }
   };
 
-  // ✅ FIX BUG 3: Check if jersey is already used by the non-striker on field
   const isDuplicateJersey =
     jersey.trim() &&
     activePlayers.some((p) => p?.playerId === String(jersey.trim()));
@@ -36,9 +60,11 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, play
       setError("⚠️ Please enter jersey number");
       return;
     }
-    // ✅ FIX BUG 3: Block duplicate jersey
     if (isDuplicateJersey) {
       setError("⚠️ This jersey number is already in use by the non-striker");
+      return;
+    }
+    if (teamLockError) {
       return;
     }
 
@@ -46,6 +72,7 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, play
     setName("");
     setJersey("");
     setExistingPlayer(null);
+    setTeamLockError("");
   };
 
   const handleKeyPress = (e) => {
@@ -60,7 +87,13 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, play
         {/* Retired players quick-return */}
         {retiredPlayers.length > 0 && (
           <div style={{ marginBottom: "16px" }}>
-            <p style={{ color: "#f1c40f", fontSize: "13px", textAlign: "center", marginBottom: "8px", fontWeight: "600" }}>
+            <p style={{
+              color: "#f1c40f",
+              fontSize: "13px",
+              textAlign: "center",
+              marginBottom: "8px",
+              fontWeight: "600",
+            }}>
               🏥 Retired Hurt — tap to return:
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -89,7 +122,12 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, play
                 </button>
               ))}
             </div>
-            <p style={{ fontSize: "11px", color: "#6b7280", textAlign: "center", margin: "8px 0 4px" }}>
+            <p style={{
+              fontSize: "11px",
+              color: "#6b7280",
+              textAlign: "center",
+              margin: "8px 0 4px",
+            }}>
               — or enter a new batsman below —
             </p>
           </div>
@@ -108,8 +146,23 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, play
           />
         </div>
 
-        {/* ✅ FIX BUG 3: Live duplicate warning */}
-        {isDuplicateJersey && (
+        {/* Team lock error */}
+        {teamLockError && (
+          <div style={{
+            background: "rgba(239,68,68,0.1)",
+            border: "1px solid #ef4444",
+            borderRadius: "8px",
+            padding: "8px 12px",
+            marginBottom: "8px",
+            fontSize: "13px",
+            color: "#ef4444",
+          }}>
+            🚫 {teamLockError}
+          </div>
+        )}
+
+        {/* Duplicate jersey warning */}
+        {isDuplicateJersey && !teamLockError && (
           <div style={{
             background: "rgba(239,68,68,0.1)",
             border: "1px solid #ef4444",
@@ -124,7 +177,7 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, play
         )}
 
         {/* Existing player info */}
-        {existingPlayer && !isDuplicateJersey && (
+        {existingPlayer && !isDuplicateJersey && !teamLockError && (
           <div style={{
             background: "rgba(34,197,94,0.1)",
             border: "1px solid #22c55e",
@@ -134,7 +187,8 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, play
             fontSize: "13px",
             color: "#22c55e",
           }}>
-            ✅ Found: <strong>{existingPlayer.name}</strong> — Career: {existingPlayer.runs}R, {existingPlayer.wickets}W
+            ✅ Found: <strong>{existingPlayer.name}</strong> — Career:{" "}
+            {existingPlayer.runs}R, {existingPlayer.wickets}W
           </div>
         )}
 
@@ -153,7 +207,12 @@ function NewBatsmanModal({ onConfirm, retiredPlayers = [], onReturnRetired, play
           <button
             className={styles.confirmBtn}
             onClick={handleConfirm}
-            disabled={!name.trim() || !jersey.trim() || isDuplicateJersey}
+            disabled={
+              !name.trim() ||
+              !jersey.trim() ||
+              !!isDuplicateJersey ||
+              !!teamLockError
+            }
           >
             {existingPlayer ? "Use Existing Player" : "Add New Player"}
           </button>
