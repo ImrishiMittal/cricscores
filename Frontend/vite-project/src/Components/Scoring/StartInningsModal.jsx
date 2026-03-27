@@ -1,7 +1,15 @@
 import { useState } from "react";
 import styles from "./StartInningsModal.module.css";
 
-function StartInningsModal({ onStart, playerDB }) {
+function StartInningsModal({
+  onStart,
+  playerDB,
+  matchTeamLock = {},
+  currentBattingTeam,
+  firstBattingTeam,
+  secondBattingTeam,
+  currentInnings,
+}) {
   const [striker, setStriker] = useState("");
   const [strikerJersey, setStrikerJersey] = useState("");
   const [strikerExisting, setStrikerExisting] = useState(null);
@@ -16,16 +24,31 @@ function StartInningsModal({ onStart, playerDB }) {
 
   const [error, setError] = useState("");
 
+  // ✅ DEFINED FIRST — before any usage
+  const bowlingTeam =
+    currentInnings === 1 ? secondBattingTeam : firstBattingTeam;
+
+  const getTeamLockError = (jersey, expectedTeam) => {
+    if (!jersey?.trim() || !matchTeamLock) return null;
+    const locked = matchTeamLock[String(jersey.trim())];
+    if (locked && locked !== expectedTeam) {
+      return `Jersey #${jersey.trim()} belongs to ${locked} — cannot play for ${expectedTeam}`;
+    }
+    return null;
+  };
+
+  // ✅ Now safe to use getTeamLockError below
   const handleStrikerJerseyChange = (val) => {
     setStrikerJersey(val);
     setError("");
     setStrikerExisting(null);
+
+    const lockErr = getTeamLockError(val, currentBattingTeam);
+    if (lockErr) { setError(lockErr); return; }
+
     if (val.trim() && playerDB) {
       const found = playerDB.getPlayer(val.trim());
-      if (found) {
-        setStrikerExisting(found);
-        setStriker(found.name);
-      }
+      if (found) { setStrikerExisting(found); setStriker(found.name); }
     }
   };
 
@@ -33,12 +56,13 @@ function StartInningsModal({ onStart, playerDB }) {
     setNonStrikerJersey(val);
     setError("");
     setNonStrikerExisting(null);
+
+    const lockErr = getTeamLockError(val, currentBattingTeam);
+    if (lockErr) { setError(lockErr); return; }
+
     if (val.trim() && playerDB) {
       const found = playerDB.getPlayer(val.trim());
-      if (found) {
-        setNonStrikerExisting(found);
-        setNonStriker(found.name);
-      }
+      if (found) { setNonStrikerExisting(found); setNonStriker(found.name); }
     }
   };
 
@@ -46,14 +70,20 @@ function StartInningsModal({ onStart, playerDB }) {
     setBowlerJersey(val);
     setError("");
     setBowlerExisting(null);
+
+    const lockErr = getTeamLockError(val, bowlingTeam);
+    if (lockErr) { setError(lockErr); return; }
+
     if (val.trim() && playerDB) {
       const found = playerDB.getPlayer(val.trim());
-      if (found) {
-        setBowlerExisting(found);
-        setBowler(found.name);
-      }
+      if (found) { setBowlerExisting(found); setBowler(found.name); }
     }
   };
+
+  const hasLockError =
+    !!getTeamLockError(strikerJersey, currentBattingTeam) ||
+    !!getTeamLockError(nonStrikerJersey, currentBattingTeam) ||
+    !!getTeamLockError(bowlerJersey, bowlingTeam);
 
   const handleStart = () => {
     if (!striker.trim()) { setError("⚠️ Please enter striker name"); return; }
@@ -63,7 +93,6 @@ function StartInningsModal({ onStart, playerDB }) {
     if (!bowler.trim()) { setError("⚠️ Please enter bowler name"); return; }
     if (!bowlerJersey.trim()) { setError("⚠️ Please enter bowler jersey number"); return; }
 
-    // ✅ FIX BUG 3: Validate no duplicate jerseys across all three
     const jerseys = [
       strikerJersey.trim(),
       nonStrikerJersey.trim(),
@@ -92,11 +121,22 @@ function StartInningsModal({ onStart, playerDB }) {
     if (e.key === "Enter") handleStart();
   };
 
+  const isDuplicateNonStriker =
+    nonStrikerJersey.trim() &&
+    nonStrikerJersey.trim() === strikerJersey.trim();
+
+  const isDuplicateBowler =
+    bowlerJersey.trim() &&
+    (bowlerJersey.trim() === strikerJersey.trim() ||
+      bowlerJersey.trim() === nonStrikerJersey.trim());
+
   return (
     <div className={styles.overlay}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>🏏 Start Innings</h2>
-        <p className={styles.subtitle}>Enter jersey numbers to auto-fill from database</p>
+        <p className={styles.subtitle}>
+          Enter jersey numbers to auto-fill from database
+        </p>
 
         {/* STRIKER */}
         <div className={styles.playerSection}>
@@ -113,7 +153,8 @@ function StartInningsModal({ onStart, playerDB }) {
           </div>
           {strikerExisting && (
             <div className={styles.existingPlayer}>
-              ✅ Found: <strong>{strikerExisting.name}</strong> — {strikerExisting.runs}R, {strikerExisting.wickets}W
+              ✅ Found: <strong>{strikerExisting.name}</strong> —{" "}
+              {strikerExisting.runs}R, {strikerExisting.wickets}W
             </div>
           )}
           <div className={styles.inputContainer}>
@@ -139,15 +180,15 @@ function StartInningsModal({ onStart, playerDB }) {
               type="number"
             />
           </div>
-          {/* ✅ FIX BUG 3: Live duplicate warning */}
-          {nonStrikerJersey.trim() && nonStrikerJersey.trim() === strikerJersey.trim() && (
+          {isDuplicateNonStriker && (
             <div className={styles.duplicateWarning}>
               ⚠️ Same jersey as Striker
             </div>
           )}
-          {nonStrikerExisting && (
+          {nonStrikerExisting && !isDuplicateNonStriker && (
             <div className={styles.existingPlayer}>
-              ✅ Found: <strong>{nonStrikerExisting.name}</strong> — {nonStrikerExisting.runs}R, {nonStrikerExisting.wickets}W
+              ✅ Found: <strong>{nonStrikerExisting.name}</strong> —{" "}
+              {nonStrikerExisting.runs}R, {nonStrikerExisting.wickets}W
             </div>
           )}
           <div className={styles.inputContainer}>
@@ -173,20 +214,23 @@ function StartInningsModal({ onStart, playerDB }) {
               type="number"
             />
           </div>
-          {/* ✅ FIX BUG 3: Live duplicate warning for bowler */}
-          {bowlerJersey.trim() && (
-            bowlerJersey.trim() === strikerJersey.trim() ||
-            bowlerJersey.trim() === nonStrikerJersey.trim()
-          ) && (
+          {isDuplicateBowler && (
             <div className={styles.duplicateWarning}>
-              ⚠️ Same jersey as {bowlerJersey.trim() === strikerJersey.trim() ? "Striker" : "Non-Striker"}
+              ⚠️ Same jersey as{" "}
+              {bowlerJersey.trim() === strikerJersey.trim()
+                ? "Striker"
+                : "Non-Striker"}
             </div>
           )}
-          {bowlerExisting && (
+          {bowlerExisting && !isDuplicateBowler && (
             <div className={styles.existingPlayer}>
-              ✅ Found: <strong>{bowlerExisting.name}</strong> — {bowlerExisting.wickets}W, Eco:{" "}
+              ✅ Found: <strong>{bowlerExisting.name}</strong> —{" "}
+              {bowlerExisting.wickets}W, Eco:{" "}
               {bowlerExisting.ballsBowled > 0
-                ? (bowlerExisting.runsGiven / (bowlerExisting.ballsBowled / 6)).toFixed(2)
+                ? (
+                    bowlerExisting.runsGiven /
+                    (bowlerExisting.ballsBowled / 6)
+                  ).toFixed(2)
                 : "0.00"}
             </div>
           )}
@@ -214,8 +258,12 @@ function StartInningsModal({ onStart, playerDB }) {
               !strikerJersey.trim() ||
               !nonStrikerJersey.trim() ||
               !bowlerJersey.trim() ||
-              // ✅ FIX BUG 3: Disable button if any duplicate jerseys
-              new Set([strikerJersey.trim(), nonStrikerJersey.trim(), bowlerJersey.trim()]).size !== 3
+              hasLockError ||
+              new Set([
+                strikerJersey.trim(),
+                nonStrikerJersey.trim(),
+                bowlerJersey.trim(),
+              ]).size !== 3
             }
           >
             Start Innings
