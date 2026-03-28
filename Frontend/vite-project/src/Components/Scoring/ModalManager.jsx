@@ -1,30 +1,20 @@
 import React from "react";
 import StartInningsModal from "./StartInningsModal";
-import NewBatsmanModal from "./NewBatsmanModal";
 import NewBowlerModal from "./NewBowlerModal";
-import WicketTypeModal from "./WicketTypeModal";
-import FielderInputModal from "./FielderInputModal";
 import PartnershipHistory from "./PartnershipHistory";
 import MatchSummary from "./MatchSummary";
 import TabbedInningsHistory from "./TabbedInningsHistory";
 import TabbedInningsSummary from "./TabbedInningsSummary";
 import ComparisonGraph from "./ComparisonGraph";
-import MoreOptionsMenu from "./MoreOptionsMenu";
-import ChangePlayersModal from "./ChangePlayersModal";
-import ChangeOversModal from "./ChangeOversModal";
-import ChangeBowlerLimitModal from "./ChangeBowlerLimitModal";
-import DLSCalculator from "./DLSCalculator";
-import WinProbabilityModal from "./WinProbabilityModal";
 import RetiredHurtModal from "./RetiredHurtModal";
-import DismissBowlerModal from "./DismissBowlerModal";
-import NoResultModal from "./NoResultModal";
 import RenameModal from "./RenameModal";
 import PlayerStatsModal from "./PlayerStatsModal";
 import BowlerStatsModal from "./BowlerStatsModal";
+import PlayerDatabaseModal from "./PlayerDatabaseModal";
+import WicketModals from "./WicketModals";
+import MatchSettingsModals from "./MatchSettingsModals";
 import usePlayerStats from "../../hooks/usePlayerStats";
 import useBowlerStats from "../../hooks/useBowlerStats";
-import RunoutChoiceModal from "./RunoutChoiceModal";
-import PlayerDatabaseModal from "./PlayerDatabaseModal";
 
 function ModalManager({
   modalStates,
@@ -83,16 +73,24 @@ function ModalManager({
   onOpenPlayerDatabase,
   activePlayers = [],
   matchTeamLock = {},
+  dismissedPlayers,
+  // ✅ FIX: These three were used in JSX but missing from the function signature
+  bowlerJerseys = new Set(),
+  batterJerseys = new Set(),
+  currentBowlerJersey,
 }) {
   const statsForPlayer = usePlayerStats(
     modalStates.statsTarget,
     completeHistory
   );
-
   const statsForBowler = useBowlerStats(
     modalStates.bowlerStatsTarget,
     completeHistory
   );
+  const bowlingTeam =
+    currentBattingTeam === firstBattingTeam
+      ? secondBattingTeam
+      : firstBattingTeam;
 
   return (
     <>
@@ -108,64 +106,33 @@ function ModalManager({
         />
       )}
 
-      {wicketFlow.showWicketTypeModal && (
-        <WicketTypeModal
-          onSelect={onWicketTypeSelect}
-          onClose={() => wicketFlow.cancelWicketFlow()}
-        />
-      )}
-
-      {wicketFlow.showFielderInputModal && (
-        <FielderInputModal
-        wicketType={wicketFlow.selectedWicketType}
-        onConfirm={onFielderConfirm}
-        onCancel={onFielderCancel}
+      <WicketModals
+        wicketFlow={wicketFlow}
+        players={players}
+        retiredPlayers={retiredPlayers}
+        strikerIndex={strikerIndex}
+        nonStrikerIndex={nonStrikerIndex}
+        isWicketPending={isWicketPending}
+        onWicketTypeSelect={onWicketTypeSelect}
+        onFielderConfirm={onFielderConfirm}
+        onFielderCancel={onFielderCancel}
+        onConfirmNewBatsman={onConfirmNewBatsman}
+        onReturnRetiredConfirm={onReturnRetiredConfirm}
         playerDB={playerDB}
-        matchTeamLock={matchTeamLock}
-        currentBattingTeam={currentBattingTeam}
+        activePlayers={activePlayers}
+        dismissedPlayers={dismissedPlayers}
+        bowlerJerseys={bowlerJerseys}
+        batterJerseys={batterJerseys}
+        currentBowlerJersey={currentBowlerJersey}
       />
-      )}
-
-      {isWicketPending &&
-        !wicketFlow.showFielderInputModal &&
-        !wicketFlow.waitingForRunoutRun &&
-        wicketFlow.pendingRunoutRuns === null && (
-          <NewBatsmanModal
-            onConfirm={onConfirmNewBatsman}
-            retiredPlayers={retiredPlayers || []}
-            onReturnRetired={onReturnRetiredConfirm}
-            playerDB={playerDB}
-            activePlayers={activePlayers}
-            matchTeamLock={matchTeamLock}
-            currentTeam={currentBattingTeam}
-          />
-        )}
 
       {isNewBowlerPending && (
         <NewBowlerModal
-        onConfirm={onConfirmNewBowler}
-        existingBowlers={bowlers}
-        playerDB={playerDB}
-        matchTeamLock={matchTeamLock}
-        currentTeam={currentBattingTeam === firstBattingTeam ? secondBattingTeam : firstBattingTeam}
-      />
-      )}
-
-      {modalStates.showDismissBowlerModal && (
-        <DismissBowlerModal
-          dismissedBowlerName={
-            bowlers[currentBowlerIndex]?.displayName || "Current Bowler"
-          }
+          onConfirm={onConfirmNewBowler}
           existingBowlers={bowlers}
-          onConfirm={onDismissBowlerConfirm}
-          onClose={() => modalStates.setShowDismissBowlerModal(false)}
-        />
-      )}
-
-      {modalStates.showNoResultModal && (
-        <NoResultModal
-          onConfirm={onNoResultConfirm}
-          onClose={() => modalStates.setShowNoResultModal(false)}
+          playerDB={playerDB}
+          matchTeamLock={matchTeamLock}
+          currentTeam={bowlingTeam}
         />
       )}
 
@@ -246,100 +213,46 @@ function ModalManager({
         />
       )}
 
-      {modalStates.showChangePlayersModal && (
-        <ChangePlayersModal
-          matchData={updatedMatchData}
-          currentInnings={innings}
-          players={players}
-          allPlayers={allPlayers}
-          bowlers={bowlers}
-          onConfirm={onChangePlayersConfirm}
-          onClose={() => modalStates.setShowChangePlayersModal(false)}
-        />
-      )}
-
-      {modalStates.showChangeOversModal && (
-        <ChangeOversModal
-          matchData={updatedMatchData}
-          currentOvers={overs}
-          currentBalls={balls}
-          onConfirm={onChangeOversConfirm}
-          onClose={() => modalStates.setShowChangeOversModal(false)}
-        />
-      )}
-
-      {modalStates.showChangeBowlerLimitModal && (
-        <ChangeBowlerLimitModal
-          matchData={updatedMatchData}
-          onConfirm={onChangeBowlerLimitConfirm}
-          onClose={() => modalStates.setShowChangeBowlerLimitModal(false)}
-        />
-      )}
-
-      {modalStates.showDLSCalculator && innings === 2 && (
-        <DLSCalculator
-          onClose={() => modalStates.setShowDLSCalculator(false)}
-          matchData={updatedMatchData}
-          currentScore={score}
-          currentWickets={wickets}
-          currentOvers={overs}
-          currentBalls={balls}
-          team1Score={innings1Score?.score || 0}
-          team1Wickets={innings1Score?.wickets || 0}
-          team1Overs={innings1Score?.overs || 0}
-          team1Balls={innings1Score?.balls || 0}
-        />
-      )}
-
-      {modalStates.showWinProbability && innings === 2 && (
-        <WinProbabilityModal
-          onClose={() => modalStates.setShowWinProbability(false)}
-          matchData={updatedMatchData}
-          innings1Score={innings1Score?.score || 0}
-          innings1Wickets={innings1Score?.wickets || 0}
-          currentScore={score}
-          currentWickets={wickets}
-          currentOvers={overs}
-          currentBalls={balls}
-        />
-      )}
-
       {modalStates.showRetiredHurtModal && players.length >= 2 && (
         <RetiredHurtModal
           strikerName={players[strikerIndex]?.displayName || "Striker"}
           onConfirm={onRetiredHurtConfirm}
           onClose={() => modalStates.setShowRetiredHurtModal(false)}
+          playerDB={playerDB}
         />
       )}
 
-      {modalStates.showMoreMenu && (
-        <MoreOptionsMenu
-          innings={innings}
-          onClose={() => modalStates.setShowMoreMenu(false)}
-          onOpenDLS={() => modalStates.setShowDLSCalculator(true)}
-          onOpenChangePlayers={() =>
-            modalStates.setShowChangePlayersModal(true)
-          }
-          onOpenChangeOvers={() => modalStates.setShowChangeOversModal(true)}
-          onOpenChangeBowlerLimit={() =>
-            modalStates.setShowChangeBowlerLimitModal(true)
-          }
-          onOpenWinProbability={() => modalStates.setShowWinProbability(true)}
-          onOpenPlayerDatabase={onOpenPlayerDatabase}
-        />
-      )}
+      <MatchSettingsModals
+        modalStates={modalStates}
+        bowlers={bowlers}
+        currentBowlerIndex={currentBowlerIndex}
+        updatedMatchData={updatedMatchData}
+        innings={innings}
+        score={score}
+        wickets={wickets}
+        overs={overs}
+        balls={balls}
+        innings1Score={innings1Score}
+        players={players}
+        allPlayers={allPlayers}
+        onChangePlayersConfirm={onChangePlayersConfirm}
+        onChangeOversConfirm={onChangeOversConfirm}
+        onChangeBowlerLimitConfirm={onChangeBowlerLimitConfirm}
+        onDismissBowlerConfirm={onDismissBowlerConfirm}
+        onNoResultConfirm={onNoResultConfirm}
+        onOpenPlayerDatabase={onOpenPlayerDatabase}
+        playerDB={playerDB}
+      />
 
       {modalStates.showRenameModal && modalStates.renameTarget && (
         <RenameModal
           playerId={modalStates.renameTarget.playerId}
           currentName={modalStates.renameTarget.displayName}
-          onConfirm={(playerId, newName) => {
-            if (modalStates.renameTarget.isBowler) {
-              onRenameBowlerConfirm(playerId, newName);
-            } else {
-              onRenameConfirm(playerId, newName);
-            }
-          }}
+          onConfirm={(playerId, newName) =>
+            modalStates.renameTarget.isBowler
+              ? onRenameBowlerConfirm(playerId, newName)
+              : onRenameConfirm(playerId, newName)
+          }
           onClose={modalStates.closeRenameModal}
         />
       )}
@@ -371,19 +284,6 @@ function ModalManager({
             modalStates.setShowRenameModal(true);
           }}
           onClose={modalStates.closeBowlerStats}
-        />
-      )}
-
-      {wicketFlow.showRunoutChoiceModal && (
-        <RunoutChoiceModal
-          striker={players[strikerIndex]?.displayName}
-          nonStriker={players[nonStrikerIndex]?.displayName}
-          onSelect={(who) => {
-            wicketFlow.setRunoutBatsmanChoice(who);
-            wicketFlow.setShowRunoutChoiceModal(false);
-            wicketFlow.setShowFielderInputModal(true);
-          }}
-          onClose={() => wicketFlow.setShowRunoutChoiceModal(false)}
         />
       )}
 

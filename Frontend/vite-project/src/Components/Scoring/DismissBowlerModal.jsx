@@ -1,130 +1,133 @@
 import { useState } from "react";
 import styles from "./NewBowlerModal.module.css";
 
-/**
- * DismissBowlerModal
- * Step 1 — confirmation that the current bowler is being dismissed.
- * Step 2 — enter the replacement bowler's name.
- * The over CONTINUES — only the bowler attribution changes.
- */
-function DismissBowlerModal({ dismissedBowlerName, existingBowlers = [], onConfirm, onClose }) {
-  const [step, setStep] = useState(1);
-  const [newBowlerName, setNewBowlerName] = useState("");
+function DismissBowlerModal({
+  dismissedBowlerName,
+  existingBowlers = [],
+  onConfirm,
+  onClose,
+  playerDB,
+  activeBatters = [],
+}) {
+  const [newName, setNewName] = useState("");
+  const [jersey, setJersey] = useState("");
   const [error, setError] = useState("");
+  const [existingPlayer, setExistingPlayer] = useState(null);
 
-  const existingMatch = existingBowlers.find(
-    (b) =>
-      b.displayName.toLowerCase() === newBowlerName.trim().toLowerCase() &&  // ✅ was b.name
-      b.displayName.toLowerCase() !== dismissedBowlerName.toLowerCase()       // ✅ was b.name
-  );
-
-  const handleConfirmDismiss = () => {
-    setStep(2);
+  const handleJerseyChange = (val) => {
+    setJersey(val);
+    setError("");
+    setExistingPlayer(null);
+    if (val.trim() && playerDB) {
+      const found = playerDB.getPlayer(val.trim());
+      if (found) {
+        setExistingPlayer(found);
+        setNewName(found.name);
+      }
+    }
   };
 
-  const handleConfirmNewBowler = () => {
-    const trimmed = newBowlerName.trim();
-    if (!trimmed) {
-      setError("⚠️ Please enter bowler name");
-      return;
-    }
-    if (trimmed.length < 2) {
-      setError("⚠️ Name must be at least 2 characters");
-      return;
-    }
-    if (trimmed.toLowerCase() === dismissedBowlerName.toLowerCase()) {
-      setError("⚠️ Cannot bring back the dismissed bowler");
+  const handleConfirm = () => {
+    if (!newName.trim()) { setError("⚠️ Please enter bowler name"); return; }
+    if (!jersey.trim()) { setError("⚠️ Please enter jersey number"); return; }
+    if (isBatsmanAlready) {
+      setError("⚠️ This player is already batting / has batted — cannot bowl");
       return;
     }
     setError("");
-    onConfirm(trimmed);
+    onConfirm({ name: newName.trim(), jersey: jersey.trim(), existingPlayer });
+    setNewName("");
+    setJersey("");
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === "Enter" && newBowlerName.trim()) handleConfirmNewBowler();
+    if (e.key === "Enter") handleConfirm();
   };
 
-  // ── Step 1: Confirm dismissal ──────────────────────────────────────────────
-  if (step === 1) {
-    return (
-      <div className={styles.overlay}>
-        <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-          <h2 className={styles.title}>🚫 Dismiss Bowler</h2>
-          <p style={{ textAlign: "center", color: "#ccc", marginBottom: "12px" }}>
-            Are you sure you want to dismiss{" "}
-            <strong style={{ color: "#fff" }}>{dismissedBowlerName}</strong>?
-          </p>
-          <p style={{ textAlign: "center", color: "#aaa", fontSize: "13px", marginBottom: "20px" }}>
-            They will not be allowed to bowl again this match.
-            <br />
-            The current over will continue with a new bowler.
-          </p>
-          <div className={styles.buttonRow}>
-            <button className={styles.confirmBtn} style={{ background: "#888" }} onClick={onClose}>
-              Cancel
-            </button>
-            <button className={styles.confirmBtn} style={{ background: "#e74c3c" }} onClick={handleConfirmDismiss}>
-              Yes, Dismiss
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const existingBowlerInInnings = existingBowlers.find(
+    (b) => b.displayName.toLowerCase() === newName.trim().toLowerCase()
+  );
+  const isBatsmanAlready =
+  jersey.trim() &&
+  activeBatters.some((p) => String(p.playerId) === String(jersey.trim()));
 
-  // ── Step 2: Enter new bowler name ─────────────────────────────────────────
   return (
-    <div className={styles.overlay}>
+    <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <h2 className={styles.title}>🎯 New Bowler (Continuing Over)</h2>
-        <p style={{ textAlign: "center", color: "#aaa", fontSize: "13px", marginBottom: "12px" }}>
-          Enter the bowler who will continue this over
+        <h2 className={styles.title}>🚫 Dismiss Bowler</h2>
+        <p style={{ textAlign: "center", color: "#aaa", marginBottom: "12px", fontSize: "14px" }}>
+          <strong style={{ color: "#ef4444" }}>{dismissedBowlerName}</strong> is dismissed.
+          <br />Enter the replacement bowler.
         </p>
+
+        {/* Jersey field */}
+        <div className={styles.inputContainer}>
+          <input
+            className={styles.input}
+            placeholder="Jersey number (e.g. 7)"
+            value={jersey}
+            onChange={(e) => handleJerseyChange(e.target.value)}
+            onKeyPress={handleKeyPress}
+            type="number"
+            autoFocus
+          />
+        </div>
+
+        {existingPlayer && (
+          <div style={{
+            background: "rgba(34,197,94,0.1)", border: "1px solid #22c55e",
+            borderRadius: "8px", padding: "10px 14px", marginBottom: "12px",
+            fontSize: "13px", color: "#22c55e",
+          }}>
+            ✅ Found: <strong>{existingPlayer.name}</strong> — Career: {existingPlayer.wickets}W, Eco:{" "}
+            {existingPlayer.ballsBowled > 0
+              ? (existingPlayer.runsGiven / (existingPlayer.ballsBowled / 6)).toFixed(2)
+              : "0.00"}
+          </div>
+        )}
+
+        {existingBowlerInInnings && !existingPlayer && (
+          <div style={{
+            background: "rgba(59,130,246,0.1)", border: "1px solid #3b82f6",
+            borderRadius: "8px", padding: "10px 14px", marginBottom: "12px",
+            fontSize: "13px", color: "#3b82f6",
+          }}>
+            🔄 Returning: <strong>{existingBowlerInInnings.displayName}</strong>{" "}
+            — {existingBowlerInInnings.overs}.{existingBowlerInInnings.balls} ov | {existingBowlerInInnings.runs}R | {existingBowlerInInnings.wickets}W
+          </div>
+        )}
 
         <div className={styles.inputContainer}>
           <input
             className={`${styles.input} ${error ? styles.errorInput : ""}`}
-            placeholder="Enter bowler name"
-            value={newBowlerName}
-            onChange={(e) => {
-              setNewBowlerName(e.target.value);
-              setError("");
-            }}
+            placeholder="Replacement bowler name"
+            value={newName}
+            onChange={(e) => { setNewName(e.target.value); setError(""); }}
             onKeyPress={handleKeyPress}
-            autoFocus
           />
-
-          {existingMatch && (
-            <div
-              className={styles.suggestionBox}
-              onClick={() => onConfirm(existingMatch.displayName)}  // ✅ was existingMatch.name
-            >
-              <div className={styles.suggestionHeader}><b>Existing Bowler</b></div>
-              <div className={styles.suggestionName}>{existingMatch.displayName}</div>  {/* ✅ was existingMatch.name */}
-              <div className={styles.suggestionStats}>
-                {existingMatch.overs} overs | {existingMatch.runs} runs |{" "}
-                {existingMatch.wickets} wkts
-              </div>
-            </div>
-          )}
-
           {error && <p className={styles.errorText}>{error}</p>}
         </div>
 
         <div className={styles.buttonRow}>
           <button
             className={styles.confirmBtn}
-            onClick={handleConfirmNewBowler}
-            disabled={!newBowlerName.trim()}
+            style={{ backgroundColor: "#6b7280", marginRight: "8px" }}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            className={styles.confirmBtn}
+            onClick={handleConfirm}
+            disabled={!newName.trim() || !jersey.trim() || isBatsmanAlready}
           >
             Confirm
           </button>
         </div>
-        <p className={styles.hint}>Press Enter to confirm</p>
+        <p className={styles.hint}>Jersey number is permanent ID</p>
       </div>
     </div>
   );
 }
 
 export default DismissBowlerModal;
-

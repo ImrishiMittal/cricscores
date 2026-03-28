@@ -7,9 +7,10 @@ import OverBalls from "../Components/Scoring/OverBalls";
 import BatsmenRow from "../Components/Scoring/BatsmenRow";
 import RunControls from "../Components/Scoring/RunControls";
 import ModalManager from "../Components/Scoring/ModalManager";
-import HatTrickBanner from "../Components/Scoring/HatTrickBanner";
 import styles from "../Components/Scoring/scoring.module.css";
-
+import UtilityBar from "../Components/Scoring/UtilityBar";
+import NoResultBanner from "../Components/Scoring/NoResultBanner";
+import ScoringModals from "../Components/Scoring/ScoringModals";
 import useMatchEngine from "../hooks/useMatchEngine";
 import usePlayersAndBowlers from "../hooks/usePlayersAndBowlers";
 import usePartnerships from "../hooks/usePartnerships";
@@ -18,8 +19,6 @@ import useWicketFlow from "../hooks/useWicketFlow";
 import useInningsData from "../hooks/useInningsData";
 import useHistorySnapshot from "../hooks/useHistorySnapshot";
 import useHatTrick from "../hooks/useHatTrick";
-import SuperOverModal from "../Components/Scoring/SuperOverModal";
-import FullScorecard from "../Components/Scoring/FullScorecard";
 import usePlayerDatabase from "../hooks/usePlayerDatabase";
 
 function ScoringPage() {
@@ -31,22 +30,23 @@ function ScoringPage() {
   const currentInningsRef = useRef(1);
   const initialStrikerRef = useRef(null);
   const initialNonStrikerRef = useRef(null);
-
   const realMatchInnings1DataRef = useRef(null);
   const realMatchInnings2DataRef = useRef(null);
-
   const soInnings1SavedRef = useRef(false);
   const soCompleteSavedRef = useRef(false);
+
+  // ✅ PATCH 1: Per-innings jersey tracking Sets (replaces matchTeamLockRef)
+  const currentInningsBattersRef = useRef(new Set());
+  const currentInningsBowlersRef = useRef(new Set());
+  const dismissedPlayersRef = useRef(new Set());
 
   const modalStates = useModalStates();
   const wicketFlow = useWicketFlow();
   const hatTrickHook = useHatTrick();
-
   const playerDBHook = usePlayerDatabase();
   const playersHook = usePlayersAndBowlers(updatedMatchData, playerDBHook);
   const partnershipsHook = usePartnerships();
   const engine = useMatchEngine(updatedMatchData, playersHook.swapStrike);
-  const matchTeamLockRef = useRef({});
 
   currentInningsRef.current = engine.innings;
 
@@ -106,46 +106,45 @@ function ScoringPage() {
     engine.extras
   );
 
+  // ✅ PATCH 2: Reset jersey Sets on every innings change
   useEffect(() => {
     if (engine.innings === 1) {
       innings2SnapshotCountRef.current = 0;
     } else if (engine.innings === 2) {
       hatTrickHook.resetTracker();
     }
+    // Reset so bowlers from innings 1 aren't blocked from batting in innings 2
+    currentInningsBattersRef.current = new Set();
+    currentInningsBowlersRef.current = new Set();
   }, [engine.innings]);
 
   useEffect(() => {
-    if (playersHook.players.length === 0) {
-      modalStates.setShowStartModal(true);
-    }
+    if (playersHook.players.length === 0) modalStates.setShowStartModal(true);
   }, []);
 
   useEffect(() => {
     if (!engine.overCompleteEvent) return;
     const lastBowlerIndex = playersHook.currentBowlerIndex;
-    playersHook.requestNewBowler(lastBowlerIndex);
     engine.setOverCompleteEvent(null);
-  }, [engine.overCompleteEvent, playersHook.currentBowlerIndex]);
+    playersHook.requestNewBowler(lastBowlerIndex);
+  }, [engine.overCompleteEvent]);
 
   useEffect(() => {
-    if (!engine.inningsChangeEvent?.superOver) return;
-    if (engine.innings !== 2) return;
-    if (soInnings1SavedRef.current) return;
-
+    if (
+      !engine.inningsChangeEvent?.superOver ||
+      engine.innings !== 2 ||
+      soInnings1SavedRef.current
+    )
+      return;
     soInnings1SavedRef.current = true;
     const soInnings1Data = inningsDataHook.innings1DataRef?.current;
-    if (soInnings1Data) {
-      engine.saveSuperOverInnings1Data(soInnings1Data);
-    }
+    if (soInnings1Data) engine.saveSuperOverInnings1Data(soInnings1Data);
   }, [engine.inningsChangeEvent, engine.innings]);
 
   useEffect(() => {
-    if (!engine.matchOver) return;
-    if (!engine.isSuperOver) return;
-    if (soCompleteSavedRef.current) return;
-
+    if (!engine.matchOver || !engine.isSuperOver || soCompleteSavedRef.current)
+      return;
     soCompleteSavedRef.current = true;
-
     const soInnings2Data = inningsDataHook.captureCurrentInningsData(
       playersHook.players,
       playersHook.allPlayers,
@@ -157,16 +156,12 @@ function ScoringPage() {
       engine.balls,
       engine.extras
     );
-
     engine.saveSuperOverComplete(engine.superOverNumber, soInnings2Data);
   }, [engine.matchOver, engine.isSuperOver, engine.superOverNumber]);
 
   useEffect(() => {
-    if (!engine.matchOver) return;
-    if (!playerDBHook) return;
-
-    const allBatsmen = [...playersHook.players, ...playersHook.allPlayers];
-    allBatsmen.forEach((p) => {
+    if (!engine.matchOver || !playerDBHook) return;
+    [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
       if (!p?.playerId) return;
       playerDBHook.updatePlayerStats(p.playerId, {
         runs: p.runs || 0,
@@ -176,7 +171,6 @@ function ScoringPage() {
         matches: 1,
       });
     });
-
     playersHook.bowlers.forEach((b) => {
       if (!b?.playerId) return;
       playerDBHook.updatePlayerStats(b.playerId, {
@@ -188,12 +182,19 @@ function ScoringPage() {
     });
   }, [engine.matchOver]);
 
+  useEffect(() => {
+    if (!engine.tieDetected) return;
+    modalStates.openSuperOverModal(
+      engine.isSuperOver ? engine.superOverNumber + 1 : 1
+    );
+    engine.setTieDetected(false);
+  }, [engine.tieDetected]);
+
   const firstBattingTeam = matchData.battingFirst;
   const secondBattingTeam =
     matchData.battingFirst === matchData.teamA
       ? matchData.teamB
       : matchData.teamA;
-
   const currentBattingTeam = engine.isSuperOver
     ? engine.innings === 1
       ? secondBattingTeam
@@ -202,29 +203,57 @@ function ScoringPage() {
     ? firstBattingTeam
     : secondBattingTeam;
 
+  // ✅ PATCH 3: Two focused helpers instead of lockJerseysToTeam
+  const addBatterJersey = (jersey) => {
+    if (jersey) currentInningsBattersRef.current.add(String(jersey));
+  };
+  const addBowlerJersey = (jersey) => {
+    if (jersey) currentInningsBowlersRef.current.add(String(jersey));
+  };
+
   const triggerSnapshotWithTracking = () => {
     historySnapshotHook.triggerSnapshot();
-    if (currentInningsRef.current === 2) {
-      innings2SnapshotCountRef.current += 1;
-    }
+    if (currentInningsRef.current === 2) innings2SnapshotCountRef.current += 1;
+  };
+
+  const captureCurrentData = () =>
+    inningsDataHook.captureCurrentInningsData(
+      playersHook.players,
+      playersHook.allPlayers,
+      playersHook.bowlers,
+      engine.completeHistory,
+      engine.score,
+      engine.wickets,
+      engine.overs,
+      engine.balls,
+      engine.extras
+    );
+
+  const startPartnershipFromPlayers = (p, fallback1 = "", fallback2 = "") => {
+    partnershipsHook.startPartnership(
+      p[0]
+        ? { playerId: p[0].playerId, displayName: p[0].displayName }
+        : { playerId: "", displayName: fallback1 },
+      p[1]
+        ? { playerId: p[1].playerId, displayName: p[1].displayName }
+        : { playerId: "", displayName: fallback2 }
+    );
   };
 
   const handleRunClick = (r) => {
     if (wicketFlow.waitingForRunoutRun) {
       wicketFlow.handleRunoutWithRuns(r);
-
       if (r > 0) {
         playersHook.addRunsToStriker(r);
         playersHook.addRunsToBowler(r);
         if (
           playersHook.strikerIndex >= 0 &&
           playersHook.players[playersHook.strikerIndex]
-        ) {
+        )
           partnershipsHook.addRunsToPartnership(
             r,
             playersHook.players[playersHook.strikerIndex].playerId
           );
-        }
         engine.addScore(r);
         engine.addRunToCurrentOver(r, true);
         if (r % 2 !== 0) playersHook.swapStrike();
@@ -232,29 +261,14 @@ function ScoringPage() {
         playersHook.addBallToBowler();
         partnershipsHook.addBallToPartnership();
       }
-
       playersHook.registerWicket();
       return;
     }
 
     if (currentInningsRef.current === 2 && engine.score + r >= engine.target) {
       try {
-        const finalData = inningsDataHook.captureCurrentInningsData(
-          playersHook.players,
-          playersHook.allPlayers,
-          playersHook.bowlers,
-          engine.completeHistory,
-          engine.score,
-          engine.wickets,
-          engine.overs,
-          engine.balls,
-          engine.extras
-        );
-        if (
-          finalData &&
-          finalData.battingStats &&
-          finalData.battingStats[playersHook.strikerIndex]
-        ) {
+        const finalData = captureCurrentData();
+        if (finalData?.battingStats?.[playersHook.strikerIndex]) {
           finalData.battingStats[playersHook.strikerIndex].runs += r;
           finalData.battingStats[playersHook.strikerIndex].balls += 1;
           inningsDataHook.setInnings2Data(finalData);
@@ -271,31 +285,28 @@ function ScoringPage() {
     playersHook.addRunsToStriker(r);
     playersHook.addRunsToBowler(r);
     playersHook.addBallToBowler();
-
     if (
       playersHook.strikerIndex >= 0 &&
       playersHook.players[playersHook.strikerIndex]
-    ) {
+    )
       partnershipsHook.addRunsToPartnership(
         r,
         playersHook.players[playersHook.strikerIndex].playerId
       );
-    }
-
     engine.handleRun(
       r,
       playersHook.players[playersHook.strikerIndex]?.playerId
     );
-
-    const bowlerName =
+    hatTrickHook.trackBall(
       playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName ||
-      "Unknown";
-    hatTrickHook.trackBall(bowlerName, false, false);
+        "Unknown",
+      false,
+      false
+    );
   };
 
   const handleRetiredHurt = () => {
-    if (playersHook.players.length < 2) return;
-    if (playersHook.isWicketPending) return;
+    if (playersHook.players.length < 2 || playersHook.isWicketPending) return;
     modalStates.setShowRetiredHurtModal(true);
   };
 
@@ -304,42 +315,32 @@ function ScoringPage() {
     modalStates.setShowDismissBowlerModal(true);
   };
 
-  const handleDismissBowlerConfirm = (newBowlerName) => {
-    playersHook.dismissCurrentBowler(newBowlerName);
+  // ✅ PATCH 8: Use addBowlerJersey
+  const handleDismissBowlerConfirm = (bowlerData) => {
+    const name = typeof bowlerData === "string" ? bowlerData : bowlerData.name;
+    if (bowlerData?.jersey) addBowlerJersey(bowlerData.jersey);
+    playersHook.dismissCurrentBowler(name);
     modalStates.setShowDismissBowlerModal(false);
-  };
-
-  const handleNoResult = () => {
-    modalStates.setShowNoResultModal(true);
   };
 
   const handleNoResultConfirm = () => {
     modalStates.setShowNoResultModal(false);
     engine.endMatchNoResult();
     setTimeout(() => {
-      const liveData = inningsDataHook.captureCurrentInningsData(
-        playersHook.players,
-        playersHook.allPlayers,
-        playersHook.bowlers,
-        engine.completeHistory,
-        engine.score,
-        engine.wickets,
-        engine.overs,
-        engine.balls,
-        engine.extras
-      );
-      inningsDataHook.setInnings2Data(liveData);
+      inningsDataHook.setInnings2Data(captureCurrentData());
       inningsDataHook.setMatchCompleted(true);
       modalStates.setShowSummary(true);
     }, 150);
   };
 
+  // ✅ PATCH 9: Use per-innings batter set for fielder validation
+  // ✅ IN ScoringPage.jsx, UPDATE handleFielderConfirm function:
+
   const handleFielderConfirm = ({ fielder, fielderJersey }) => {
     const bowlerName =
       playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName ||
       "Unknown";
-    let currentOutBatsman = playersHook.strikerIndex;
-
+    const currentOutBatsman = playersHook.strikerIndex;
     const currentBattingTeamKey =
       currentInningsRef.current === 1 ? "teamAPlayers" : "teamBPlayers";
     const currentTeamSize = engine.isSuperOver
@@ -347,7 +348,13 @@ function ScoringPage() {
       : Number(matchData[currentBattingTeamKey] || 11);
     const currentMaxWickets = engine.isSuperOver ? 2 : currentTeamSize - 1;
     const nextWickets = engine.wickets + 1;
-    const uniqueBatsmenCount = playersHook.players.length;
+
+    // ✅ REMOVED: The batter validation from here
+    // FielderInputModal already validates fielders can't be batters
+    // This validation was BLOCKING BOWLERS from fielding (wrong!)
+
+    // ✅ Add fielder's jersey to bowlers set
+    if (fielderJersey) addBowlerJersey(fielderJersey);
 
     playersHook.setDismissal(
       wicketFlow.selectedWicketType,
@@ -355,16 +362,24 @@ function ScoringPage() {
       bowlerName,
       currentOutBatsman
     );
-    playersHook.registerWicket();
 
-    const isRunout = wicketFlow.selectedWicketType === "runout";
-    hatTrickHook.trackBall(bowlerName, true, isRunout);
+    const outPlayerId = playersHook.players[currentOutBatsman]?.playerId;
+    if (outPlayerId) {
+      dismissedPlayersRef.current.add(String(outPlayerId));
+    }
+
+    hatTrickHook.trackBall(
+      bowlerName,
+      true,
+      wicketFlow.selectedWicketType === "runout"
+    );
 
     if (wicketFlow.selectedWicketType !== "runout") {
       playersHook.addWicketToBowler();
+    } else {
+      playersHook.addBallToBowler();
     }
 
-    playersHook.addBallToBowler();
     partnershipsHook.addBallToPartnership();
     partnershipsHook.savePartnership(engine.score, nextWickets);
     partnershipsHook.resetPartnership();
@@ -376,7 +391,6 @@ function ScoringPage() {
       wicketFlow.pendingRunoutRuns !== null
     );
 
-    // ✅ Save fielding stat to DB
     if (fielderJersey) {
       playerDBHook.updateFieldingStats(
         fielderJersey,
@@ -384,21 +398,24 @@ function ScoringPage() {
       );
     }
 
-    // ✅ Complete wicket flow ONCE
-    wicketFlow.completeWicketFlow();
+    wicketFlow.setShowFielderInputModal(false);
 
-    const allWicketsFallen = nextWickets >= currentMaxWickets;
-
-    if (allWicketsFallen) {
+    if (nextWickets >= currentMaxWickets) {
+      wicketFlow.completeWicketFlow();
+      playersHook.setIsWicketPending(false);
       setTimeout(() => triggerSnapshotWithTracking(), 100);
       return;
     }
 
-    if (!engine.isSuperOver && uniqueBatsmenCount >= currentTeamSize) {
+    if (!engine.isSuperOver && playersHook.players.length >= currentTeamSize) {
+      wicketFlow.completeWicketFlow();
+      playersHook.setIsWicketPending(false);
       return;
     }
 
+    playersHook.setOutBatsman(currentOutBatsman);
     playersHook.setIsWicketPending(true);
+
     setTimeout(() => triggerSnapshotWithTracking(), 200);
   };
 
@@ -410,27 +427,22 @@ function ScoringPage() {
       alert("⚠️ Cannot undo — no balls have been bowled yet in this innings.");
       return;
     }
-
     const last = historySnapshotHook.getLastSnapshot();
     if (!last) {
       alert("No balls to undo!");
       return;
     }
-
     historySnapshotHook.popSnapshot();
-
-    if (currentInningsRef.current === 2) {
+    if (currentInningsRef.current === 2)
       innings2SnapshotCountRef.current = Math.max(
         0,
         innings2SnapshotCountRef.current - 1
       );
-    }
-
     engine.restoreState(last);
     playersHook.restorePlayersState(last);
     playersHook.restoreBowlersState(last);
     partnershipsHook.restorePartnershipState(last);
-
+    hatTrickHook.resetTracker();
     wicketFlow.cancelWicketFlow();
     playersHook.setIsWicketPending(false);
   };
@@ -442,11 +454,9 @@ function ScoringPage() {
     oldCount,
   }) => {
     const updated = { ...updatedMatchData };
-    if (engine.innings === 1) {
+    if (engine.innings === 1)
       updated[isBattingTeam ? "teamAPlayers" : "teamBPlayers"] = newCount;
-    } else {
-      updated[isBattingTeam ? "teamBPlayers" : "teamAPlayers"] = newCount;
-    }
+    else updated[isBattingTeam ? "teamBPlayers" : "teamAPlayers"] = newCount;
     setUpdatedMatchData(updated);
     localStorage.setItem("matchData", JSON.stringify(updated));
     modalStates.setShowChangePlayersModal(false);
@@ -478,67 +488,41 @@ function ScoringPage() {
       alert("Only Run out or Stumping allowed on Free Hit");
       return;
     }
-
     wicketFlow.handleWicketTypeSelect(wicketType);
+    if (wicketType !== "hitwicket") return;
 
-    if (wicketType === "hitwicket") {
-      const bowlerName =
-        playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName ||
-        "Unknown";
-      let currentOutBatsman = playersHook.strikerIndex;
-      const nextWickets = engine.wickets + 1;
+    const bowlerName =
+      playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName ||
+      "Unknown";
+    const currentOutBatsman = playersHook.strikerIndex;
+    const nextWickets = engine.wickets + 1;
 
-      playersHook.setDismissal(
-        "hitwicket",
-        null,
-        bowlerName,
-        currentOutBatsman
-      );
-      hatTrickHook.trackBall(bowlerName, true, false);
-      playersHook.addWicketToBowler();
-
-      partnershipsHook.addBallToPartnership();
-      partnershipsHook.savePartnership(engine.score, nextWickets);
-      partnershipsHook.resetPartnership();
-
-      engine.handleWicket(
-        false,
-        true,
-        playersHook.players[currentOutBatsman]?.playerId
-      );
-
-      playersHook.setOutBatsman(currentOutBatsman);
-      playersHook.setIsWicketPending(true);
-      triggerSnapshotWithTracking();
-    }
+    playersHook.setDismissal("hitwicket", null, bowlerName, currentOutBatsman);
+    hatTrickHook.trackBall(bowlerName, true, false);
+    playersHook.addWicketToBowler();
+    partnershipsHook.addBallToPartnership();
+    partnershipsHook.savePartnership(engine.score, nextWickets);
+    partnershipsHook.resetPartnership();
+    engine.handleWicket(
+      false,
+      true,
+      playersHook.players[currentOutBatsman]?.playerId
+    );
+    playersHook.setOutBatsman(currentOutBatsman);
+    playersHook.setIsWicketPending(true);
+    triggerSnapshotWithTracking();
   };
-
-  const isNoResult = engine.winner === "NO RESULT";
-
-  useEffect(() => {
-    if (!engine.tieDetected) return;
-    const nextSuperOverNumber = engine.isSuperOver
-      ? engine.superOverNumber + 1
-      : 1;
-    modalStates.openSuperOverModal(nextSuperOverNumber);
-    engine.setTieDetected(false);
-  }, [engine.tieDetected]);
 
   const handleStartSuperOver = () => {
     modalStates.closeSuperOverModal();
-
-    if (!realMatchInnings1DataRef.current) {
+    if (!realMatchInnings1DataRef.current)
       realMatchInnings1DataRef.current = inningsDataHook.innings1Data;
-    }
-    if (!realMatchInnings2DataRef.current) {
+    if (!realMatchInnings2DataRef.current)
       realMatchInnings2DataRef.current = inningsDataHook.innings2Data;
-    }
-
     const result = engine.startSuperOver(modalStates.superOverNumber);
     if (result === "SUPER_OVER_STARTED") {
       soInnings1SavedRef.current = false;
       soCompleteSavedRef.current = false;
-
       playersHook.resetForNewInnings();
       partnershipsHook.resetPartnership();
       partnershipsHook.restorePartnershipState({
@@ -549,7 +533,6 @@ function ScoringPage() {
         partnershipHistory: [],
       });
       hatTrickHook.resetTracker();
-
       setTimeout(() => {
         engine.setInningsChangeEvent(null);
         modalStates.setShowStartModal(true);
@@ -569,17 +552,11 @@ function ScoringPage() {
   const summaryInnings2Data = engine.isSuperOver
     ? realMatchInnings2DataRef.current
     : inningsDataHook.innings2Data;
-
-  const lockJerseysToTeam = (jerseys, teamName) => {
-    jerseys.forEach((j) => {
-      if (j) matchTeamLockRef.current[String(j)] = teamName;
-    });
-  };
+  const isNoResult = engine.winner === "NO RESULT";
 
   return (
     <div className={styles.container}>
       <BrandTitle size="small" />
-
       {!modalStates.showSummary && (
         <>
           <ScoreHeader
@@ -597,7 +574,6 @@ function ScoringPage() {
               matchData.battingFirst === matchData.tossWinner ? "bat" : "bowl"
             }`}
           />
-
           <InfoStrip
             overs={engine.overs}
             balls={engine.balls}
@@ -615,9 +591,7 @@ function ScoringPage() {
             currentTeam={currentBattingTeam}
             onBowlerClick={modalStates.openBowlerStats}
           />
-
           <OverBalls history={engine.currentOver} />
-
           {playersHook.players.length >= 2 && (
             <BatsmenRow
               striker={playersHook.players[playersHook.strikerIndex]}
@@ -630,7 +604,6 @@ function ScoringPage() {
               onStatsClick={modalStates.openPlayerStats}
             />
           )}
-
           {!engine.matchOver && (
             <RunControls
               onRun={handleRunClick}
@@ -666,92 +639,23 @@ function ScoringPage() {
               onRetiredHurt={handleRetiredHurt}
               isWicketPending={playersHook.isWicketPending}
               onDismissBowler={handleDismissBowler}
-              onNoResult={handleNoResult}
+              onNoResult={() => modalStates.setShowNoResultModal(true)}
             />
           )}
-
-          {engine.matchOver && isNoResult && (
-            <div
-              style={{
-                textAlign: "center",
-                marginTop: "24px",
-                padding: "20px",
-                background: "#1a0a2e",
-                borderRadius: "12px",
-                border: "2px solid #8e44ad",
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "28px",
-                  fontWeight: "bold",
-                  color: "#8e44ad",
-                  margin: 0,
-                }}
-              >
-                🌧️ NO RESULT
-              </p>
-              <p style={{ color: "#ccc", marginTop: "8px" }}>
-                Match ended without a result
-              </p>
-            </div>
-          )}
+          {engine.matchOver && isNoResult && <NoResultBanner />}
         </>
       )}
-
-      <div className={styles.utilityRow}>
-        {partnershipsHook.partnershipHistory.length > 0 && (
-          <button
-            className={styles.utilityBtn}
-            onClick={() => modalStates.setShowPartnershipHistory(true)}
-          >
-            📊 Previous Partnerships (
-            {partnershipsHook.partnershipHistory.length})
-          </button>
-        )}
-        <button
-          className={styles.utilityBtn}
-          onClick={() => modalStates.setShowInningsHistory(true)}
-        >
-          📋 Innings History
-        </button>
-        <button
-          className={styles.utilityBtn}
-          onClick={() => modalStates.setShowInningsSummary(true)}
-        >
-          📄 Innings Summary
-        </button>
-        <button
-          className={styles.utilityBtn}
-          onClick={() => modalStates.setShowComparisonGraph(true)}
-        >
-          📈 Comparison Graph
-        </button>
-        <button
-          className={styles.utilityBtn}
-          onClick={() => modalStates.setShowMoreMenu(true)}
-        >
-          ⚙ MORE
-        </button>
-        {inningsDataHook.matchCompleted && (
-          <button
-            className={styles.utilityBtn}
-            onClick={() => modalStates.setShowFullScorecard(true)}
-            style={{ background: "#1db954", color: "#000", fontWeight: "700" }}
-          >
-            📊 SCORECARD
-          </button>
-        )}
-        {inningsDataHook.matchCompleted && (
-          <button
-            className={styles.utilityBtn}
-            onClick={() => modalStates.setShowSummary(true)}
-          >
-            🏆 Match Summary
-          </button>
-        )}
-      </div>
-
+      <UtilityBar
+        partnershipHistory={partnershipsHook.partnershipHistory}
+        matchCompleted={inningsDataHook.matchCompleted}
+        onPartnership={() => modalStates.setShowPartnershipHistory(true)}
+        onInningsHistory={() => modalStates.setShowInningsHistory(true)}
+        onInningsSummary={() => modalStates.setShowInningsSummary(true)}
+        onComparisonGraph={() => modalStates.setShowComparisonGraph(true)}
+        onMore={() => modalStates.setShowMoreMenu(true)}
+        onScorecard={() => modalStates.setShowFullScorecard(true)}
+        onMatchSummary={() => modalStates.setShowSummary(true)}
+      />
       <ModalManager
         modalStates={modalStates}
         wicketFlow={wicketFlow}
@@ -791,94 +695,47 @@ function ScoringPage() {
         isSuperOver={engine.isSuperOver}
         superOverNumber={engine.superOverNumber}
         onStartInnings={(strikerData, nonStrikerData, bowlerData) => {
-          const battingTeam =
-            engine.innings === 1 ? firstBattingTeam : secondBattingTeam;
-          const bowlingTeam =
-            engine.innings === 1 ? secondBattingTeam : firstBattingTeam;
-
-          lockJerseysToTeam(
-            [strikerData.jersey, nonStrikerData.jersey],
-            battingTeam
-          );
-          lockJerseysToTeam([bowlerData.jersey], bowlingTeam);
+          addBatterJersey(strikerData.jersey);
+          addBatterJersey(nonStrikerData.jersey);
+          addBowlerJersey(bowlerData.jersey);
           playersHook.startInnings(strikerData, nonStrikerData, bowlerData);
           setTimeout(() => {
             const p = playersHook.players;
             initialStrikerRef.current = p[0]?.playerId ?? null;
             initialNonStrikerRef.current = p[1]?.playerId ?? null;
-            partnershipsHook.startPartnership(
-              p[0]
-                ? { playerId: p[0].playerId, displayName: p[0].displayName }
-                : { playerId: "", displayName: strikerData.name },
-              p[1]
-                ? { playerId: p[1].playerId, displayName: p[1].displayName }
-                : { playerId: "", displayName: nonStrikerData.name }
+            startPartnershipFromPlayers(
+              p,
+              strikerData.name,
+              nonStrikerData.name
             );
           }, 50);
           modalStates.setShowStartModal(false);
         }}
         onConfirmNewBatsman={(batsmanData) => {
-          const battingTeam =
-            engine.innings === 1 ? firstBattingTeam : secondBattingTeam;
-          if (batsmanData?.jersey) {
-            lockJerseysToTeam([batsmanData.jersey], battingTeam);
-          }
+          if (batsmanData?.jersey) addBatterJersey(batsmanData.jersey);
           const name =
             typeof batsmanData === "string" ? batsmanData : batsmanData.name;
-
           const isReturnedPlayer = playersHook.retiredPlayersRef.current.some(
             (p) =>
               p.displayName.toLowerCase().trim() === name.toLowerCase().trim()
           );
-
-          if (isReturnedPlayer) {
+          if (isReturnedPlayer)
             playersHook.returnRetiredBatsman(name, playersHook.outBatsman);
-          } else {
-            playersHook.replaceBatsman(playersHook.outBatsman, batsmanData);
-          }
-
-          // ✅ Close modal
+          else playersHook.replaceBatsman(playersHook.outBatsman, batsmanData);
           playersHook.setIsWicketPending(false);
           wicketFlow.completeWicketFlow();
 
+          const outIdx = playersHook.outBatsman ?? playersHook.strikerIndex;
+          const nonStrikerIdx = outIdx === 0 ? 1 : 0;
+          const nonStriker = playersHook.players[nonStrikerIdx];
           setTimeout(() => {
-            const p = playersHook.players;
             partnershipsHook.startPartnership(
-              p[0]
-                ? { playerId: p[0].playerId, displayName: p[0].displayName }
-                : { playerId: "", displayName: "" },
-              p[1]
-                ? { playerId: p[1].playerId, displayName: p[1].displayName }
-                : { playerId: "", displayName: "" }
-            );
-          }, 50);
-        }}
-        onConfirmNewBowler={(bowlerData) => {
-          const bowlingTeam =
-            engine.innings === 1 ? secondBattingTeam : firstBattingTeam;
-          if (bowlerData?.jersey) {
-            lockJerseysToTeam([bowlerData.jersey], bowlingTeam);
-          }
-          const result = playersHook.confirmNewBowler(bowlerData);
-          // ✅ Force close if no validation error
-          if (result?.success) {
-            playersHook.setIsNewBowlerPending(false);
-          }
-        }}
-        onRetiredHurtConfirm={(newBatsmanName) => {
-          playersHook.retireBatsman(newBatsmanName);
-          modalStates.setShowRetiredHurtModal(false);
-          setTimeout(() => {
-            const p = playersHook.players;
-            const striker = p[playersHook.strikerIndex];
-            const nonStriker = p[playersHook.nonStrikerIndex];
-            partnershipsHook.startPartnership(
-              striker
-                ? {
-                    playerId: striker.playerId,
-                    displayName: striker.displayName,
-                  }
-                : { playerId: "", displayName: newBatsmanName },
+              {
+                playerId: batsmanData?.jersey
+                  ? String(batsmanData.jersey)
+                  : "new-" + Date.now(),
+                displayName: name,
+              },
               nonStriker
                 ? {
                     playerId: nonStriker.playerId,
@@ -888,23 +745,32 @@ function ScoringPage() {
             );
           }, 50);
         }}
+        onConfirmNewBowler={(bowlerData) => {
+          if (bowlerData?.jersey) addBowlerJersey(bowlerData.jersey);
+          const result = playersHook.confirmNewBowler(bowlerData);
+          if (result?.success) playersHook.setIsNewBowlerPending(false);
+        }}
+        onRetiredHurtConfirm={(batsmanData) => {
+          const name =
+            typeof batsmanData === "string" ? batsmanData : batsmanData.name;
+          if (batsmanData?.jersey) addBatterJersey(batsmanData.jersey);
+          playersHook.retireBatsman(name);
+          modalStates.setShowRetiredHurtModal(false);
+          setTimeout(
+            () => startPartnershipFromPlayers(playersHook.players, name, ""),
+            50
+          );
+        }}
         onReturnRetiredConfirm={(retiredPlayerName) => {
           playersHook.returnRetiredBatsman(
             retiredPlayerName,
             playersHook.outBatsman
           );
           playersHook.setIsWicketPending(false);
-          setTimeout(() => {
-            const p = playersHook.players;
-            partnershipsHook.startPartnership(
-              p[0]
-                ? { playerId: p[0].playerId, displayName: p[0].displayName }
-                : { playerId: "", displayName: "" },
-              p[1]
-                ? { playerId: p[1].playerId, displayName: p[1].displayName }
-                : { playerId: "", displayName: "" }
-            );
-          }, 50);
+          setTimeout(
+            () => startPartnershipFromPlayers(playersHook.players),
+            50
+          );
         }}
         onWicketTypeSelect={handleWicketTypeSelectWithHitWicket}
         onFielderConfirm={handleFielderConfirm}
@@ -928,44 +794,26 @@ function ScoringPage() {
         activePlayers={playersHook.players}
         playerDB={playerDBHook}
         onOpenPlayerDatabase={() => modalStates.setShowPlayerDatabase(true)}
-        matchTeamLock={matchTeamLockRef.current}
+        bowlerJerseys={currentInningsBowlersRef.current}
+        batterJerseys={currentInningsBattersRef.current}
+        dismissedPlayers={dismissedPlayersRef.current}
+        currentBowlerJersey={
+          playersHook.bowlers[playersHook.currentBowlerIndex]?.playerId
+        } // ✅ ADD THIS
       />
-
-      {hatTrickHook.showHatTrick && (
-        <HatTrickBanner
-          bowlerName={hatTrickHook.hatTrickBowler}
-          onClose={hatTrickHook.closeHatTrick}
-        />
-      )}
-
-      {modalStates.showSuperOverModal && (
-        <SuperOverModal
-          teamA={matchData.teamA}
-          teamB={matchData.teamB}
-          battingFirst={secondBattingTeam}
-          superOverNumber={modalStates.superOverNumber}
-          onStart={handleStartSuperOver}
-          onSkip={handleSkipSuperOver}
-        />
-      )}
-
-      {modalStates.showFullScorecard && (
-        <FullScorecard
-          matchData={matchData}
-          mainMatchData={{
-            innings1Data:
-              realMatchInnings1DataRef.current ?? inningsDataHook.innings1Data,
-            innings2Data:
-              realMatchInnings2DataRef.current ?? inningsDataHook.innings2Data,
-            realInnings1Score: engine.realMatchInnings1Score,
-            realInnings2Score: engine.realMatchInnings2Score,
-          }}
-          superOverData={engine.superOverHistory}
-          firstBattingTeam={firstBattingTeam}
-          secondBattingTeam={secondBattingTeam}
-          onClose={() => modalStates.setShowFullScorecard(false)}
-        />
-      )}
+      <ScoringModals
+        hatTrickHook={hatTrickHook}
+        modalStates={modalStates}
+        matchData={matchData}
+        secondBattingTeam={secondBattingTeam}
+        firstBattingTeam={firstBattingTeam}
+        handleStartSuperOver={handleStartSuperOver}
+        handleSkipSuperOver={handleSkipSuperOver}
+        realMatchInnings1DataRef={realMatchInnings1DataRef}
+        realMatchInnings2DataRef={realMatchInnings2DataRef}
+        inningsDataHook={inningsDataHook}
+        engine={engine}
+      />
     </div>
   );
 }

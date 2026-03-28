@@ -1,28 +1,46 @@
 import { useState } from "react";
 import styles from "./FielderInputModal.module.css";
 
-function FielderInputModal({ wicketType, onConfirm, onCancel, playerDB }) {
+function FielderInputModal({
+  wicketType,
+  onConfirm,
+  onCancel,
+  playerDB,
+  batterJerseys = new Set(),   // Batters this innings — cannot field at all
+  currentBowlerJersey,          // Current bowler — cannot STUMP (but CAN catch/runout)
+}) {
   const [fielderName, setFielderName] = useState("");
   const [fielderJersey, setFielderJersey] = useState("");
-  const [newBatsmanName, setNewBatsmanName] = useState("");
-  const [newBatsmanJersey, setNewBatsmanJersey] = useState("");
-  const [error, setError] = useState("");
-  
   const [fielderExisting, setFielderExisting] = useState(null);
-  const [batsmanExisting, setBatsmanExisting] = useState(null);
-  
-  // ✅ NEW: Name autocomplete
   const [fielderSuggestions, setFielderSuggestions] = useState([]);
   const [showFielderSuggestions, setShowFielderSuggestions] = useState(false);
-  const [batsmanSuggestions, setBatsmanSuggestions] = useState([]);
-  const [showBatsmanSuggestions, setShowBatsmanSuggestions] = useState(false);
 
   const requiresFielder = ["caught", "stumped", "runout"].includes(wicketType);
 
-  // ✅ Fielder jersey lookup
+  // ✅ RULES:
+  // Rule 1: Batters this innings CANNOT field (they're on the batting side)
+  // Rule 2: Current bowler CANNOT be wicketkeeper for a STUMPING only
+  //         (they can catch, they can be involved in runouts)
+  // Bowlers from earlier in the innings CAN field freely.
+  const getFielderError = (jerseyVal) => {
+    if (!jerseyVal?.trim()) return null;
+    const j = String(jerseyVal.trim());
+
+    // ✅ Rule 1: Batter cannot field
+    if (batterJerseys.has(j)) {
+      return `Jersey #${j} is batting this innings — cannot field`;
+    }
+
+    // ✅ Rule 2: Bowler can't be keeper for stumping only
+    if (wicketType === "stumped" && j === String(currentBowlerJersey)) {
+      return `The bowler cannot also be the wicket-keeper (invalid stumping)`;
+    }
+
+    return null;
+  };
+
   const handleFielderJerseyChange = (val) => {
     setFielderJersey(val);
-    setError("");
     setFielderExisting(null);
     setShowFielderSuggestions(false);
 
@@ -35,10 +53,8 @@ function FielderInputModal({ wicketType, onConfirm, onCancel, playerDB }) {
     }
   };
 
-  // ✅ Fielder name autocomplete
   const handleFielderNameChange = (val) => {
     setFielderName(val);
-    setError("");
     setFielderExisting(null);
 
     if (val.trim() && playerDB) {
@@ -58,76 +74,29 @@ function FielderInputModal({ wicketType, onConfirm, onCancel, playerDB }) {
     setShowFielderSuggestions(false);
   };
 
-  // ✅ Batsman jersey lookup
-  const handleBatsmanJerseyChange = (val) => {
-    setNewBatsmanJersey(val);
-    setError("");
-    setBatsmanExisting(null);
-    setShowBatsmanSuggestions(false);
-
-    if (val.trim() && playerDB) {
-      const found = playerDB.getPlayer(val.trim());
-      if (found) {
-        setBatsmanExisting(found);
-        setNewBatsmanName(found.name);
-      }
-    }
-  };
-
-  // ✅ Batsman name autocomplete
-  const handleBatsmanNameChange = (val) => {
-    setNewBatsmanName(val);
-    setError("");
-    setBatsmanExisting(null);
-
-    if (val.trim() && playerDB) {
-      const suggestions = playerDB.searchPlayersByName(val);
-      setBatsmanSuggestions(suggestions);
-      setShowBatsmanSuggestions(suggestions.length > 0);
-    } else {
-      setBatsmanSuggestions([]);
-      setShowBatsmanSuggestions(false);
-    }
-  };
-
-  const handleSelectBatsmanSuggestion = (player) => {
-    setNewBatsmanName(player.name);
-    setNewBatsmanJersey(player.jersey);
-    setBatsmanExisting(player);
-    setShowBatsmanSuggestions(false);
-  };
+  const fielderError = fielderJersey.trim() ? getFielderError(fielderJersey) : null;
 
   const handleConfirm = () => {
     if (requiresFielder && !fielderName.trim()) {
-      setError("⚠️ Please enter fielder name");
+      alert("Please enter fielder name");
       return;
     }
     if (requiresFielder && !fielderJersey.trim()) {
-      setError("⚠️ Please enter fielder jersey");
+      alert("Please enter fielder jersey");
       return;
     }
-    if (!newBatsmanName.trim()) {
-      setError("⚠️ Please enter new batsman name");
+    if (fielderError) {
+      alert(fielderError);
       return;
     }
-    if (!newBatsmanJersey.trim()) {
-      setError("⚠️ Please enter new batsman jersey");
-      return;
-    }
-
     onConfirm({
       fielder: fielderName.trim(),
-      fielderJersey: fielderJersey.trim(),
-      newBatsman: newBatsmanName.trim(),
-      newBatsmanJersey: newBatsmanJersey.trim(),
+      fielderJersey: fielderJersey.trim() || null,
     });
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") handleConfirm();
-  };
+  const handleKeyPress = (e) => { if (e.key === "Enter") handleConfirm(); };
 
-  // ✅ Helper to show fielding stats
   const renderFieldingStats = (player) => {
     if (!player) return null;
     return (
@@ -140,11 +109,13 @@ function FielderInputModal({ wicketType, onConfirm, onCancel, playerDB }) {
     );
   };
 
+  const fielderLabel =
+    wicketType === "runout" ? "Fielder"
+    : wicketType === "caught" ? "Catcher"
+    : "Wicket Keeper";
+
   return (
-    <div className={styles.overlay} onClick={() => {
-      setShowFielderSuggestions(false);
-      setShowBatsmanSuggestions(false);
-    }}>
+    <div className={styles.overlay} onClick={() => setShowFielderSuggestions(false)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>
           {wicketType === "caught" && "🤲 Caught"}
@@ -152,12 +123,9 @@ function FielderInputModal({ wicketType, onConfirm, onCancel, playerDB }) {
           {wicketType === "runout" && "🏃 Run Out"}
         </h2>
 
-        {/* ✅ FIELDER DETAILS (for caught/stumped/runout) */}
         {requiresFielder && (
           <div className={styles.section}>
-            <h3 className={styles.sectionTitle}>
-              {wicketType === "stumped" ? "Wicket Keeper" : "Fielder"}
-            </h3>
+            <h3 className={styles.sectionTitle}>{fielderLabel}</h3>
 
             <div className={styles.inputContainer}>
               <input
@@ -170,8 +138,22 @@ function FielderInputModal({ wicketType, onConfirm, onCancel, playerDB }) {
               />
             </div>
 
-            {fielderExisting && (
-              <div className={styles.existingPlayerBanner}>
+            {fielderError && (
+              <div style={{
+                background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444",
+                borderRadius: "8px", padding: "8px 12px", marginBottom: "8px",
+                fontSize: "13px", color: "#ef4444",
+              }}>
+                🚫 {fielderError}
+              </div>
+            )}
+
+            {fielderExisting && !fielderError && (
+              <div style={{
+                background: "rgba(34,197,94,0.1)", border: "1px solid #22c55e",
+                borderRadius: "8px", padding: "8px 12px", marginBottom: "8px",
+                fontSize: "13px", color: "#22c55e",
+              }}>
                 ✅ <strong>{fielderExisting.name}</strong>
                 {renderFieldingStats(fielderExisting)}
               </div>
@@ -184,96 +166,57 @@ function FielderInputModal({ wicketType, onConfirm, onCancel, playerDB }) {
                 value={fielderName}
                 onChange={(e) => handleFielderNameChange(e.target.value)}
                 onKeyPress={handleKeyPress}
-                onFocus={() => {
-                  if (fielderSuggestions.length > 0) setShowFielderSuggestions(true);
-                }}
+                onFocus={() => fielderSuggestions.length > 0 && setShowFielderSuggestions(true)}
               />
 
               {showFielderSuggestions && fielderSuggestions.length > 0 && (
                 <div className={styles.suggestionsDropdown}>
-                  {fielderSuggestions.map((player) => (
-                    <div
-                      key={player.jersey}
-                      className={styles.suggestionItem}
-                      onClick={() => handleSelectFielderSuggestion(player)}
-                    >
-                      <div className={styles.suggestionMain}>
-                        <span className={styles.suggestionJersey}>#{player.jersey}</span>
-                        <span className={styles.suggestionName}>{player.name}</span>
+                  {fielderSuggestions.map((player) => {
+                    const isBatter = batterJerseys.has(String(player.jersey));
+                    const isCurrentBowlerStumping =
+                      wicketType === "stumped" &&
+                      String(player.jersey) === String(currentBowlerJersey);
+                    const isInvalid = isBatter || isCurrentBowlerStumping;
+
+                    return (
+                      <div
+                        key={player.jersey}
+                        className={styles.suggestionItem}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          if (!isInvalid) handleSelectFielderSuggestion(player);
+                        }}
+                        style={{ opacity: isInvalid ? 0.4 : 1, cursor: isInvalid ? "not-allowed" : "pointer" }}
+                      >
+                        <div className={styles.suggestionMain}>
+                          <span className={styles.suggestionJersey}>#{player.jersey}</span>
+                          <span className={styles.suggestionName}>{player.name}</span>
+                          {isBatter && (
+                            <span style={{ fontSize: "10px", color: "#ef4444", marginLeft: "4px" }}>🏏 batter</span>
+                          )}
+                          {isCurrentBowlerStumping && (
+                            <span style={{ fontSize: "10px", color: "#f59e0b", marginLeft: "4px" }}>🎳 bowler</span>
+                          )}
+                        </div>
+                        <div className={styles.suggestionStats}>
+                          {player.matches || 0}M • {player.catches || 0}C • {player.runouts || 0}RO • {player.stumpings || 0}ST
+                        </div>
                       </div>
-                      <div className={styles.suggestionStats}>
-                        {player.matches || 0}M • {player.catches || 0}C • {player.runouts || 0}RO • {player.stumpings || 0}ST
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* ✅ NEW BATSMAN */}
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>New Batsman</h3>
-
-          <div className={styles.inputContainer}>
-            <input
-              className={styles.input}
-              placeholder="Jersey number"
-              value={newBatsmanJersey}
-              onChange={(e) => handleBatsmanJerseyChange(e.target.value)}
-              type="number"
-              autoFocus={!requiresFielder}
-            />
-          </div>
-
-          {batsmanExisting && (
-            <div className={styles.existingPlayerBanner}>
-              ✅ <strong>{batsmanExisting.name}</strong> — {batsmanExisting.runs}R ({batsmanExisting.balls}B), {batsmanExisting.wickets}W
-            </div>
-          )}
-
-          <div className={styles.inputContainer} style={{ position: "relative" }}>
-            <input
-              className={`${styles.input} ${error ? styles.errorInput : ""}`}
-              placeholder="Batsman name"
-              value={newBatsmanName}
-              onChange={(e) => handleBatsmanNameChange(e.target.value)}
-              onKeyPress={handleKeyPress}
-              onFocus={() => {
-                if (batsmanSuggestions.length > 0) setShowBatsmanSuggestions(true);
-              }}
-            />
-
-            {showBatsmanSuggestions && batsmanSuggestions.length > 0 && (
-              <div className={styles.suggestionsDropdown}>
-                {batsmanSuggestions.map((player) => (
-                  <div
-                    key={player.jersey}
-                    className={styles.suggestionItem}
-                    onClick={() => handleSelectBatsmanSuggestion(player)}
-                  >
-                    <div className={styles.suggestionMain}>
-                      <span className={styles.suggestionJersey}>#{player.jersey}</span>
-                      <span className={styles.suggestionName}>{player.name}</span>
-                    </div>
-                    <div className={styles.suggestionStats}>
-                      🏏 {player.runs}R ({player.balls}B) • 🎳 {player.wickets}W • {player.matches}M
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {error && <p className={styles.errorText}>{error}</p>}
-          </div>
-        </div>
-
         <div className={styles.buttonRow}>
-          <button className={styles.cancelBtn} onClick={onCancel}>
-            Cancel
-          </button>
-          <button className={styles.confirmBtn} onClick={handleConfirm}>
+          <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+          <button
+            className={styles.confirmBtn}
+            onClick={handleConfirm}
+            disabled={requiresFielder && (!fielderName.trim() || !fielderJersey.trim() || !!fielderError)}
+          >
             Confirm
           </button>
         </div>
