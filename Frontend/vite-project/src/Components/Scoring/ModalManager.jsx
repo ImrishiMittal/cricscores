@@ -129,10 +129,9 @@ function ModalManager({
       {isNewBowlerPending && (
         <NewBowlerModal
           onConfirm={onConfirmNewBowler}
-          existingBowlers={bowlers}
+          activeBowlers={bowlers}
           playerDB={playerDB}
-          matchTeamLock={matchTeamLock}
-          currentTeam={bowlingTeam}
+          batterJerseys={batterJerseys}
         />
       )}
 

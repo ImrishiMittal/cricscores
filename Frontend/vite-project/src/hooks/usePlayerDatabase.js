@@ -94,6 +94,12 @@ function usePlayerDatabase() {
       ballsBowled: (db[key].ballsBowled || 0) + (statsDelta.ballsBowled || 0),
       runsGiven: (db[key].runsGiven || 0) + (statsDelta.runsGiven || 0),
       matches: (db[key].matches || 0) + (statsDelta.matches || 0),
+    
+      // ✅ ADD THESE 👇
+      thirties: (db[key].thirties || 0) + (statsDelta.thirties || 0),
+      fifties: (db[key].fifties || 0) + (statsDelta.fifties || 0),
+      hundreds: (db[key].hundreds || 0) + (statsDelta.hundreds || 0),
+      ducks: (db[key].ducks || 0) + (statsDelta.ducks || 0),
     };
 
     saveDB(db);
