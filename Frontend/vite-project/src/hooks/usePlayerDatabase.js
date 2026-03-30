@@ -104,6 +104,11 @@ function usePlayerDatabase() {
       fifties: (db[key].fifties || 0) + (statsDelta.fifties || 0),
       hundreds: (db[key].hundreds || 0) + (statsDelta.hundreds || 0),
       ducks: (db[key].ducks || 0) + (statsDelta.ducks || 0),
+
+      ones: (db[key].ones || 0) + (statsDelta.ones || 0),
+      twos: (db[key].twos || 0) + (statsDelta.twos || 0),
+      threes: (db[key].threes || 0) + (statsDelta.threes || 0),
+      dotBalls: (db[key].dotBalls || 0) + (statsDelta.dotBalls || 0),
     };
 
     saveDB(db);

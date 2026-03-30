@@ -260,6 +260,23 @@ function ScoringPage() {
       wicketFlow.handleRunoutWithRuns(r);
       if (r > 0) {
         playersHook.addRunsToStriker(r);
+        const striker = playersHook.players[playersHook.strikerIndex];
+
+if (striker?.playerId) {
+  let stats = {
+    ones: 0,
+    twos: 0,
+    threes: 0,
+    dotBalls: 0,
+  };
+
+  if (r === 1) stats.ones = 1;
+  else if (r === 2) stats.twos = 1;
+  else if (r === 3) stats.threes = 1;
+  else if (r === 0) stats.dotBalls = 1;
+
+  playerDBHook.updatePlayerStats(striker.playerId, stats);
+}
         playersHook.addRunsToBowler(r);
         if (
           playersHook.strikerIndex >= 0 &&
