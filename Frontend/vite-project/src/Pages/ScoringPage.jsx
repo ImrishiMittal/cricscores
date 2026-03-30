@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import BrandTitle from "../Components/BrandTitle";
 import ScoreHeader from "../Components/Scoring/ScoreHeader";
 import InfoStrip from "../Components/Scoring/InfoStrip";
@@ -24,6 +25,7 @@ import usePlayerDatabase from "../hooks/usePlayerDatabase";
 function ScoringPage() {
   const location = useLocation();
   const matchData = location.state || {};
+  const navigate = useNavigate();
   const [updatedMatchData, setUpdatedMatchData] = useState(matchData);
 
   const innings2SnapshotCountRef = useRef(0);
@@ -36,8 +38,10 @@ function ScoringPage() {
   const soCompleteSavedRef = useRef(false);
 
   // ✅ PATCH 1: Per-innings jersey tracking Sets (replaces matchTeamLockRef)
-  const currentInningsBattersRef = useRef(new Set());
-  const currentInningsBowlersRef = useRef(new Set());
+  const teamABattersRef = useRef(new Set()); // jerseys that batted for Team A
+  const teamBBattersRef = useRef(new Set()); // jerseys that batted for Team B
+  const teamABowlersRef = useRef(new Set()); // jerseys that bowled/fielded for Team A
+  const teamBBowlersRef = useRef(new Set());
   const dismissedPlayersRef = useRef(new Set());
 
   const modalStates = useModalStates();
@@ -113,9 +117,7 @@ function ScoringPage() {
     } else if (engine.innings === 2) {
       hatTrickHook.resetTracker();
     }
-    // Reset so bowlers from innings 1 aren't blocked from batting in innings 2
-    currentInningsBattersRef.current = new Set();
-    currentInningsBowlersRef.current = new Set();
+    dismissedPlayersRef.current = new Set(); // ← keep this, wickets reset each innings
   }, [engine.innings]);
 
   useEffect(() => {
@@ -169,6 +171,12 @@ function ScoringPage() {
         fours: p.fours || 0,
         sixes: p.sixes || 0,
         matches: 1,
+
+        // ✅ ADD THESE
+        thirties: (p.runs || 0) >= 30 ? 1 : 0,
+        fifties: (p.runs || 0) >= 50 ? 1 : 0,
+        hundreds: (p.runs || 0) >= 100 ? 1 : 0,
+        ducks: (p.runs || 0) === 0 ? 1 : 0,
       });
     });
     playersHook.bowlers.forEach((b) => {
@@ -205,10 +213,17 @@ function ScoringPage() {
 
   // ✅ PATCH 3: Two focused helpers instead of lockJerseysToTeam
   const addBatterJersey = (jersey) => {
-    if (jersey) currentInningsBattersRef.current.add(String(jersey));
+    if (!jersey) return;
+    // Batting team in innings 1 = firstBattingTeam = teamA side
+    if (engine.innings === 1) teamABattersRef.current.add(String(jersey));
+    else teamBBattersRef.current.add(String(jersey));
   };
+
   const addBowlerJersey = (jersey) => {
-    if (jersey) currentInningsBowlersRef.current.add(String(jersey));
+    if (!jersey) return;
+    // Bowling team in innings 1 = secondBattingTeam = teamB side
+    if (engine.innings === 1) teamBBowlersRef.current.add(String(jersey));
+    else teamABowlersRef.current.add(String(jersey));
   };
 
   const triggerSnapshotWithTracking = () => {
@@ -553,6 +568,10 @@ function ScoringPage() {
     ? realMatchInnings2DataRef.current
     : inningsDataHook.innings2Data;
   const isNoResult = engine.winner === "NO RESULT";
+  const activeBatterJerseys =
+    engine.innings === 1 ? teamABattersRef.current : teamBBattersRef.current;
+  const activeBowlerJerseys =
+    engine.innings === 1 ? teamBBowlersRef.current : teamABowlersRef.current;
 
   return (
     <div className={styles.container}>
@@ -656,6 +675,31 @@ function ScoringPage() {
         onScorecard={() => modalStates.setShowFullScorecard(true)}
         onMatchSummary={() => modalStates.setShowSummary(true)}
       />
+      {engine.matchOver && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginTop: "15px",
+          }}
+        >
+          <button
+            onClick={() => navigate("/home")}
+            style={{
+              background: "#22c55e",
+              color: "white",
+              padding: "12px 20px",
+              borderRadius: "10px",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "15px",
+            }}
+          >
+            🏠 Go to Home
+          </button>
+        </div>
+      )}
       <ModalManager
         modalStates={modalStates}
         wicketFlow={wicketFlow}
@@ -794,8 +838,8 @@ function ScoringPage() {
         activePlayers={playersHook.players}
         playerDB={playerDBHook}
         onOpenPlayerDatabase={() => modalStates.setShowPlayerDatabase(true)}
-        bowlerJerseys={currentInningsBowlersRef.current}
-        batterJerseys={currentInningsBattersRef.current}
+        bowlerJerseys={activeBowlerJerseys}
+        batterJerseys={activeBatterJerseys}
         dismissedPlayers={dismissedPlayersRef.current}
         currentBowlerJersey={
           playersHook.bowlers[playersHook.currentBowlerIndex]?.playerId

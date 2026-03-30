@@ -1,14 +1,11 @@
 import { useState } from "react";
-import styles from "./NewBatsmanModal.module.css";
+import styles from "./NewBatsmanModal.module.css"; // reusing styles
 
-function NewBatsmanModal({
+function NewBowlerModal({
   onConfirm,
-  retiredPlayers = [],
-  onReturnRetired,
   playerDB,
-  activePlayers = [],
-  matchTeamLock = {},
-  currentTeam,
+  activeBowlers = [],
+  batterJerseys = new Set(),
 }) {
   const [name, setName] = useState("");
   const [jersey, setJersey] = useState("");
@@ -17,16 +14,12 @@ function NewBatsmanModal({
   const [teamLockError, setTeamLockError] = useState("");
   const [nameSuggestions, setNameSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  dismissedPlayers = []
 
-  // ✅ Check if jersey belongs to wrong team
-  const getTeamLockError = (jerseyVal) => {
-    if (!jerseyVal?.trim() || !matchTeamLock || !currentTeam) return null;
-    const locked = matchTeamLock[String(jerseyVal.trim())];
-    
-    // ✅ If jersey is locked to a different team, reject it
-    if (locked && locked !== currentTeam) {
-      return `Jersey #${jerseyVal.trim()} belongs to ${locked} — cannot bat for ${currentTeam}`;
+  // ✅ Check if jersey belongs to a batter this innings
+  const getBatterLockError = (jerseyVal) => {
+    if (!jerseyVal?.trim()) return null;
+    if (batterJerseys.has(String(jerseyVal.trim()))) {
+      return `Jersey #${jerseyVal.trim()} is a batter this innings — cannot bowl`;
     }
     return null;
   };
@@ -38,7 +31,7 @@ function NewBatsmanModal({
     setTeamLockError("");
     setShowSuggestions(false);
 
-    const lockErr = getTeamLockError(val);
+    const lockErr = getBatterLockError(val);
     if (lockErr) {
       setTeamLockError(lockErr);
       return;
@@ -53,7 +46,6 @@ function NewBatsmanModal({
     }
   };
 
-  // ✅ Name autocomplete
   const handleNameChange = (val) => {
     setName(val);
     setError("");
@@ -70,8 +62,7 @@ function NewBatsmanModal({
   };
 
   const handleSelectSuggestion = (player) => {
-    // ✅ Check team lock before auto-filling
-    const lockErr = getTeamLockError(player.jersey);
+    const lockErr = getBatterLockError(player.jersey);
     if (lockErr) {
       setTeamLockError(lockErr);
       setName("");
@@ -88,12 +79,14 @@ function NewBatsmanModal({
   };
 
   const isDuplicateJersey =
-    jersey.trim() &&
-    activePlayers.some((p) => p?.playerId === String(jersey.trim()));
+  jersey.trim() &&
+  activeBowlers.some(
+    (b) => String(b?.jersey ?? b?.playerId ?? "") === String(jersey.trim())
+  );
 
   const handleConfirm = () => {
     if (!name.trim()) {
-      setError("⚠️ Please enter player name");
+      setError("⚠️ Please enter bowler name");
       return;
     }
     if (!jersey.trim()) {
@@ -101,14 +94,10 @@ function NewBatsmanModal({
       return;
     }
     if (isDuplicateJersey) {
-      setError("⚠️ This jersey number is already on field");
+      setError("⚠️ This bowler is already bowling");
       return;
     }
     if (teamLockError) {
-      return;
-    }
-    if (isAlreadyOut) {
-      setError("⚠️ This player is already out and cannot bat again");
       return;
     }
 
@@ -125,58 +114,16 @@ function NewBatsmanModal({
     if (e.key === "Enter") handleConfirm();
   };
 
-  const isAlreadyOut =
-  jersey.trim() &&
-  dismissedPlayers.some((p) => String(p.playerId) === String(jersey.trim()));
-
   return (
     <div className={styles.overlay} onClick={() => setShowSuggestions(false)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <h2 className={styles.title}>🏏 New Batsman</h2>
-
-        {/* Retired players quick-return */}
-        {retiredPlayers.length > 0 && (
-          <div style={{ marginBottom: "16px" }}>
-            <p style={{ color: "#f1c40f", fontSize: "13px", textAlign: "center", marginBottom: "8px", fontWeight: "600" }}>
-              🏥 Retired Hurt — tap to return:
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              {retiredPlayers.map((player) => (
-                <button
-                  key={player.playerId}
-                  onClick={() => onReturnRetired(player.displayName)}
-                  style={{
-                    background: "linear-gradient(135deg, #78350f, #92400e)",
-                    border: "1px solid #f59e0b",
-                    borderRadius: "8px",
-                    padding: "10px 14px",
-                    color: "#fef3c7",
-                    cursor: "pointer",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                  }}
-                >
-                  <span>{player.displayName}</span>
-                  <span style={{ fontSize: "12px", color: "#fcd34d" }}>
-                    resumes at {player.runs}({player.balls})
-                  </span>
-                </button>
-              ))}
-            </div>
-            <p style={{ fontSize: "11px", color: "#6b7280", textAlign: "center", margin: "8px 0 4px" }}>
-              — or enter a new batsman below —
-            </p>
-          </div>
-        )}
+        <h2 className={styles.title}>🎳 New Bowler</h2>
 
         {/* Jersey field */}
         <div className={styles.inputContainer}>
           <input
             className={styles.input}
-            placeholder="Jersey number (e.g. 18)"
+            placeholder="Jersey number (e.g. 7)"
             value={jersey}
             onChange={(e) => handleJerseyChange(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -185,7 +132,7 @@ function NewBatsmanModal({
           />
         </div>
 
-        {/* Team lock error */}
+        {/* Batter lock error */}
         {teamLockError && (
           <div style={{
             background: "rgba(239,68,68,0.1)",
@@ -211,7 +158,7 @@ function NewBatsmanModal({
             fontSize: "13px",
             color: "#ef4444",
           }}>
-            ⚠️ Jersey #{jersey} is already on field
+            ⚠️ Jersey #{jersey} is already bowling
           </div>
         )}
 
@@ -226,7 +173,7 @@ function NewBatsmanModal({
         <div className={styles.inputContainer} style={{ position: "relative" }}>
           <input
             className={`${styles.input} ${error ? styles.errorInput : ""}`}
-            placeholder="Player name (start typing...)"
+            placeholder="Bowler name (start typing...)"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -242,14 +189,21 @@ function NewBatsmanModal({
                 <div
                   key={player.jersey}
                   className={styles.suggestionItem}
-                  onClick={() => handleSelectSuggestion(player)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelectSuggestion(player);
+                  }}
                 >
                   <div className={styles.suggestionMain}>
                     <span className={styles.suggestionJersey}>#{player.jersey}</span>
                     <span className={styles.suggestionName}>{player.name}</span>
+                    {/* Show batter tag in suggestions */}
+                    {batterJerseys.has(String(player.jersey)) && (
+                      <span style={{ fontSize: "10px", color: "#ef4444", marginLeft: "4px" }}>🏏 batter</span>
+                    )}
                   </div>
                   <div className={styles.suggestionStats}>
-                    🏏 {player.runs}R ({player.balls}B) • 🎳 {player.wickets}W • {player.matches} matches
+                    🏏 {player.runs}R ({player.balls}B) • 🎳 {player.wickets}W • {player.matches || 0} matches
                   </div>
                 </div>
               ))}
@@ -267,11 +221,10 @@ function NewBatsmanModal({
               !name.trim() ||
               !jersey.trim() ||
               !!isDuplicateJersey ||
-              !!teamLockError ||
-              !!isAlreadyOut
+              !!teamLockError
             }
           >
-            {existingPlayer ? "Use Existing Player" : "Add New Player"}
+            {existingPlayer ? "Use Existing Bowler" : "Add New Bowler"}
           </button>
         </div>
 
@@ -281,4 +234,4 @@ function NewBatsmanModal({
   );
 }
 
-export default NewBatsmanModal;
+export default NewBowlerModal;

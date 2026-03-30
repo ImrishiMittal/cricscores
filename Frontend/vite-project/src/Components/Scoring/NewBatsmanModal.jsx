@@ -7,11 +7,9 @@ function NewBatsmanModal({
   onReturnRetired,
   playerDB,
   activePlayers = [],
-  // ✅ FIX 1: Replace matchTeamLock/currentTeam with a simple Set of jersey IDs
-  // that bowled this innings. If the new batsman's jersey is in this set,
-  // they are a bowler and cannot bat.
   bowlerJerseys = new Set(),
   dismissedPlayers = new Set(),
+  currentBowlerJersey = null,   // ← ADD THIS
 }) {
   const [name, setName] = useState("");
   const [jersey, setJersey] = useState("");
@@ -21,11 +19,14 @@ function NewBatsmanModal({
   const [nameSuggestions, setNameSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // ✅ FIX 1: Check if jersey belongs to a bowler this innings
+  // ✅ Check if jersey belongs to a bowler this innings
   const getBowlerLockError = (jerseyVal) => {
     if (!jerseyVal?.trim()) return null;
     if (bowlerJerseys.has(String(jerseyVal.trim()))) {
       return `Jersey #${jerseyVal.trim()} is a bowler this innings — cannot bat`;
+    }
+    if (currentBowlerJersey && String(jerseyVal.trim()) === String(currentBowlerJersey)) {
+      return `Jersey #${jerseyVal.trim()} is currently bowling — cannot bat`;
     }
     return null;
   };
@@ -52,10 +53,12 @@ function NewBatsmanModal({
     }
   };
 
+  // ✅ Name autocomplete
   const handleNameChange = (val) => {
     setName(val);
     setError("");
     setExistingPlayer(null);
+    
     if (val.trim() && playerDB) {
       const suggestions = playerDB.searchPlayersByName(val);
       setNameSuggestions(suggestions);
@@ -67,6 +70,7 @@ function NewBatsmanModal({
   };
 
   const handleSelectSuggestion = (player) => {
+    // ✅ Check bowler lock before auto-filling
     const lockErr = getBowlerLockError(player.jersey);
     if (lockErr) {
       setTeamLockError(lockErr);
@@ -75,6 +79,7 @@ function NewBatsmanModal({
       setShowSuggestions(false);
       return;
     }
+
     setName(player.name);
     setJersey(player.jersey);
     setExistingPlayer(player);
@@ -83,34 +88,55 @@ function NewBatsmanModal({
   };
 
   const isDuplicateJersey =
+  jersey.trim() &&
+  activePlayers.some(
+    (p) => String(p?.jersey ?? p?.playerId ?? "") === String(jersey.trim())
+  );
+
+  const isDismissed =
     jersey.trim() &&
-    activePlayers.some((p) => p?.playerId === String(jersey.trim()));
+    dismissedPlayers.has(String(jersey.trim()));
 
   const handleConfirm = () => {
-    if (!name.trim()) { setError("⚠️ Please enter player name"); return; }
-    if (!jersey.trim()) { setError("⚠️ Please enter jersey number"); return; }
-    if (isDuplicateJersey) { setError("⚠️ This jersey number is already on field"); return; }
-    if (teamLockError) return;
+    if (!name.trim()) {
+      setError("⚠️ Please enter player name");
+      return;
+    }
+    if (!jersey.trim()) {
+      setError("⚠️ Please enter jersey number");
+      return;
+    }
+    if (isDuplicateJersey) {
+      setError("⚠️ This jersey number is already on field");
+      return;
+    }
+    if (teamLockError) {
+      return;
+    }
     if (isDismissed) {
       setError("⚠️ This player is already out — cannot bat again");
       return;
     }
 
     onConfirm({ name: name.trim(), jersey: jersey.trim(), existingPlayer });
-    setName(""); setJersey(""); setExistingPlayer(null);
-    setTeamLockError(""); setNameSuggestions([]); setShowSuggestions(false);
+    setName("");
+    setJersey("");
+    setExistingPlayer(null);
+    setTeamLockError("");
+    setNameSuggestions([]);
+    setShowSuggestions(false);
   };
 
-  const handleKeyPress = (e) => { if (e.key === "Enter") handleConfirm(); };
-  const isDismissed =
-  jersey.trim() &&
-  dismissedPlayers.has(String(jersey.trim()));
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") handleConfirm();
+  };
 
   return (
     <div className={styles.overlay} onClick={() => setShowSuggestions(false)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>🏏 New Batsman</h2>
 
+        {/* Retired players quick-return */}
         {retiredPlayers.length > 0 && (
           <div style={{ marginBottom: "16px" }}>
             <p style={{ color: "#f1c40f", fontSize: "13px", textAlign: "center", marginBottom: "8px", fontWeight: "600" }}>
@@ -148,6 +174,7 @@ function NewBatsmanModal({
           </div>
         )}
 
+        {/* Jersey field */}
         <div className={styles.inputContainer}>
           <input
             className={styles.input}
@@ -160,24 +187,59 @@ function NewBatsmanModal({
           />
         </div>
 
+        {/* Team lock error */}
         {teamLockError && (
-          <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444", borderRadius: "8px", padding: "8px 12px", marginBottom: "8px", fontSize: "13px", color: "#ef4444" }}>
+          <div style={{
+            background: "rgba(239,68,68,0.1)",
+            border: "1px solid #ef4444",
+            borderRadius: "8px",
+            padding: "8px 12px",
+            marginBottom: "8px",
+            fontSize: "13px",
+            color: "#ef4444",
+          }}>
             🚫 {teamLockError}
           </div>
         )}
 
+        {/* Duplicate jersey warning */}
         {isDuplicateJersey && !teamLockError && (
-          <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid #ef4444", borderRadius: "8px", padding: "8px 12px", marginBottom: "8px", fontSize: "13px", color: "#ef4444" }}>
+          <div style={{
+            background: "rgba(239,68,68,0.1)",
+            border: "1px solid #ef4444",
+            borderRadius: "8px",
+            padding: "8px 12px",
+            marginBottom: "8px",
+            fontSize: "13px",
+            color: "#ef4444",
+          }}>
             ⚠️ Jersey #{jersey} is already on field
           </div>
         )}
 
-        {existingPlayer && !isDuplicateJersey && !teamLockError && (
+        {/* Already out warning */}
+        {isDismissed && !isDuplicateJersey && !teamLockError && (
+          <div style={{
+            background: "rgba(239,68,68,0.1)",
+            border: "1px solid #ef4444",
+            borderRadius: "8px",
+            padding: "8px 12px",
+            marginBottom: "8px",
+            fontSize: "13px",
+            color: "#ef4444",
+          }}>
+            🚫 Jersey #{jersey} is already out — cannot bat again
+          </div>
+        )}
+
+        {/* Existing player info */}
+        {existingPlayer && !isDuplicateJersey && !teamLockError && !isDismissed && (
           <div className={styles.existingPlayerBanner}>
             ✅ Found: <strong>{existingPlayer.name}</strong> — {existingPlayer.runs}R ({existingPlayer.balls}B), {existingPlayer.wickets}W
           </div>
         )}
 
+        {/* Name field with autocomplete */}
         <div className={styles.inputContainer} style={{ position: "relative" }}>
           <input
             className={`${styles.input} ${error ? styles.errorInput : ""}`}
@@ -185,21 +247,27 @@ function NewBatsmanModal({
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             onKeyPress={handleKeyPress}
-            onFocus={() => nameSuggestions.length > 0 && setShowSuggestions(true)}
+            onFocus={() => {
+              if (nameSuggestions.length > 0) setShowSuggestions(true);
+            }}
           />
-
+          
+          {/* Autocomplete suggestions dropdown */}
           {showSuggestions && nameSuggestions.length > 0 && (
             <div className={styles.suggestionsDropdown}>
               {nameSuggestions.map((player) => (
                 <div
                   key={player.jersey}
                   className={styles.suggestionItem}
-                  onMouseDown={(e) => { e.preventDefault(); handleSelectSuggestion(player); }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelectSuggestion(player);
+                  }}
                 >
                   <div className={styles.suggestionMain}>
                     <span className={styles.suggestionJersey}>#{player.jersey}</span>
                     <span className={styles.suggestionName}>{player.name}</span>
-                    {/* ✅ Show bowler tag in suggestions so user knows */}
+                    {/* ✅ Show bowler tag in suggestions */}
                     {bowlerJerseys.has(String(player.jersey)) && (
                       <span style={{ fontSize: "10px", color: "#ef4444", marginLeft: "4px" }}>🎳 bowler</span>
                     )}
