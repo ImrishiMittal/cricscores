@@ -14,7 +14,8 @@ function usePlayerStats(player, completeHistory) {
       otherBalls: 0,
     };
 
-    if (!player || !completeHistory || completeHistory.length === 0) return empty;
+    if (!player || !completeHistory || completeHistory.length === 0)
+      return empty;
     if (!player.balls || player.balls === 0) return empty;
 
     let boundaries = 0;
@@ -25,8 +26,10 @@ function usePlayerStats(player, completeHistory) {
 
     completeHistory.forEach((entry) => {
       // ✅ Match by strikerId first, fall back to strikerName
-      const matchesById = entry.strikerId && entry.strikerId === player.playerId;
-      const matchesByName = !entry.strikerId && entry.strikerName === player.displayName;
+      const matchesById =
+        entry.strikerId && entry.strikerId === player.playerId;
+      const matchesByName =
+        !entry.strikerId && entry.strikerName === player.displayName;
       if (!matchesById && !matchesByName) return;
 
       if (entry.event === "RUN") {
@@ -49,6 +52,10 @@ function usePlayerStats(player, completeHistory) {
       dotBallPercent: ((dotBalls / totalBalls) * 100).toFixed(1),
       rotationPercent: ((rotationBalls / totalBalls) * 100).toFixed(1),
       otherPercent: ((otherBalls / totalBalls) * 100).toFixed(1),
+      ones: (db[key].ones || 0) + (statsDelta.ones || 0),
+      twos: (db[key].twos || 0) + (statsDelta.twos || 0),
+      threes: (db[key].threes || 0) + (statsDelta.threes || 0),
+      dotBalls: (db[key].dotBalls || 0) + (statsDelta.dotBalls || 0),
       totalBalls,
       boundaries,
       dotBalls,

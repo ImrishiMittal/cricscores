@@ -41,10 +41,14 @@ function PlayerDetailPage() {
         <p className={styles.stat}>Balls: {player.balls}</p>
         <p className={styles.stat}>Strike Rate: {strikeRate}</p>
         <p className={styles.stat}>Average: {avg}</p>
+        <p>Dot Balls: {player.dotBalls || 0}</p>
+        <p>Ducks: {player.ducks || 0}</p>
+        <p>1s: {player.ones || 0}</p>
+        <p>2s: {player.twos || 0}</p>
+        <p>3s: {player.threes || 0}</p>
         <p>30s: {player.thirties || 0}</p>
         <p>50s: {player.fifties || 0}</p>
         <p>100s: {player.hundreds || 0}</p>
-        <p>Ducks: {player.ducks || 0}</p>
       </div>
 
       <div className={styles.card}>

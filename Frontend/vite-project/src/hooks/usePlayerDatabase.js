@@ -26,12 +26,12 @@ function usePlayerDatabase() {
   // ✅ NEW: Search players by name (autocomplete)
   const searchPlayersByName = useCallback((searchTerm) => {
     if (!searchTerm || searchTerm.trim().length === 0) return [];
-    
+
     const db = loadDB();
     const term = searchTerm.toLowerCase().trim();
-    
+
     return Object.values(db)
-      .filter(player => player.name.toLowerCase().startsWith(term))
+      .filter((player) => player.name.toLowerCase().startsWith(term))
       .sort((a, b) => {
         // Sort by: exact match first, then alphabetically
         const aExact = a.name.toLowerCase() === term;
@@ -70,6 +70,10 @@ function usePlayerDatabase() {
       catches: 0,
       runouts: 0,
       stumpings: 0,
+      ones: 0,
+      twos: 0,
+      threes: 0,
+      dotBalls: 0,
     };
 
     const updatedDB = { ...db, [key]: newPlayer };
@@ -94,7 +98,7 @@ function usePlayerDatabase() {
       ballsBowled: (db[key].ballsBowled || 0) + (statsDelta.ballsBowled || 0),
       runsGiven: (db[key].runsGiven || 0) + (statsDelta.runsGiven || 0),
       matches: (db[key].matches || 0) + (statsDelta.matches || 0),
-    
+
       // ✅ ADD THESE 👇
       thirties: (db[key].thirties || 0) + (statsDelta.thirties || 0),
       fifties: (db[key].fifties || 0) + (statsDelta.fifties || 0),
@@ -114,9 +118,9 @@ function usePlayerDatabase() {
 
     db[key] = {
       ...db[key],
-      catches: (db[key].catches || 0) + (wicketType === 'caught' ? 1 : 0),
-      runouts: (db[key].runouts || 0) + (wicketType === 'runout' ? 1 : 0),
-      stumpings: (db[key].stumpings || 0) + (wicketType === 'stumped' ? 1 : 0),
+      catches: (db[key].catches || 0) + (wicketType === "caught" ? 1 : 0),
+      runouts: (db[key].runouts || 0) + (wicketType === "runout" ? 1 : 0),
+      stumpings: (db[key].stumpings || 0) + (wicketType === "stumped" ? 1 : 0),
     };
 
     saveDB(db);
