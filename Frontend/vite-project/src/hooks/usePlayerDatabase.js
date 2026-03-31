@@ -79,6 +79,7 @@ function usePlayerDatabase() {
       wides: 0,
       noBalls: 0,
       bowlingInnings: 0,
+      maidens: 0,
     };
 
     const updatedDB = { ...db, [key]: newPlayer };

@@ -14,6 +14,7 @@ export default function useMatchEngine(matchData, swapStrike) {
 
   const [score, setScore] = useState(0);
   const [wickets, setWickets] = useState(0);
+  const [currentOverRuns, setCurrentOverRuns] = useState(0);
   const [balls, setBalls] = useState(0);
   const [overs, setOvers] = useState(0);
 
@@ -293,13 +294,29 @@ export default function useMatchEngine(matchData, swapStrike) {
     setCompleteHistory((prev) => [...prev, runEntry]);
 
     if (nextBalls === 6) {
+
+      // ✅ MAIDEN CHECK (ADD THIS)
+      if (currentOverRuns === 0) {
+        console.log("🔥 Maiden Over Detected");
+    
+        // ⚠️ we don’t have bowler here → we’ll fix this in next step
+      }
+    
       nextOvers++;
       nextBalls = 0;
+    
       if (!isLastManAlone) swapStrike();
+    
       setCurrentOver([]);
+    
+      // ✅ RESET FOR NEXT OVER
+      setCurrentOverRuns(0);
       const ballsBowled = nextOvers * 6;
       if (ballsBowled < totalBalls && wickets < maxWickets) {
-        setOverCompleteEvent({ overNumber: nextOvers });
+        setOverCompleteEvent({
+          overNumber: nextOvers,
+          isMaiden: currentOverRuns === 0, // ✅ ADD THIS
+        });
       }
     }
 
@@ -522,6 +539,9 @@ export default function useMatchEngine(matchData, swapStrike) {
     return "SUPER_OVER_STARTED";
   };
 
+  const addToCurrentOverRuns = (runs) => {
+    setCurrentOverRuns((prev) => prev + runs);
+  };
   return {
     score,
     wickets,
@@ -567,5 +587,6 @@ export default function useMatchEngine(matchData, swapStrike) {
     realMatchInnings1Score,
     realMatchInnings2Score,
     superOverBattingFirst: superOverBattingFirstRef.current,
+    addToCurrentOverRuns,
   };
 }

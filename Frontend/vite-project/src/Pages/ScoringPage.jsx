@@ -126,9 +126,25 @@ function ScoringPage() {
 
   useEffect(() => {
     if (!engine.overCompleteEvent) return;
+  
+    const { isMaiden } = engine.overCompleteEvent;
+  
+    const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
+  
+    // ✅ MAIDEN UPDATE HERE (CORRECT PLACE)
+    if (isMaiden && bowler?.playerId) {
+      console.log("🔥 Updating Maiden for bowler");
+  
+      playerDBHook.updatePlayerStats(bowler.playerId, {
+        maidens: 1,
+      });
+    }
+  
     const lastBowlerIndex = playersHook.currentBowlerIndex;
+  
     engine.setOverCompleteEvent(null);
     playersHook.requestNewBowler(lastBowlerIndex);
+  
   }, [engine.overCompleteEvent]);
 
   useEffect(() => {
@@ -432,6 +448,7 @@ function ScoringPage() {
         r,
         playersHook.players[playersHook.strikerIndex].playerId
       );
+      engine.addToCurrentOverRuns(r);
     engine.handleRun(
       r,
       playersHook.players[playersHook.strikerIndex]?.playerId
@@ -780,6 +797,7 @@ function ScoringPage() {
                 playersHook.addRunsToBowler(1);
                 partnershipsHook.addExtraToPartnership(1);
                 engine.handleWide();
+                engine.addToCurrentOverRuns(runs);
               }}
               onNoBall={() => {
                 triggerSnapshotWithTracking();
@@ -811,6 +829,7 @@ function ScoringPage() {
                 playersHook.addRunsToBowler(1);
                 partnershipsHook.addExtraToPartnership(1);
                 engine.handleNoBall();
+                engine.addToCurrentOverRuns(runs);
               }}
               onBye={(r) => {
                 triggerSnapshotWithTracking();
@@ -836,6 +855,7 @@ function ScoringPage() {
                 partnershipsHook.addBallToPartnership();
 
                 engine.handleBye(r);
+                engine.addToCurrentOverRuns(runs);
               }}
               onLegBye={(r) => {
                 triggerSnapshotWithTracking();
@@ -861,6 +881,7 @@ function ScoringPage() {
                 partnershipsHook.addBallToPartnership();
 
                 engine.handleLegBye(r);
+                engine.addToCurrentOverRuns(runs);
               }}
               onWicket={() => wicketFlow.startWicketFlow(engine.isFreeHit)}
               onSwapStrike={playersHook.swapStrike}
