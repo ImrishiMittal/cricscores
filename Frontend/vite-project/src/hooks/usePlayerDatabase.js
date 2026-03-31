@@ -74,6 +74,11 @@ function usePlayerDatabase() {
       twos: 0,
       threes: 0,
       dotBalls: 0,
+      dotBallsBowled: 0,
+      innings: 0,
+      wides: 0,
+      noBalls: 0,
+      bowlingInnings: 0,
     };
 
     const updatedDB = { ...db, [key]: newPlayer };
@@ -109,6 +114,13 @@ function usePlayerDatabase() {
       twos: (db[key].twos || 0) + (statsDelta.twos || 0),
       threes: (db[key].threes || 0) + (statsDelta.threes || 0),
       dotBalls: (db[key].dotBalls || 0) + (statsDelta.dotBalls || 0),
+      dotBallsBowled:
+        (db[key].dotBallsBowled || 0) + (statsDelta.dotBallsBowled || 0),
+      innings: (db[key].innings || 0) + (statsDelta.innings || 0),
+      wides: (db[key].wides || 0) + (statsDelta.wides || 0),
+      noBalls: (db[key].noBalls || 0) + (statsDelta.noBalls || 0),
+      bowlingInnings:
+        (db[key].bowlingInnings || 0) + (statsDelta.bowlingInnings || 0),
     };
 
     saveDB(db);
