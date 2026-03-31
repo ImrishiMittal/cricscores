@@ -176,7 +176,11 @@ function ScoringPage() {
         thirties: (p.runs || 0) >= 30 ? 1 : 0,
         fifties: (p.runs || 0) >= 50 ? 1 : 0,
         hundreds: (p.runs || 0) >= 100 ? 1 : 0,
-        ducks: (p.runs || 0) === 0 ? 1 : 0,
+        ducks: (p.runs || 0) === 0 && p.dismissal ? 1 : 0,
+        dotBalls: p.dotBalls || 0,
+        ones: p.ones || 0,
+        twos: p.twos || 0,
+        threes: p.threes || 0,
       });
     });
     playersHook.bowlers.forEach((b) => {
@@ -258,25 +262,52 @@ function ScoringPage() {
   const handleRunClick = (r) => {
     if (wicketFlow.waitingForRunoutRun) {
       wicketFlow.handleRunoutWithRuns(r);
+      engine.handleWicket(
+        true, // runout
+        false,
+        playersHook.players[playersHook.strikerIndex]?.playerId,
+        true
+      );
       if (r > 0) {
         playersHook.addRunsToStriker(r);
+
         const striker = playersHook.players[playersHook.strikerIndex];
 
-if (striker?.playerId) {
-  let stats = {
-    ones: 0,
-    twos: 0,
-    threes: 0,
-    dotBalls: 0,
-  };
+        // ✅ FIRST BALL FACED
+        if (striker && !striker.hasBatted) {
+          striker.hasBatted = true;
 
-  if (r === 1) stats.ones = 1;
-  else if (r === 2) stats.twos = 1;
-  else if (r === 3) stats.threes = 1;
-  else if (r === 0) stats.dotBalls = 1;
+          if (striker.playerId) {
+            playerDBHook.updatePlayerStats(striker.playerId, {
+              innings: 1,
+            });
+          }
+        }
+        if (r === 4 && striker) striker.fours = (striker.fours || 0) + 1;
+        if (r === 6 && striker) striker.sixes = (striker.sixes || 0) + 1;
 
-  playerDBHook.updatePlayerStats(striker.playerId, stats);
-}
+        if (striker?.playerId) {
+          const runStats = {};
+          if (r === 0) runStats.dotBalls = 1;
+          else if (r === 1) runStats.ones = 1;
+          else if (r === 2) runStats.twos = 1;
+          else if (r === 3) runStats.threes = 1;
+          if (Object.keys(runStats).length > 0) {
+            playerDBHook.updatePlayerStats(striker.playerId, runStats);
+          }
+        }
+        // ✅ ADD THIS (CRITICAL FIX)
+        const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
+
+        if (bowler && !bowler.hasBowled) {
+          bowler.hasBowled = true;
+
+          if (bowler.playerId) {
+            playerDBHook.updatePlayerStats(bowler.playerId, {
+              bowlingInnings: 1,
+            });
+          }
+        }
         playersHook.addRunsToBowler(r);
         if (
           playersHook.strikerIndex >= 0 &&
@@ -290,9 +321,35 @@ if (striker?.playerId) {
         engine.addRunToCurrentOver(r, true);
         if (r % 2 !== 0) playersHook.swapStrike();
       } else {
+        const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
+
+        // ✅ FIRST BALL OF MATCH FOR THIS BOWLER
+        if (bowler && !bowler.hasBowled) {
+          bowler.hasBowled = true;
+
+          if (bowler.playerId) {
+            playerDBHook.updatePlayerStats(bowler.playerId, {
+              bowlingInnings: 1,
+            });
+          }
+        }
         playersHook.addBallToBowler();
+        const striker = playersHook.players[playersHook.strikerIndex];
+
+        if (striker?.playerId) {
+          playerDBHook.updatePlayerStats(striker.playerId, {
+            dotBalls: 1,
+          });
+        }
+
+        if (bowler?.playerId && r === 0) {
+          playerDBHook.updatePlayerStats(bowler.playerId, {
+            dotBallsBowled: 1,
+          });
+        }
         partnershipsHook.addBallToPartnership();
       }
+      engine.addRunToCurrentOver("W", false);
       playersHook.registerWicket();
       return;
     }
@@ -316,6 +373,16 @@ if (striker?.playerId) {
     triggerSnapshotWithTracking();
     playersHook.addRunsToStriker(r);
     const striker = playersHook.players[playersHook.strikerIndex];
+    // ✅ ADD THIS (MOST IMPORTANT FIX)
+    if (striker && !striker.hasBatted) {
+      striker.hasBatted = true;
+
+      if (striker.playerId) {
+        playerDBHook.updatePlayerStats(striker.playerId, {
+          innings: 1,
+        });
+      }
+    }
 
     if (striker?.playerId) {
       let stats = {
@@ -323,17 +390,40 @@ if (striker?.playerId) {
         twos: 0,
         threes: 0,
         dotBalls: 0,
+        fours: 0, // ✅ ADD
+        sixes: 0, // ✅ ADD
       };
 
       if (r === 1) stats.ones = 1;
       else if (r === 2) stats.twos = 1;
       else if (r === 3) stats.threes = 1;
       else if (r === 0) stats.dotBalls = 1;
+      else if (r === 4) stats.fours = 1; // ✅ ADD
+      else if (r === 6) stats.sixes = 1; // ✅ ADD
 
       playerDBHook.updatePlayerStats(striker.playerId, stats);
     }
+    // ✅ ADD THIS BLOCK (FINAL FIX)
+    const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
+
+    if (bowler && !bowler.hasBowled) {
+      bowler.hasBowled = true;
+
+      if (bowler.playerId) {
+        playerDBHook.updatePlayerStats(bowler.playerId, {
+          bowlingInnings: 1,
+        });
+      }
+    }
     playersHook.addRunsToBowler(r);
     playersHook.addBallToBowler();
+    // AFTER playersHook.addBallToBowler(); in the normal run path, ADD:
+    if (r === 0) {
+      const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
+      if (bowler?.playerId) {
+        playerDBHook.updatePlayerStats(bowler.playerId, { dotBallsBowled: 1 });
+      }
+    }
     if (
       playersHook.strikerIndex >= 0 &&
       playersHook.players[playersHook.strikerIndex]
@@ -662,28 +752,114 @@ if (striker?.playerId) {
               onRun={handleRunClick}
               onWide={() => {
                 triggerSnapshotWithTracking();
+
+                const bowler =
+                  playersHook.bowlers[playersHook.currentBowlerIndex];
+
+                // ✅ BOWLING INNINGS FIX
+                if (bowler && !bowler.hasBowled) {
+                  bowler.hasBowled = true;
+
+                  if (bowler.playerId) {
+                    playerDBHook.updatePlayerStats(bowler.playerId, {
+                      bowlingInnings: 1,
+                    });
+                  }
+                }
+
+                // ✅ BALL COUNT
+                playersHook.addBallToBowler();
+
+                // ✅ DB UPDATE
+                if (bowler?.playerId) {
+                  playerDBHook.updatePlayerStats(bowler.playerId, {
+                    wides: 1,
+                  });
+                }
+
                 playersHook.addRunsToBowler(1);
                 partnershipsHook.addExtraToPartnership(1);
                 engine.handleWide();
               }}
               onNoBall={() => {
                 triggerSnapshotWithTracking();
+
+                const bowler =
+                  playersHook.bowlers[playersHook.currentBowlerIndex];
+
+                // ✅ BOWLING INNINGS FIX
+                if (bowler && !bowler.hasBowled) {
+                  bowler.hasBowled = true;
+
+                  if (bowler.playerId) {
+                    playerDBHook.updatePlayerStats(bowler.playerId, {
+                      bowlingInnings: 1,
+                    });
+                  }
+                }
+
+                // ✅ BALL COUNT
+                playersHook.addBallToBowler();
+
+                // ✅ DB UPDATE
+                if (bowler?.playerId) {
+                  playerDBHook.updatePlayerStats(bowler.playerId, {
+                    noBalls: 1,
+                  });
+                }
+
                 playersHook.addRunsToBowler(1);
                 partnershipsHook.addExtraToPartnership(1);
                 engine.handleNoBall();
               }}
               onBye={(r) => {
                 triggerSnapshotWithTracking();
+
+                const bowler =
+                  playersHook.bowlers[playersHook.currentBowlerIndex];
+
+                // ✅ BOWLING INNINGS FIX
+                if (bowler && !bowler.hasBowled) {
+                  bowler.hasBowled = true;
+
+                  if (bowler.playerId) {
+                    playerDBHook.updatePlayerStats(bowler.playerId, {
+                      bowlingInnings: 1,
+                    });
+                  }
+                }
+
+                // ✅ ONLY ONE BALL (FIXED)
                 playersHook.addBallToBowler();
+
                 partnershipsHook.addExtraToPartnership(r);
                 partnershipsHook.addBallToPartnership();
+
                 engine.handleBye(r);
               }}
               onLegBye={(r) => {
                 triggerSnapshotWithTracking();
+
+                const bowler =
+                  playersHook.bowlers[playersHook.currentBowlerIndex];
+
+                // ✅ BOWLING INNINGS FIX
+                if (bowler && !bowler.hasBowled) {
+                  bowler.hasBowled = true;
+
+                  if (bowler.playerId) {
+                    playerDBHook.updatePlayerStats(bowler.playerId, {
+                      bowlingInnings: 1,
+                    });
+                  }
+                }
+
+                // ✅ ONLY ONE BALL
                 playersHook.addBallToBowler();
+
                 partnershipsHook.addExtraToPartnership(r);
                 partnershipsHook.addBallToPartnership();
+
                 engine.handleLegBye(r);
               }}
               onWicket={() => wicketFlow.startWicketFlow(engine.isFreeHit)}

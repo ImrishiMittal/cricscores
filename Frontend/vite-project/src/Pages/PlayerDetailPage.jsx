@@ -20,7 +20,9 @@ function PlayerDetailPage() {
   // NEW
   const avg = player.matches > 0 ? (totalRuns / player.matches).toFixed(2) : 0;
 
-  const overs = (player.ballsBowled / 6).toFixed(1);
+  const overs = player.ballsBowled
+  ? `${Math.floor(player.ballsBowled / 6)}.${player.ballsBowled % 6}`
+  : "0.0";
 
   const economy =
     player.ballsBowled > 0
@@ -37,6 +39,8 @@ function PlayerDetailPage() {
 
       <div className={styles.card}>
         <h2 className={styles.sectionTitle}>🏏 Batting</h2>
+        <p>Matches: {player.matches || 0}</p>
+        <p>Innings: {player.innings || 0}</p>
         <p className={styles.stat}>Runs: {player.runs}</p>
         <p className={styles.stat}>Balls: {player.balls}</p>
         <p className={styles.stat}>Strike Rate: {strikeRate}</p>
@@ -46,6 +50,8 @@ function PlayerDetailPage() {
         <p>1s: {player.ones || 0}</p>
         <p>2s: {player.twos || 0}</p>
         <p>3s: {player.threes || 0}</p>
+        <p>4s: {player.fours || 0}</p>
+        <p>6s: {player.sixes || 0}</p>
         <p>30s: {player.thirties || 0}</p>
         <p>50s: {player.fifties || 0}</p>
         <p>100s: {player.hundreds || 0}</p>
@@ -53,9 +59,13 @@ function PlayerDetailPage() {
 
       <div className={styles.card}>
         <h2 className={styles.sectionTitle}>🎯 Bowling</h2>
+        <p>Bowling Innings: {player.bowlingInnings || 0}</p>
         <p className={styles.stat}>Wickets: {player.wickets}</p>
         <p className={styles.stat}>Economy: {economy}</p>
         <p className={styles.stat}>Overs: {overs}</p>
+        <p>Dot Balls Bowled: {player.dotBallsBowled || 0}</p>
+        <p>Wides: {player.wides || 0}</p>
+        <p>No Balls: {player.noBalls || 0}</p>
       </div>
 
       <div className={styles.card}>
