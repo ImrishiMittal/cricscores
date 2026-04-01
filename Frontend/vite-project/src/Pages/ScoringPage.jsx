@@ -37,10 +37,9 @@ function ScoringPage() {
   const soInnings1SavedRef = useRef(false);
   const soCompleteSavedRef = useRef(false);
 
-  // ✅ PATCH 1: Per-innings jersey tracking Sets (replaces matchTeamLockRef)
-  const teamABattersRef = useRef(new Set()); // jerseys that batted for Team A
-  const teamBBattersRef = useRef(new Set()); // jerseys that batted for Team B
-  const teamABowlersRef = useRef(new Set()); // jerseys that bowled/fielded for Team A
+  const teamABattersRef = useRef(new Set());
+  const teamBBattersRef = useRef(new Set());
+  const teamABowlersRef = useRef(new Set());
   const teamBBowlersRef = useRef(new Set());
   const dismissedPlayersRef = useRef(new Set());
 
@@ -48,9 +47,21 @@ function ScoringPage() {
   const wicketFlow = useWicketFlow();
   const hatTrickHook = useHatTrick();
   const playerDBHook = usePlayerDatabase();
+
+  useEffect(() => {
+    const existingMatchId = playerDBHook.getCurrentMatchId();
+    if (!existingMatchId) {
+      const matchId = `match_${Date.now()}`;
+      playerDBHook.setCurrentMatchId(matchId);
+      console.log("🆔 Match ID set:", matchId);
+    }
+  }, [playerDBHook]);
+
   const playersHook = usePlayersAndBowlers(updatedMatchData, playerDBHook);
   const partnershipsHook = usePartnerships();
+  const bowlersRef = useRef([]);
   const engine = useMatchEngine(updatedMatchData, playersHook.swapStrike);
+  bowlersRef.current = playersHook.bowlers;
 
   currentInningsRef.current = engine.innings;
 
@@ -110,14 +121,13 @@ function ScoringPage() {
     engine.extras
   );
 
-  // ✅ PATCH 2: Reset jersey Sets on every innings change
   useEffect(() => {
     if (engine.innings === 1) {
       innings2SnapshotCountRef.current = 0;
     } else if (engine.innings === 2) {
       hatTrickHook.resetTracker();
     }
-    dismissedPlayersRef.current = new Set(); // ← keep this, wickets reset each innings
+    dismissedPlayersRef.current = new Set();
   }, [engine.innings]);
 
   useEffect(() => {
@@ -126,25 +136,15 @@ function ScoringPage() {
 
   useEffect(() => {
     if (!engine.overCompleteEvent) return;
-  
     const { isMaiden } = engine.overCompleteEvent;
-  
     const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
-  
-    // ✅ MAIDEN UPDATE HERE (CORRECT PLACE)
     if (isMaiden && bowler?.playerId) {
       console.log("🔥 Updating Maiden for bowler");
-  
-      playerDBHook.updatePlayerStats(bowler.playerId, {
-        maidens: 1,
-      });
+      playerDBHook.updatePlayerStats(bowler.playerId, { maidens: 1 });
     }
-  
     const lastBowlerIndex = playersHook.currentBowlerIndex;
-  
     engine.setOverCompleteEvent(null);
     playersHook.requestNewBowler(lastBowlerIndex);
-  
   }, [engine.overCompleteEvent]);
 
   useEffect(() => {
@@ -159,6 +159,7 @@ function ScoringPage() {
     if (soInnings1Data) engine.saveSuperOverInnings1Data(soInnings1Data);
   }, [engine.inningsChangeEvent, engine.innings]);
 
+  // ✅ KEPT UNTOUCHED — super over save
   useEffect(() => {
     if (!engine.matchOver || !engine.isSuperOver || soCompleteSavedRef.current)
       return;
@@ -179,35 +180,22 @@ function ScoringPage() {
 
   useEffect(() => {
     if (!engine.matchOver || !playerDBHook) return;
+  
+    // Save matches count for batters
     [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
       if (!p?.playerId) return;
-      playerDBHook.updatePlayerStats(p.playerId, {
-        runs: p.runs || 0,
-        balls: p.balls || 0,
-        fours: p.fours || 0,
-        sixes: p.sixes || 0,
-        matches: 1,
-
-        // ✅ ADD THESE
-        thirties: (p.runs || 0) >= 30 ? 1 : 0,
-        fifties: (p.runs || 0) >= 50 ? 1 : 0,
-        hundreds: (p.runs || 0) >= 100 ? 1 : 0,
-        ducks: (p.runs || 0) === 0 && p.dismissal ? 1 : 0,
-        dotBalls: p.dotBalls || 0,
-        ones: p.ones || 0,
-        twos: p.twos || 0,
-        threes: p.threes || 0,
-      });
+      playerDBHook.updatePlayerStats(p.playerId, { matches: 1 });
     });
-    playersHook.bowlers.forEach((b) => {
+  
+    // Save matches count for bowlers
+    bowlersRef.current.forEach((b) => {
       if (!b?.playerId) return;
-      playerDBHook.updatePlayerStats(b.playerId, {
-        wickets: b.wickets || 0,
-        ballsBowled: (b.overs || 0) * 6 + (b.balls || 0),
-        runsGiven: b.runs || 0,
-        matches: 1,
-      });
+      playerDBHook.updatePlayerStats(b.playerId, { matches: 1 });
     });
+  
+    setTimeout(() => {
+      playerDBHook.setCurrentMatchId(null);
+    }, 500);
   }, [engine.matchOver]);
 
   useEffect(() => {
@@ -231,17 +219,14 @@ function ScoringPage() {
     ? firstBattingTeam
     : secondBattingTeam;
 
-  // ✅ PATCH 3: Two focused helpers instead of lockJerseysToTeam
   const addBatterJersey = (jersey) => {
     if (!jersey) return;
-    // Batting team in innings 1 = firstBattingTeam = teamA side
     if (engine.innings === 1) teamABattersRef.current.add(String(jersey));
     else teamBBattersRef.current.add(String(jersey));
   };
 
   const addBowlerJersey = (jersey) => {
     if (!jersey) return;
-    // Bowling team in innings 1 = secondBattingTeam = teamB side
     if (engine.innings === 1) teamBBowlersRef.current.add(String(jersey));
     else teamABowlersRef.current.add(String(jersey));
   };
@@ -276,54 +261,62 @@ function ScoringPage() {
   };
 
   const handleRunClick = (r) => {
+    // ─── RUNOUT PATH ───────────────────────────────────────────────
     if (wicketFlow.waitingForRunoutRun) {
       wicketFlow.handleRunoutWithRuns(r);
       engine.handleWicket(
-        true, // runout
+        true,
         false,
         playersHook.players[playersHook.strikerIndex]?.playerId,
         true
       );
+
+      const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
+
+      // Track first ball bowled
+      if (bowler && !bowler.hasBowled) {
+        bowler.hasBowled = true;
+        if (bowler.playerId) {
+          playerDBHook.updatePlayerStats(bowler.playerId, {
+            bowlingInnings: 1,
+          });
+        }
+      }
+
       if (r > 0) {
         playersHook.addRunsToStriker(r);
-
         const striker = playersHook.players[playersHook.strikerIndex];
 
-        // ✅ FIRST BALL FACED
         if (striker && !striker.hasBatted) {
           striker.hasBatted = true;
-
           if (striker.playerId) {
-            playerDBHook.updatePlayerStats(striker.playerId, {
-              innings: 1,
-            });
+            playerDBHook.updatePlayerStats(striker.playerId, { innings: 1 });
           }
         }
-        if (r === 4 && striker) striker.fours = (striker.fours || 0) + 1;
-        if (r === 6 && striker) striker.sixes = (striker.sixes || 0) + 1;
 
         if (striker?.playerId) {
           const runStats = {};
-          if (r === 0) runStats.dotBalls = 1;
-          else if (r === 1) runStats.ones = 1;
+          if (r === 1) runStats.ones = 1;
           else if (r === 2) runStats.twos = 1;
           else if (r === 3) runStats.threes = 1;
-          if (Object.keys(runStats).length > 0) {
-            playerDBHook.updatePlayerStats(striker.playerId, runStats);
+          else if (r === 4) {
+            runStats.fours = 1;
+          } else if (r === 6) {
+            runStats.sixes = 1;
           }
+          runStats.runs = r; // ✅ ADD THIS
+          runStats.balls = 1; // ✅ ADD THIS
+          playerDBHook.updatePlayerStats(striker.playerId, runStats);
         }
-        // ✅ ADD THIS (CRITICAL FIX)
-        const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
 
-        if (bowler && !bowler.hasBowled) {
-          bowler.hasBowled = true;
-
-          if (bowler.playerId) {
-            playerDBHook.updatePlayerStats(bowler.playerId, {
-              bowlingInnings: 1,
-            });
-          }
+        // ✅ Save bowler ball + runs to DB
+        if (bowler?.playerId) {
+          playerDBHook.updatePlayerStats(bowler.playerId, {
+            ballsBowled: 1,
+            runsGiven: r,
+          });
         }
+
         playersHook.addRunsToBowler(r);
         if (
           playersHook.strikerIndex >= 0 &&
@@ -337,39 +330,32 @@ function ScoringPage() {
         engine.addRunToCurrentOver(r, true);
         if (r % 2 !== 0) playersHook.swapStrike();
       } else {
-        const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
-
-        // ✅ FIRST BALL OF MATCH FOR THIS BOWLER
-        if (bowler && !bowler.hasBowled) {
-          bowler.hasBowled = true;
-
-          if (bowler.playerId) {
-            playerDBHook.updatePlayerStats(bowler.playerId, {
-              bowlingInnings: 1,
-            });
-          }
-        }
+        // r === 0 runout
         playersHook.addBallToBowler();
-        const striker = playersHook.players[playersHook.strikerIndex];
 
-        if (striker?.playerId) {
-          playerDBHook.updatePlayerStats(striker.playerId, {
-            dotBalls: 1,
-          });
-        }
-
-        if (bowler?.playerId && r === 0) {
+        // ✅ Save bowler ball to DB (dot ball wicket)
+        if (bowler?.playerId) {
           playerDBHook.updatePlayerStats(bowler.playerId, {
+            ballsBowled: 1,
+            runsGiven: 0,
             dotBallsBowled: 1,
           });
         }
+
+        const striker = playersHook.players[playersHook.strikerIndex];
+        if (striker?.playerId) {
+          playerDBHook.updatePlayerStats(striker.playerId, { dotBalls: 1 });
+        }
+
         partnershipsHook.addBallToPartnership();
       }
+
       engine.addRunToCurrentOver("W", false);
       playersHook.registerWicket();
       return;
     }
 
+    // ─── WINNING RUN CAPTURE ────────────────────────────────────────
     if (currentInningsRef.current === 2 && engine.score + r >= engine.target) {
       try {
         const finalData = captureCurrentData();
@@ -386,60 +372,56 @@ function ScoringPage() {
       }
     }
 
+    // ─── NORMAL RUN PATH ────────────────────────────────────────────
     triggerSnapshotWithTracking();
     playersHook.addRunsToStriker(r);
+
     const striker = playersHook.players[playersHook.strikerIndex];
-    // ✅ ADD THIS (MOST IMPORTANT FIX)
+
+    // Track batting innings (first ball faced)
     if (striker && !striker.hasBatted) {
       striker.hasBatted = true;
-
       if (striker.playerId) {
-        playerDBHook.updatePlayerStats(striker.playerId, {
-          innings: 1,
-        });
+        playerDBHook.updatePlayerStats(striker.playerId, { innings: 1 });
       }
     }
 
+    // Save batter ball-by-ball stats
     if (striker?.playerId) {
-      let stats = {
-        ones: 0,
-        twos: 0,
-        threes: 0,
-        dotBalls: 0,
-        fours: 0, // ✅ ADD
-        sixes: 0, // ✅ ADD
-      };
-
+      const stats = {};
       if (r === 1) stats.ones = 1;
       else if (r === 2) stats.twos = 1;
       else if (r === 3) stats.threes = 1;
       else if (r === 0) stats.dotBalls = 1;
-      else if (r === 4) stats.fours = 1; // ✅ ADD
-      else if (r === 6) stats.sixes = 1; // ✅ ADD
-
+      else if (r === 4) stats.fours = 1;
+      else if (r === 6) stats.sixes = 1;
+      stats.runs = r; // ✅ ADD THIS
+      stats.balls = 1; // ✅ ADD THIS
       playerDBHook.updatePlayerStats(striker.playerId, stats);
     }
-    // ✅ ADD THIS BLOCK (FINAL FIX)
+
     const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
 
+    // Track first ball bowled
     if (bowler && !bowler.hasBowled) {
       bowler.hasBowled = true;
-
       if (bowler.playerId) {
-        playerDBHook.updatePlayerStats(bowler.playerId, {
-          bowlingInnings: 1,
-        });
+        playerDBHook.updatePlayerStats(bowler.playerId, { bowlingInnings: 1 });
       }
     }
+
     playersHook.addRunsToBowler(r);
     playersHook.addBallToBowler();
-    // AFTER playersHook.addBallToBowler(); in the normal run path, ADD:
-    if (r === 0) {
-      const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
-      if (bowler?.playerId) {
-        playerDBHook.updatePlayerStats(bowler.playerId, { dotBallsBowled: 1 });
-      }
+
+    // ✅ Save bowler ball + runs to DB (LIVE — this is the key fix)
+    if (bowler?.playerId) {
+      playerDBHook.updatePlayerStats(bowler.playerId, {
+        ballsBowled: 1,
+        runsGiven: r,
+        ...(r === 0 ? { dotBallsBowled: 1 } : {}),
+      });
     }
+
     if (
       playersHook.strikerIndex >= 0 &&
       playersHook.players[playersHook.strikerIndex]
@@ -448,7 +430,8 @@ function ScoringPage() {
         r,
         playersHook.players[playersHook.strikerIndex].playerId
       );
-      engine.addToCurrentOverRuns(r);
+
+    engine.addToCurrentOverRuns(r);
     engine.handleRun(
       r,
       playersHook.players[playersHook.strikerIndex]?.playerId
@@ -471,7 +454,6 @@ function ScoringPage() {
     modalStates.setShowDismissBowlerModal(true);
   };
 
-  // ✅ PATCH 8: Use addBowlerJersey
   const handleDismissBowlerConfirm = (bowlerData) => {
     const name = typeof bowlerData === "string" ? bowlerData : bowlerData.name;
     if (bowlerData?.jersey) addBowlerJersey(bowlerData.jersey);
@@ -489,9 +471,6 @@ function ScoringPage() {
     }, 150);
   };
 
-  // ✅ PATCH 9: Use per-innings batter set for fielder validation
-  // ✅ IN ScoringPage.jsx, UPDATE handleFielderConfirm function:
-
   const handleFielderConfirm = ({ fielder, fielderJersey }) => {
     const bowlerName =
       playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName ||
@@ -505,11 +484,6 @@ function ScoringPage() {
     const currentMaxWickets = engine.isSuperOver ? 2 : currentTeamSize - 1;
     const nextWickets = engine.wickets + 1;
 
-    // ✅ REMOVED: The batter validation from here
-    // FielderInputModal already validates fielders can't be batters
-    // This validation was BLOCKING BOWLERS from fielding (wrong!)
-
-    // ✅ Add fielder's jersey to bowlers set
     if (fielderJersey) addBowlerJersey(fielderJersey);
 
     playersHook.setDismissal(
@@ -530,10 +504,29 @@ function ScoringPage() {
       wicketFlow.selectedWicketType === "runout"
     );
 
+    const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
+
     if (wicketFlow.selectedWicketType !== "runout") {
       playersHook.addWicketToBowler();
+      // ✅ Save wicket + ball + 0 runs to DB
+      if (bowler?.playerId) {
+        playerDBHook.updatePlayerStats(bowler.playerId, {
+          wickets: 1,
+          ballsBowled: 1,
+          runsGiven: 0,
+          dotBallsBowled: 1,
+        });
+      }
     } else {
       playersHook.addBallToBowler();
+      // ✅ Save ball to DB for runout (no wicket credit to bowler)
+      if (bowler?.playerId) {
+        playerDBHook.updatePlayerStats(bowler.playerId, {
+          ballsBowled: 1,
+          runsGiven: 0,
+          dotBallsBowled: 1,
+        });
+      }
     }
 
     partnershipsHook.addBallToPartnership();
@@ -550,7 +543,8 @@ function ScoringPage() {
     if (fielderJersey) {
       playerDBHook.updateFieldingStats(
         fielderJersey,
-        wicketFlow.selectedWicketType
+        wicketFlow.selectedWicketType,
+        fielder
       );
     }
 
@@ -652,10 +646,22 @@ function ScoringPage() {
       "Unknown";
     const currentOutBatsman = playersHook.strikerIndex;
     const nextWickets = engine.wickets + 1;
+    const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
 
     playersHook.setDismissal("hitwicket", null, bowlerName, currentOutBatsman);
     hatTrickHook.trackBall(bowlerName, true, false);
     playersHook.addWicketToBowler();
+
+    // ✅ Save hitwicket ball to DB
+    if (bowler?.playerId) {
+      playerDBHook.updatePlayerStats(bowler.playerId, {
+        wickets: 1,
+        ballsBowled: 1,
+        runsGiven: 0,
+        dotBallsBowled: 1,
+      });
+    }
+
     partnershipsHook.addBallToPartnership();
     partnershipsHook.savePartnership(engine.score, nextWickets);
     partnershipsHook.resetPartnership();
@@ -769,14 +775,11 @@ function ScoringPage() {
               onRun={handleRunClick}
               onWide={() => {
                 triggerSnapshotWithTracking();
-
                 const bowler =
                   playersHook.bowlers[playersHook.currentBowlerIndex];
 
-                // ✅ BOWLING INNINGS FIX
                 if (bowler && !bowler.hasBowled) {
                   bowler.hasBowled = true;
-
                   if (bowler.playerId) {
                     playerDBHook.updatePlayerStats(bowler.playerId, {
                       bowlingInnings: 1,
@@ -784,31 +787,28 @@ function ScoringPage() {
                   }
                 }
 
-                // ✅ BALL COUNT
                 playersHook.addBallToBowler();
 
-                // ✅ DB UPDATE
+                // ✅ Save wide to DB (wide = 1 run given, ball NOT counted as legal)
                 if (bowler?.playerId) {
                   playerDBHook.updatePlayerStats(bowler.playerId, {
                     wides: 1,
+                    runsGiven: 1,
                   });
                 }
 
                 playersHook.addRunsToBowler(1);
                 partnershipsHook.addExtraToPartnership(1);
                 engine.handleWide();
-                engine.addToCurrentOverRuns(runs);
+                engine.addToCurrentOverRuns(1);
               }}
               onNoBall={() => {
                 triggerSnapshotWithTracking();
-
                 const bowler =
                   playersHook.bowlers[playersHook.currentBowlerIndex];
 
-                // ✅ BOWLING INNINGS FIX
                 if (bowler && !bowler.hasBowled) {
                   bowler.hasBowled = true;
-
                   if (bowler.playerId) {
                     playerDBHook.updatePlayerStats(bowler.playerId, {
                       bowlingInnings: 1,
@@ -816,31 +816,28 @@ function ScoringPage() {
                   }
                 }
 
-                // ✅ BALL COUNT
                 playersHook.addBallToBowler();
 
-                // ✅ DB UPDATE
+                // ✅ Save no ball to DB
                 if (bowler?.playerId) {
                   playerDBHook.updatePlayerStats(bowler.playerId, {
                     noBalls: 1,
+                    runsGiven: 1,
                   });
                 }
 
                 playersHook.addRunsToBowler(1);
                 partnershipsHook.addExtraToPartnership(1);
                 engine.handleNoBall();
-                engine.addToCurrentOverRuns(runs);
+                engine.addToCurrentOverRuns(1);
               }}
               onBye={(r) => {
                 triggerSnapshotWithTracking();
-
                 const bowler =
                   playersHook.bowlers[playersHook.currentBowlerIndex];
 
-                // ✅ BOWLING INNINGS FIX
                 if (bowler && !bowler.hasBowled) {
                   bowler.hasBowled = true;
-
                   if (bowler.playerId) {
                     playerDBHook.updatePlayerStats(bowler.playerId, {
                       bowlingInnings: 1,
@@ -848,25 +845,27 @@ function ScoringPage() {
                   }
                 }
 
-                // ✅ ONLY ONE BALL (FIXED)
                 playersHook.addBallToBowler();
+
+                // ✅ Bye — ball counts, runs don't count against bowler
+                if (bowler?.playerId) {
+                  playerDBHook.updatePlayerStats(bowler.playerId, {
+                    ballsBowled: 1,
+                  });
+                }
 
                 partnershipsHook.addExtraToPartnership(r);
                 partnershipsHook.addBallToPartnership();
-
                 engine.handleBye(r);
-                engine.addToCurrentOverRuns(runs);
+                engine.addToCurrentOverRuns(r);
               }}
               onLegBye={(r) => {
                 triggerSnapshotWithTracking();
-
                 const bowler =
                   playersHook.bowlers[playersHook.currentBowlerIndex];
 
-                // ✅ BOWLING INNINGS FIX
                 if (bowler && !bowler.hasBowled) {
                   bowler.hasBowled = true;
-
                   if (bowler.playerId) {
                     playerDBHook.updatePlayerStats(bowler.playerId, {
                       bowlingInnings: 1,
@@ -874,14 +873,19 @@ function ScoringPage() {
                   }
                 }
 
-                // ✅ ONLY ONE BALL
                 playersHook.addBallToBowler();
+
+                // ✅ Leg bye — ball counts, runs don't count against bowler
+                if (bowler?.playerId) {
+                  playerDBHook.updatePlayerStats(bowler.playerId, {
+                    ballsBowled: 1,
+                  });
+                }
 
                 partnershipsHook.addExtraToPartnership(r);
                 partnershipsHook.addBallToPartnership();
-
                 engine.handleLegBye(r);
-                engine.addToCurrentOverRuns(runs);
+                engine.addToCurrentOverRuns(r);
               }}
               onWicket={() => wicketFlow.startWicketFlow(engine.isFreeHit)}
               onSwapStrike={playersHook.swapStrike}
@@ -1074,7 +1078,7 @@ function ScoringPage() {
         dismissedPlayers={dismissedPlayersRef.current}
         currentBowlerJersey={
           playersHook.bowlers[playersHook.currentBowlerIndex]?.playerId
-        } // ✅ ADD THIS
+        }
       />
       <ScoringModals
         hatTrickHook={hatTrickHook}
