@@ -180,7 +180,7 @@ function ScoringPage() {
 
   useEffect(() => {
     if (!engine.matchOver || !playerDBHook) return;
-  
+    playerDBHook.updateMatchMilestones();
     // Save matches count for batters
     [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
       if (!p?.playerId) return;
