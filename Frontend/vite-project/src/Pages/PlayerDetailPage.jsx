@@ -18,11 +18,12 @@ function PlayerDetailPage() {
   const strikeRate = balls > 0 ? ((totalRuns / balls) * 100).toFixed(2) : 0;
 
   // NEW
-  const avg = player.matches > 0 ? (totalRuns / player.matches).toFixed(2) : 0;
+  const dismissals = player.innings - (player.notOuts || 0);
+  const avg = dismissals > 0 ? (totalRuns / dismissals).toFixed(2) : totalRuns > 0 ? "N/O" : "0.00";
 
   const overs = player.ballsBowled
-  ? `${Math.floor(player.ballsBowled / 6)}.${player.ballsBowled % 6}`
-  : "0.0";
+    ? `${Math.floor(player.ballsBowled / 6)}.${player.ballsBowled % 6}`
+    : "0.0";
 
   const economy =
     player.ballsBowled > 0
@@ -63,6 +64,12 @@ function PlayerDetailPage() {
         <p className={styles.stat}>Wickets: {player.wickets}</p>
         <p className={styles.stat}>Economy: {economy}</p>
         <p className={styles.stat}>Overs: {overs}</p>
+        <p>
+          Best Bowling:{" "}
+          {(player.bestBowlingWickets || 0) === 0
+            ? "—"
+            : `${player.bestBowlingWickets}/${player.bestBowlingRuns}`}
+        </p>
         <p>Dot Balls Bowled: {player.dotBallsBowled || 0}</p>
         <p>Wides: {player.wides || 0}</p>
         <p>No Balls: {player.noBalls || 0}</p>

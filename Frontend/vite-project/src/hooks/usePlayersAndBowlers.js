@@ -47,8 +47,8 @@ export default function usePlayersAndBowlers(matchData, playerDB) {
     if (!playerDB || !jersey || !displayName?.trim()) return;
   
     playerDB.createOrGetPlayer(
-      displayName.trim(),
-      String(jersey)
+      String(jersey),      // ✅ jersey is the KEY
+      displayName.trim()   // ✅ name is the VALUE
     );
   };
 
