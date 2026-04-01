@@ -103,6 +103,9 @@ function usePlayerDatabase() {
           bestBowlingRuns: 0,
           bowlingMatchIds: [],
           maidens: 0,
+          threeWickets: 0,
+          fiveWickets: 0,
+          tenWickets: 0,
         };
         saveDB(db);
       } else if (name && db[key].name !== name) {
@@ -362,6 +365,33 @@ function usePlayerDatabase() {
     },
     [loadDB, saveDB, getCurrentMatchId]
   );
+  const updateMatchMilestones = useCallback(() => {
+    const db = loadDB();
+    const currentMatchId = getCurrentMatchId();
+    if (!currentMatchId) return;
+  
+    Object.keys(db).forEach((key) => {
+      const matchKey = `match_bowling_${currentMatchId}_${key}`;
+      const existing = localStorage.getItem(matchKey);
+      if (!existing) return;
+  
+      const { w = 0 } = JSON.parse(existing);
+      if (w === 0) return;
+  
+      const player = db[key];
+      if (!player) return;
+  
+      if (w >= 10) {
+        player.tenWickets = (player.tenWickets || 0) + 1;
+      } else if (w >= 5) {
+        player.fiveWickets = (player.fiveWickets || 0) + 1;
+      } else if (w >= 3) {
+        player.threeWickets = (player.threeWickets || 0) + 1;
+      }
+    });
+  
+    saveDB(db);
+  }, [loadDB, saveDB, getCurrentMatchId]);
 
   return {
     getPlayer,
@@ -374,6 +404,7 @@ function usePlayerDatabase() {
     getCurrentMatchId, // ✅ Export this
     setBestBowling,
     createOrGetPlayer,
+    updateMatchMilestones,
   };
 }
 

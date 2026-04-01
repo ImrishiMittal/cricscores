@@ -19,7 +19,12 @@ function PlayerDetailPage() {
 
   // NEW
   const dismissals = player.innings - (player.notOuts || 0);
-  const avg = dismissals > 0 ? (totalRuns / dismissals).toFixed(2) : totalRuns > 0 ? "N/O" : "0.00";
+  const avg =
+    dismissals > 0
+      ? (totalRuns / dismissals).toFixed(2)
+      : totalRuns > 0
+      ? "N/O"
+      : "0.00";
 
   const overs = player.ballsBowled
     ? `${Math.floor(player.ballsBowled / 6)}.${player.ballsBowled % 6}`
@@ -74,6 +79,9 @@ function PlayerDetailPage() {
         <p>Wides: {player.wides || 0}</p>
         <p>No Balls: {player.noBalls || 0}</p>
         <p>Maiden Overs: {player.maidens || 0}</p>
+        <p>3-Wicket Hauls: {player.threeWickets || 0}</p>
+        <p>5-Wicket Hauls: {player.fiveWickets || 0}</p>
+        <p>10-Wicket Hauls: {player.tenWickets || 0}</p>
       </div>
 
       <div className={styles.card}>
