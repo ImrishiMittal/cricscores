@@ -73,6 +73,7 @@ function PlayerDetailPage() {
         <p>Dot Balls Bowled: {player.dotBallsBowled || 0}</p>
         <p>Wides: {player.wides || 0}</p>
         <p>No Balls: {player.noBalls || 0}</p>
+        <p>Maiden Overs: {player.maidens || 0}</p>
       </div>
 
       <div className={styles.card}>

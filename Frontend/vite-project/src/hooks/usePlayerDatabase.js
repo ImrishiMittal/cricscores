@@ -102,6 +102,7 @@ function usePlayerDatabase() {
           bestBowlingWickets: 0,
           bestBowlingRuns: 0,
           bowlingMatchIds: [],
+          maidens: 0,
         };
         saveDB(db);
       } else if (name && db[key].name !== name) {
