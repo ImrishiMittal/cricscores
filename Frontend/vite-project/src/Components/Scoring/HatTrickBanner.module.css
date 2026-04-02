@@ -1,223 +1,207 @@
 .overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.92);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-    animation: fadeIn 0.3s ease;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.banner {
+  background: #0a0a0a;
+  border: 2px solid #22c55e;
+  border-radius: 20px;
+  padding: 44px 36px;
+  max-width: 460px;
+  width: 90%;
+  box-shadow:
+    0 0 0 1px rgba(34, 197, 94, 0.15),
+    0 0 60px rgba(34, 197, 94, 0.2),
+    0 32px 64px rgba(0, 0, 0, 0.8);
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(40px) scale(0.96);
+    opacity: 0;
   }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
   }
-  
-  .banner {
-    background: linear-gradient(135deg, #8e44ad 0%, #3498db 50%, #e74c3c 100%);
-    border: 3px solid #f1c40f;
-    border-radius: 24px;
-    padding: 48px 32px;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 
-      0 0 60px rgba(241, 196, 15, 0.6),
-      0 20px 60px rgba(0, 0, 0, 0.5);
-    animation: scaleIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  @keyframes scaleIn {
-    from {
-      transform: scale(0.5) rotate(-5deg);
-      opacity: 0;
-    }
-    to {
-      transform: scale(1) rotate(0deg);
-      opacity: 1;
-    }
-  }
-  
-  .banner::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-      45deg,
-      transparent,
-      rgba(255, 255, 255, 0.1),
-      transparent
-    );
-    animation: shine 3s infinite;
-  }
-  
-  @keyframes shine {
-    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
-  }
-  
-  .iconRow {
-    display: flex;
-    justify-content: center;
-    gap: 24px;
-    margin-bottom: 24px;
-  }
-  
-  .icon {
-    font-size: 48px;
-    animation: bounce 0.8s infinite alternate;
-  }
-  
-  .icon:nth-child(1) {
-    animation-delay: 0s;
-  }
-  
-  .icon:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-  
-  .icon:nth-child(3) {
-    animation-delay: 0.4s;
-  }
-  
-  @keyframes bounce {
-    from {
-      transform: translateY(0px);
-    }
-    to {
-      transform: translateY(-15px);
-    }
-  }
-  
-  .title {
-    font-size: 56px;
-    font-weight: 900;
-    color: #fff;
-    margin: 0 0 32px 0;
-    text-shadow: 
-      0 0 20px rgba(241, 196, 15, 0.8),
-      0 4px 8px rgba(0, 0, 0, 0.5);
-    letter-spacing: 4px;
-    animation: pulse 1.5s infinite;
-  }
-  
-  @keyframes pulse {
-    0%, 100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.05);
-    }
-  }
-  
-  .bowlerSection {
-    background: rgba(0, 0, 0, 0.3);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 32px;
-  }
-  
-  .label {
-    color: #f1c40f;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 2px;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-  }
-  
-  .bowlerName {
-    color: #fff;
-    font-size: 36px;
-    font-weight: bold;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-  }
-  
-  .wicketBalls {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-  
-  .ball {
-    width: 60px;
-    height: 60px;
-    background: #e74c3c;
-    border: 3px solid #fff;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 24px;
-    font-weight: bold;
-    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.6);
-    animation: popIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  }
-  
-  .ball:nth-child(1) {
-    animation-delay: 0.1s;
-  }
-  
-  .ball:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-  
-  .ball:nth-child(3) {
-    animation-delay: 0.3s;
-  }
-  
-  @keyframes popIn {
-    from {
-      transform: scale(0);
-      opacity: 0;
-    }
-    to {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
-  
-  .subtitle {
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 18px;
-    margin-bottom: 32px;
-    font-weight: 500;
-  }
-  
-  .closeBtn {
-    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    padding: 16px 48px;
-    font-size: 18px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  
-  .closeBtn:hover {
-    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(46, 204, 113, 0.6);
-  }
-  
-  .closeBtn:active {
-    transform: translateY(0);
-  }
-  
+}
+
+/* Subtle green top glow line */
+.banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #22c55e, transparent);
+}
+
+/* Subtle scan-line texture */
+.banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(34, 197, 94, 0.015) 2px,
+    rgba(34, 197, 94, 0.015) 4px
+  );
+  pointer-events: none;
+  border-radius: 20px;
+}
+
+/* ── Icon row (🎉 🎊 🎉) ── */
+.iconRow {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.icon {
+  font-size: 36px;
+  animation: bounce 1s infinite alternate;
+  display: inline-block;
+}
+
+.icon:nth-child(1) { animation-delay: 0s; }
+.icon:nth-child(2) { animation-delay: 0.2s; }
+.icon:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  from { transform: translateY(0px); }
+  to   { transform: translateY(-10px); }
+}
+
+/* ── HAT-TRICK! title ── */
+.title {
+  font-size: 42px;
+  font-weight: 900;
+  color: #22c55e;
+  margin: 0 0 28px 0;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from { text-shadow: 0 0 20px rgba(34, 197, 94, 0.4); }
+  to   { text-shadow: 0 0 40px rgba(34, 197, 94, 0.8), 0 0 60px rgba(34, 197, 94, 0.3); }
+}
+
+/* ── Bowler section ── */
+.bowlerSection {
+  background: #111;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 24px;
+}
+
+.label {
+  color: #22c55e;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+.bowlerName {
+  color: #fff;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+/* ── W W W balls — .ball matches existing JS exactly ── */
+.wicketBalls {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.ball {
+  width: 52px;
+  height: 52px;
+  background: #111;
+  border: 2px solid #22c55e;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #22c55e;
+  font-size: 18px;
+  font-weight: 900;
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.25);
+  animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.ball:nth-child(1) { animation-delay: 0.1s; }
+.ball:nth-child(2) { animation-delay: 0.2s; }
+.ball:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes popIn {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* ── Subtitle ── */
+.subtitle {
+  color: #444;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-bottom: 32px;
+}
+
+/* ── Close button ── */
+.closeBtn {
+  width: 100%;
+  padding: 16px;
+  background: #22c55e;
+  border: none;
+  border-radius: 10px;
+  color: #000;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);
+}
+
+.closeBtn:hover {
+  background: #16a34a;
+  box-shadow: 0 6px 28px rgba(34, 197, 94, 0.5);
+  transform: translateY(-1px);
+}
+
+.closeBtn:active {
+  transform: translateY(0);
+}
