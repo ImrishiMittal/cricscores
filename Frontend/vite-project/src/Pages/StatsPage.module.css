@@ -1,49 +1,206 @@
 .container {
-    padding: 30px;
-    background: #f5f7fb;
-    min-height: 100vh;
+  padding: 30px;
+  background: #f5f7fb;
+  min-height: 100vh;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #1a1a2e;
+}
+
+/* ─── Tabs ──────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.tabBtn {
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: 1.5px solid #d1d5db;
+  background: white;
+  color: #555;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.tabBtn:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.activeTab {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: white !important;
+}
+
+/* ─── Search ────────────────────────────────────────────── */
+.searchWrapper {
+  position: relative;
+  margin-bottom: 16px;
+  z-index: 100;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0 14px;
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.searchBox:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.searchIcon {
+  font-size: 16px;
+  flex-shrink: 0;
+  color: #9ca3af;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 13px 0;
+  font-size: 15px;
+  background: transparent;
+  color: #1a1a2e;
+}
+
+.searchInput::placeholder {
+  color: #b0b7c3;
+}
+
+.clearBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 14px;
+  padding: 4px 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.clearBtn:hover {
+  background: #f1f5f9;
+  color: #4b5563;
+}
+
+/* ─── Suggestions Dropdown ──────────────────────────────── */
+.suggestionsBox {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  animation: dropIn 0.15s ease;
+}
+
+@keyframes dropIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
   }
-  
-  .title {
-    font-size: 28px;
-    font-weight: bold;
-    margin-bottom: 20px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  
-  .tabs {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 20px;
-  }
-  
-  .tabBtn {
-    padding: 8px 16px;
-    border-radius: 8px;
-    border: none;
-    background: #e0e7ff;
-    cursor: pointer;
-    font-weight: 500;
-  }
-  
-  .activeTab {
-    background: #4f46e5;
-    color: white;
-  }
-  
-  .playerList {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-  }
-  
-  .playerItem {
-    padding: 12px 16px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
-    transition: 0.2s;
-  }
-  
-  .playerItem:hover {
-    background: #f1f5ff;
-  }
+}
+
+.suggestionItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.suggestionItem:last-child {
+  border-bottom: none;
+}
+
+.suggestionItem:hover,
+.activeSuggestion {
+  background: #f5f3ff;
+}
+
+.suggestionJersey {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6366f1;
+  min-width: 52px;
+  flex-shrink: 0;
+}
+
+.suggestionName {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a2e;
+  flex: 1;
+}
+
+.suggestionMeta {
+  font-size: 12px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.highlight {
+  background: #ede9fe;
+  color: #4f46e5;
+  border-radius: 3px;
+  padding: 0 1px;
+  font-weight: 700;
+}
+
+/* ─── Player List ───────────────────────────────────────── */
+.playerList {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.playerItem {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  font-size: 15px;
+  color: #1a1a2e;
+  transition: background 0.12s ease, padding-left 0.15s ease;
+}
+
+.playerItem:last-child {
+  border-bottom: none;
+}
+
+.playerItem:hover {
+  background: #f5f3ff;
+  padding-left: 26px;
+  color: #4f46e5;
+}
