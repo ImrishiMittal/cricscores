@@ -37,16 +37,17 @@ function InfoStrip({
   };
 
   const bowlingTeam =
-    currentTeam === matchData.teamA ? matchData.teamB : matchData.teamA;
+    currentTeam === matchData?.teamA ? matchData?.teamB : matchData?.teamA;
 
-  // ✅ FIXED: Show wickets/runs in bowler display
+  const bowlerIsC = addCaptainTag(currentBowler?.playerId, matchData, bowlingTeam);
+
   const bowlerDisplay = currentBowler
-    ? `${addCaptainTag(currentBowler.displayName, matchData, bowlingTeam)} - ${
+    ? `${currentBowler.displayName}${bowlerIsC ? " (C)" : ""} - ${
         currentBowler.wickets || 0
       }/${currentBowler.runs || 0} in ${currentBowler.overs || 0}.${
         currentBowler.balls || 0
       } [${getBowlerEconomy(currentBowler)}]`
-    : addCaptainTag(bowler, matchData, bowlingTeam);
+    : (bowler || "");
 
   return (
     <div className={styles.infoStrip}>
