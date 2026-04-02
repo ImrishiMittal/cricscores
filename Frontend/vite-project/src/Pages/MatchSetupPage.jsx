@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./MatchSetupPage.module.css";
 import BrandTitle from "../Components/BrandTitle";
+import CaptainSearch from "../Components/Scoring/CaptainSearch";
 
 function MatchSetupPage() {
   const navigate = useNavigate();
@@ -11,8 +12,11 @@ function MatchSetupPage() {
   const [teamB, setTeamB] = useState("");
   const [teamAPlayers, setTeamAPlayers] = useState("");
   const [teamBPlayers, setTeamBPlayers] = useState("");
-  const [teamACaptain, setTeamACaptain] = useState("");
-  const [teamBCaptain, setTeamBCaptain] = useState("");
+
+  // Captain stored as { jersey, name } or null
+  const [teamACaptain, setTeamACaptain] = useState(null);
+  const [teamBCaptain, setTeamBCaptain] = useState(null);
+
   const [overs, setOvers] = useState("");
 
   // ---------------- TEST MATCH ----------------
@@ -39,14 +43,12 @@ function MatchSetupPage() {
     noBallFreeHit: false,
   });
 
-  // ✅ NEW: Super Over toggle
   const [enableSuperOver, setEnableSuperOver] = useState(false);
 
   //--------------------Single Batsman---------------
   const [lastManBatting, setLastManBatting] = useState(false);
 
   const [maxOversPerBowler, setMaxOversPerBowler] = useState("");
-  const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
   const [showAdditionalSetup, setShowAdditionalSetup] = useState(false);
 
   // ---------------- TOSS LOGIC ----------------
@@ -73,8 +75,9 @@ function MatchSetupPage() {
       teamB: teamB || "Team 2",
       teamAPlayers,
       teamBPlayers,
-      teamACaptain,
-      teamBCaptain,
+      // Store full captain object { jersey, name } so both are always available
+      teamACaptain: teamACaptain || null,
+      teamBCaptain: teamBCaptain || null,
       overs,
       tossWinner,
       battingFirst,
@@ -85,7 +88,7 @@ function MatchSetupPage() {
       oversPerDay,
       lastManBatting,
       maxOversPerBowler: isTestMatch ? null : Number(maxOversPerBowler),
-      enableSuperOver,  // ✅ NEW
+      enableSuperOver,
     };
 
     localStorage.setItem("matchData", JSON.stringify(matchData));
@@ -122,16 +125,19 @@ function MatchSetupPage() {
           type="number"
           onChange={(e) => setTeamBPlayers(e.target.value)}
         />
-        <input
-          className={styles.input}
-          placeholder="Team A Captain"
-          onChange={(e) => setTeamACaptain(e.target.value)}
+
+        {/* CAPTAIN SEARCH — autocomplete from player database */}
+        <CaptainSearch
+          placeholder="Team A Captain (name or jersey)"
+          value={teamACaptain}
+          onSelect={setTeamACaptain}
         />
-        <input
-          className={styles.input}
-          placeholder="Team B Captain"
-          onChange={(e) => setTeamBCaptain(e.target.value)}
+        <CaptainSearch
+          placeholder="Team B Captain (name or jersey)"
+          value={teamBCaptain}
+          onSelect={setTeamBCaptain}
         />
+
         <input
           className={styles.input}
           placeholder="Number of Overs"
@@ -162,7 +168,7 @@ function MatchSetupPage() {
                 Gully Mode (Last Man Can Bat Alone)
               </label>
 
-              {/* ✅ NEW: Super Over Toggle */}
+              {/* Super Over Toggle */}
               <label className={styles.additionalOption}>
                 <input
                   type="checkbox"

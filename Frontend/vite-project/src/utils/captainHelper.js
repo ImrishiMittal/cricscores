@@ -1,21 +1,25 @@
-export const addCaptainTag = (playerName, matchData, currentTeam) => {
-  if (!matchData || !currentTeam) return playerName;
+export const addCaptainTag = (playerJersey, matchData, currentTeam) => {
+  if (!matchData || !currentTeam || !playerJersey) return false;
+
+  const jersey = String(playerJersey);
 
   const isTeamACaptain =
     currentTeam === matchData.teamA &&
-    playerName === matchData.teamACaptain;
+    matchData.teamACaptain?.jersey &&
+    jersey === String(matchData.teamACaptain.jersey);
 
   const isTeamBCaptain =
     currentTeam === matchData.teamB &&
-    playerName === matchData.teamBCaptain;
+    matchData.teamBCaptain?.jersey &&
+    jersey === String(matchData.teamBCaptain.jersey);
 
-  return isTeamACaptain || isTeamBCaptain
-    ? `${playerName} (C)`
-    : playerName;
+  return Boolean(isTeamACaptain || isTeamBCaptain);
 };
 
-// ⚠️ NOTE: This compares playerName (displayName) against matchData.teamACaptain / teamBCaptain.
-// These captain values come from MatchSetupPage where the user typed the name during setup.
-// As long as the captain is not renamed mid-match, this works correctly.
-// If you later support renaming, store captainPlayerId in matchData instead of captainName,
-// and look up displayName at render time.
+// Usage:
+//   const isCaptain = addCaptainTag(player.jersey, matchData, currentTeam);
+//   const displayName = isCaptain ? `${player.displayName} (C)` : player.displayName;
+//
+// matchData.teamACaptain and matchData.teamBCaptain are { jersey, name } objects
+// set by the CaptainSearch component in MatchSetupPage.
+// Comparison is always by jersey (unique identifier), never by name.
