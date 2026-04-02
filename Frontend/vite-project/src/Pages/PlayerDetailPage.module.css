@@ -1,28 +1,154 @@
 .container {
-    padding: 30px;
-    background: #f5f7fb;
-    min-height: 100vh;
-  }
-  
-  .card {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-  }
-  
-  .title {
-    font-size: 24px;
-    margin-bottom: 10px;
-  }
-  
-  .sectionTitle {
-    font-size: 18px;
-    margin-bottom: 10px;
-    font-weight: 600;
-  }
-  
-  .stat {
-    margin: 5px 0;
-  }
+  padding: 20px 16px 40px 16px;
+  background: #0a0a0a;
+  min-height: 100vh;
+}
+
+/* ─── EMPTY STATE ────────────────────────────────────────── */
+.empty {
+  padding: 40px 20px;
+  background: #0a0a0a;
+  min-height: 100vh;
+  color: #555;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ─── CARD ───────────────────────────────────────────────── */
+.card {
+  background: #111;
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.4), transparent);
+}
+
+.card:hover {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+/* ─── PLAYER NAME ────────────────────────────────────────── */
+.title {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.jersey {
+  color: #22c55e;
+  margin-right: 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ─── TABS ───────────────────────────────────────────────── */
+.tabBar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 0;
+  background: #111;
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  border-radius: 10px;
+  color: #888;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.5px;
+}
+
+.tab:hover {
+  color: #fff;
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.tabActive {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+/* ─── SECTION TITLE ──────────────────────────────────────── */
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 800;
+  color: #22c55e;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 0 0 18px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgb(0, 255, 4);
+}
+
+/* ─── STAT ROW ───────────────────────────────────────────── */
+.statRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.statRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.statRow:first-of-type {
+  padding-top: 0;
+}
+
+/* ─── STAT LABEL (left side) ─────────────────────────────── */
+.statLabel {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ─── STAT VALUE (right side) ────────────────────────────── */
+.statValue {
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── HIGHLIGHTED ROW ────────────────────────────────────── */
+.highlight .statLabel {
+  color: #fff;
+  font-weight: 600;
+}
+
+.highlight .statValue {
+  color: #22c55e;
+}
+
+/* ─── SMALL NOTE ─────────────────────────────────────────── */
+.statNote {
+  font-size: 10px;
+  color: #444;
+  font-weight: 500;
+}

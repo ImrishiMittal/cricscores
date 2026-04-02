@@ -223,7 +223,7 @@ function StatsPage() {
                   className={styles.playerItem}
                   onClick={() => navigate(`/player/${p.jersey}`)}
                 >
-                  #{p.jersey} — {p.name}
+                  {p.jersey} - {p.name}
                 </div>
               ))
             )}

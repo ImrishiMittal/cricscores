@@ -19,11 +19,6 @@ function HatTrickBanner({ bowlerName, onClose }) {
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.banner} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.iconRow}>
-          <span className={styles.icon}>🎉</span>
-          <span className={styles.icon}>🎊</span>
-          <span className={styles.icon}>🎉</span>
-        </div>
         
         <h1 className={styles.title}>HAT-TRICK!</h1>
         

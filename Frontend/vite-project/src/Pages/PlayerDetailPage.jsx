@@ -1,13 +1,27 @@
 import { useParams } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import usePlayerDatabase from "../hooks/usePlayerDatabase";
 import styles from "./PlayerDetailPage.module.css";
+
+const TABS = ["Batting", "Bowling", "Fielding"];
+
+function StatRow({ label, value, highlight, note }) {
+  return (
+    <p className={highlight ? `${styles.statRow} ${styles.highlight}` : styles.statRow}>
+      <span className={styles.statLabel}>{label}</span>
+      <span className={styles.statValue}>
+        {value}
+        {note && <span className={styles.statNote}>{note}</span>}
+      </span>
+    </p>
+  );
+}
 
 function PlayerDetailPage() {
   const { jersey } = useParams();
   const { getPlayer, migratePlayer } = usePlayerDatabase();
+  const [activeTab, setActiveTab] = useState(0);
 
-  // Run one-time migration to fix stale notOuts for this player's old records
   useEffect(() => {
     migratePlayer(jersey);
   }, [jersey]);
@@ -15,19 +29,17 @@ function PlayerDetailPage() {
   const player = getPlayer(jersey);
 
   if (!player) {
-    return <div style={{ padding: "20px" }}>No Player Found</div>;
+    return (
+      <div className={styles.empty}>No Player Found</div>
+    );
   }
 
   const totalRuns = player.runs || 0;
   const balls = player.balls || 0;
   const innings = player.innings || 0;
-
-  const strikeRate = balls > 0 ? ((totalRuns / balls) * 100).toFixed(2) : 0;
-
+  const strikeRate = balls > 0 ? ((totalRuns / balls) * 100).toFixed(2) : "0.00";
   const dismissals = player.dismissals || 0;
 
-  // ✅ Not Outs: use stored value, but also derive innings - dismissals as a floor.
-  // This auto-corrects old data where notOuts was never written correctly.
   const derivedNotOuts = Math.max(0, innings - dismissals);
   const notOuts = Math.max(player.notOuts || 0, derivedNotOuts);
 
@@ -38,9 +50,6 @@ function PlayerDetailPage() {
       ? "N/O"
       : "0.00";
 
-  // ✅ Highest Score: show stored value if it exists.
-  // For old matches where it was never saved, show "—" with a note
-  // rather than a misleading "0". New matches will populate it correctly.
   const highestScore = player.highestScore || 0;
   const highestScoreDisplay = highestScore > 0 ? highestScore : totalRuns > 0 ? "—" : 0;
   const highestScoreIsStale = highestScore === 0 && totalRuns > 0;
@@ -52,7 +61,7 @@ function PlayerDetailPage() {
   const economy =
     player.ballsBowled > 0
       ? (player.runsGiven / (player.ballsBowled / 6)).toFixed(2)
-      : 0;
+      : "0.00";
 
   const bowlingAvg =
     player.wickets > 0
@@ -61,73 +70,81 @@ function PlayerDetailPage() {
 
   return (
     <div className={styles.container}>
+      {/* ─── NAME CARD ─────────────────────────────────────── */}
       <div className={styles.card}>
         <h1 className={styles.title}>
-          #{player.jersey} — {player.name}
+          <span className={styles.jersey}>#{player.jersey}</span>
+          {player.name}
         </h1>
       </div>
 
-      {/* ─── BATTING ─────────────────────────────────────── */}
-      <div className={styles.card}>
-        <h2 className={styles.sectionTitle}>🏏 Batting</h2>
-        <p>Matches: {player.matches || 0}</p>
-        <p>Innings: {innings}</p>
-        <p>Not Outs: {notOuts}</p>
-        <p className={styles.stat}>
-          Highest Score:{" "}
-          {highestScoreDisplay}
-          {highestScoreIsStale && (
-            <span style={{ fontSize: "11px", color: "#999", marginLeft: 6 }}>
-              (not tracked in older matches)
-            </span>
-          )}
-        </p>
-        <p className={styles.stat}>Runs: {totalRuns}</p>
-        <p className={styles.stat}>Balls: {balls}</p>
-        <p className={styles.stat}>Strike Rate: {strikeRate}</p>
-        <p className={styles.stat}>Average: {avg}</p>
-        <p>Dot Balls: {player.dotBalls || 0}</p>
-        <p>Ducks: {player.ducks || 0}</p>
-        <p>1s: {player.ones || 0}</p>
-        <p>2s: {player.twos || 0}</p>
-        <p>3s: {player.threes || 0}</p>
-        <p>4s: {player.fours || 0}</p>
-        <p>6s: {player.sixes || 0}</p>
-        <p>30s: {player.thirties || 0}</p>
-        <p>50s: {player.fifties || 0}</p>
-        <p>100s: {player.hundreds || 0}</p>
+      {/* ─── TABS ──────────────────────────────────────────── */}
+      <div className={styles.tabBar}>
+        {TABS.map((tab, i) => (
+          <button
+            key={tab}
+            className={i === activeTab ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+            onClick={() => setActiveTab(i)}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
 
-      {/* ─── BOWLING ─────────────────────────────────────── */}
-      <div className={styles.card}>
-        <h2 className={styles.sectionTitle}>🎯 Bowling</h2>
-        <p>Bowling Innings: {player.bowlingInnings || 0}</p>
-        <p className={styles.stat}>Wickets: {player.wickets || 0}</p>
-        <p className={styles.stat}>Economy: {economy}</p>
-        <p className={styles.stat}>Average: {bowlingAvg}</p>
-        <p className={styles.stat}>Overs: {overs}</p>
-        <p>
-          Best Bowling:{" "}
-          {(player.bestBowlingWickets || 0) === 0
-            ? "—"
-            : `${player.bestBowlingWickets}/${player.bestBowlingRuns}`}
-        </p>
-        <p>Dot Balls Bowled: {player.dotBallsBowled || 0}</p>
-        <p>Wides: {player.wides || 0}</p>
-        <p>No Balls: {player.noBalls || 0}</p>
-        <p>Maiden Overs: {player.maidens || 0}</p>
-        <p>3-Wicket Hauls: {player.threeWickets || 0}</p>
-        <p>5-Wicket Hauls: {player.fiveWickets || 0}</p>
-        <p>10-Wicket Hauls: {player.tenWickets || 0}</p>
-      </div>
+      {/* ─── BATTING ──────────────────────────────────────── */}
+      {activeTab === 0 && (
+        <div className={styles.card}>
+          <h2 className={styles.sectionTitle}>🏏 Batting</h2>
+          <StatRow label="Matches" value={player.matches || 0} />
+          <StatRow label="Innings" value={innings} />
+          <StatRow label="Not Outs" value={notOuts} />
+          <StatRow label="Highest Score" value={highestScoreDisplay} highlight note={highestScoreIsStale ? "(older matches)" : null} />
+          <StatRow label="Runs" value={totalRuns} highlight />
+          <StatRow label="Balls" value={balls} />
+          <StatRow label="Strike Rate" value={strikeRate} highlight />
+          <StatRow label="Average" value={avg} highlight />
+          <StatRow label="Dot Balls" value={player.dotBalls || 0} />
+          <StatRow label="Ducks" value={player.ducks || 0} />
+          <StatRow label="1s" value={player.ones || 0} />
+          <StatRow label="2s" value={player.twos || 0} />
+          <StatRow label="3s" value={player.threes || 0} />
+          <StatRow label="4s" value={player.fours || 0} />
+          <StatRow label="6s" value={player.sixes || 0} />
+          <StatRow label="30s" value={player.thirties || 0} />
+          <StatRow label="50s" value={player.fifties || 0} />
+          <StatRow label="100s" value={player.hundreds || 0} />
+        </div>
+      )}
 
-      {/* ─── FIELDING ────────────────────────────────────── */}
-      <div className={styles.card}>
-        <h2 className={styles.sectionTitle}>🧤 Fielding</h2>
-        <p className={styles.stat}>Catches: {player.catches || 0}</p>
-        <p className={styles.stat}>Run Outs: {player.runouts || 0}</p>
-        <p className={styles.stat}>Stumpings: {player.stumpings || 0}</p>
-      </div>
+      {/* ─── BOWLING ──────────────────────────────────────── */}
+      {activeTab === 1 && (
+        <div className={styles.card}>
+          <h2 className={styles.sectionTitle}>🎯 Bowling</h2>
+          <StatRow label="Bowling Innings" value={player.bowlingInnings || 0} />
+          <StatRow label="Wickets" value={player.wickets || 0} highlight />
+          <StatRow label="Economy" value={economy} highlight />
+          <StatRow label="Average" value={bowlingAvg} highlight />
+          <StatRow label="Overs" value={overs} highlight />
+          <StatRow label="Best Bowling" value={(player.bestBowlingWickets || 0) === 0 ? "—" : `${player.bestBowlingWickets}/${player.bestBowlingRuns}`} />
+          <StatRow label="Dot Balls Bowled" value={player.dotBallsBowled || 0} />
+          <StatRow label="Wides" value={player.wides || 0} />
+          <StatRow label="No Balls" value={player.noBalls || 0} />
+          <StatRow label="Maiden Overs" value={player.maidens || 0} />
+          <StatRow label="3-Wicket Hauls" value={player.threeWickets || 0} />
+          <StatRow label="5-Wicket Hauls" value={player.fiveWickets || 0} />
+          <StatRow label="10-Wicket Hauls" value={player.tenWickets || 0} />
+        </div>
+      )}
+
+      {/* ─── FIELDING ─────────────────────────────────────── */}
+      {activeTab === 2 && (
+        <div className={styles.card}>
+          <h2 className={styles.sectionTitle}>🧤 Fielding</h2>
+          <StatRow label="Catches" value={player.catches || 0} highlight />
+          <StatRow label="Run Outs" value={player.runouts || 0} highlight />
+          <StatRow label="Stumpings" value={player.stumpings || 0} highlight />
+        </div>
+      )}
     </div>
   );
 }
