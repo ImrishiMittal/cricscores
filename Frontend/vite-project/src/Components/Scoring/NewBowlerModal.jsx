@@ -1,5 +1,5 @@
 import { useState } from "react";
-import styles from "./NewBatsmanModal.module.css"; // reusing styles
+import styles from "./NewBatsmanModal.module.css";
 
 function NewBowlerModal({
   onConfirm,
@@ -15,7 +15,7 @@ function NewBowlerModal({
   const [nameSuggestions, setNameSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // ✅ Check if jersey belongs to a batter this innings
+  // ✅ Only block batters from bowling — all other validation is in the hook
   const getBatterLockError = (jerseyVal) => {
     if (!jerseyVal?.trim()) return null;
     if (batterJerseys.has(String(jerseyVal.trim()))) {
@@ -50,7 +50,7 @@ function NewBowlerModal({
     setName(val);
     setError("");
     setExistingPlayer(null);
-    
+
     if (val.trim() && playerDB) {
       const suggestions = playerDB.searchPlayersByName(val);
       setNameSuggestions(suggestions);
@@ -78,12 +78,6 @@ function NewBowlerModal({
     setNameSuggestions([]);
   };
 
-  const isDuplicateJersey =
-  jersey.trim() &&
-  activeBowlers.some(
-    (b) => String(b?.jersey ?? b?.playerId ?? "") === String(jersey.trim())
-  );
-
   const handleConfirm = () => {
     if (!name.trim()) {
       setError("⚠️ Please enter bowler name");
@@ -91,10 +85,6 @@ function NewBowlerModal({
     }
     if (!jersey.trim()) {
       setError("⚠️ Please enter jersey number");
-      return;
-    }
-    if (isDuplicateJersey) {
-      setError("⚠️ This bowler is already bowling");
       return;
     }
     if (teamLockError) {
@@ -147,23 +137,8 @@ function NewBowlerModal({
           </div>
         )}
 
-        {/* Duplicate jersey warning */}
-        {isDuplicateJersey && !teamLockError && (
-          <div style={{
-            background: "rgba(239,68,68,0.1)",
-            border: "1px solid #ef4444",
-            borderRadius: "8px",
-            padding: "8px 12px",
-            marginBottom: "8px",
-            fontSize: "13px",
-            color: "#ef4444",
-          }}>
-            ⚠️ Jersey #{jersey} is already bowling
-          </div>
-        )}
-
         {/* Existing player info */}
-        {existingPlayer && !isDuplicateJersey && !teamLockError && (
+        {existingPlayer && !teamLockError && (
           <div className={styles.existingPlayerBanner}>
             ✅ Found: <strong>{existingPlayer.name}</strong> — {existingPlayer.runs}R ({existingPlayer.balls}B), {existingPlayer.wickets}W
           </div>
@@ -181,7 +156,7 @@ function NewBowlerModal({
               if (nameSuggestions.length > 0) setShowSuggestions(true);
             }}
           />
-          
+
           {/* Autocomplete suggestions dropdown */}
           {showSuggestions && nameSuggestions.length > 0 && (
             <div className={styles.suggestionsDropdown}>
@@ -197,7 +172,6 @@ function NewBowlerModal({
                   <div className={styles.suggestionMain}>
                     <span className={styles.suggestionJersey}>#{player.jersey}</span>
                     <span className={styles.suggestionName}>{player.name}</span>
-                    {/* Show batter tag in suggestions */}
                     {batterJerseys.has(String(player.jersey)) && (
                       <span style={{ fontSize: "10px", color: "#ef4444", marginLeft: "4px" }}>🏏 batter</span>
                     )}
@@ -220,15 +194,14 @@ function NewBowlerModal({
             disabled={
               !name.trim() ||
               !jersey.trim() ||
-              !!isDuplicateJersey ||
               !!teamLockError
             }
           >
-            {existingPlayer ? "Use Existing Bowler" : "Add New Bowler"}
+            {existingPlayer ? "USE EXISTING BOWLER" : "ADD NEW BOWLER"}
           </button>
         </div>
 
-        <p className={styles.hint}>Type name for suggestions • Jersey is permanent ID</p>
+        <p className={styles.hint}>TYPE NAME FOR SUGGESTIONS • JERSEY IS PERMANENT ID</p>
       </div>
     </div>
   );

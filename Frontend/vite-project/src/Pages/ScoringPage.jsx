@@ -41,7 +41,20 @@ function ScoringPage() {
   const teamBBattersRef = useRef(new Set());
   const teamABowlersRef = useRef(new Set());
   const teamBBowlersRef = useRef(new Set());
+
+  // dismissedPlayersRef  — resets each innings, used for per-innings UI logic
+  // allTimeDismissedRef  — NEVER resets, used for not-out calculation at match end
   const dismissedPlayersRef = useRef(new Set());
+  const allTimeDismissedRef = useRef(new Set());
+
+  // Track innings scores per player keyed by playerId so we have the
+  // correct innings score at match-end time regardless of where the player
+  // object lives (players vs allPlayers) and regardless of hasBatted flag.
+  // Structure: { [playerId]: number }
+  // ✅ FIX: This ref is now reset at innings change so innings-2 players
+  // don't accumulate cross-innings totals. Innings-1 highest scores are
+  // saved progressively (inside trackInningsRun) so resetting is safe.
+  const inningsScoreTrackerRef = useRef({});
 
   const modalStates = useModalStates();
   const wicketFlow = useWicketFlow();
@@ -126,7 +139,13 @@ function ScoringPage() {
       innings2SnapshotCountRef.current = 0;
     } else if (engine.innings === 2) {
       hatTrickHook.resetTracker();
+      // ✅ FIX: Reset innings score tracker when innings 2 starts.
+      // Innings-1 highest scores are already saved progressively inside
+      // trackInningsRun, so resetting here is safe and prevents
+      // cross-innings accumulation for any player who bats in both innings.
+      inningsScoreTrackerRef.current = {};
     }
+    // Only reset the per-innings dismissed ref, NOT allTimeDismissedRef.
     dismissedPlayersRef.current = new Set();
   }, [engine.innings]);
 
@@ -159,7 +178,6 @@ function ScoringPage() {
     if (soInnings1Data) engine.saveSuperOverInnings1Data(soInnings1Data);
   }, [engine.inningsChangeEvent, engine.innings]);
 
-  // ✅ KEPT UNTOUCHED — super over save
   useEffect(() => {
     if (!engine.matchOver || !engine.isSuperOver || soCompleteSavedRef.current)
       return;
@@ -180,19 +198,55 @@ function ScoringPage() {
 
   useEffect(() => {
     if (!engine.matchOver || !playerDBHook) return;
+
     playerDBHook.updateMatchMilestones();
-    // Save matches count for batters
+
+    // ─── Collect all unique playerIds that participated ───────────────────────
+    // We deduplicate here so a player who batted AND bowled only gets 1 match.
+    // The deduplication inside usePlayerDatabase (matchIds array) is the
+    // real guard — this just avoids redundant calls.
+    const allParticipantIds = new Set();
+
+    [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
+      if (p?.playerId) allParticipantIds.add(String(p.playerId));
+    });
+    bowlersRef.current.forEach((b) => {
+      if (b?.playerId) allParticipantIds.add(String(b.playerId));
+    });
+
+    // Save match count once per unique player (DB deduplicates by matchId)
+    allParticipantIds.forEach((pid) => {
+      playerDBHook.updatePlayerStats(pid, { matches: 1 });
+    });
+
+    // ─── Highest Score + Not Outs ─────────────────────────────────────────────
+    // NOTE: Highest score is also saved progressively inside trackInningsRun
+    // as each run is scored. This block serves as a safety-net catch for any
+    // edge cases (e.g. players still at the crease when the match ends).
     [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
       if (!p?.playerId) return;
-      playerDBHook.updatePlayerStats(p.playerId, { matches: 1 });
+
+      const pid = String(p.playerId);
+
+      // Use inningsScoreTrackerRef which was updated on every run scored,
+      // rather than p.runs which may be stale/wrong for allPlayers (innings-1 batters).
+      const inningsRuns = inningsScoreTrackerRef.current[pid] ?? (p.runs || 0);
+      const hasBatted = inningsRuns > 0 || (p.balls || 0) > 0 || p.hasBatted;
+
+      // Highest Score — safety net (progressive save in trackInningsRun is primary)
+      if (inningsRuns > 0) {
+        const existing = playerDBHook.getPlayer(pid);
+        if (existing && inningsRuns > (existing.highestScore || 0)) {
+          playerDBHook.setHighestScore(pid, inningsRuns);
+        }
+      }
+
+      // Not Outs — use allTimeDismissedRef (survives innings change).
+      if (hasBatted && !allTimeDismissedRef.current.has(pid)) {
+        playerDBHook.updatePlayerStats(pid, { notOuts: 1 });
+      }
     });
-  
-    // Save matches count for bowlers
-    bowlersRef.current.forEach((b) => {
-      if (!b?.playerId) return;
-      playerDBHook.updatePlayerStats(b.playerId, { matches: 1 });
-    });
-  
+
     setTimeout(() => {
       playerDBHook.setCurrentMatchId(null);
     }, 500);
@@ -260,6 +314,26 @@ function ScoringPage() {
     );
   };
 
+  // ✅ FIX: Record every run scored by a batter into inningsScoreTrackerRef
+  // AND immediately update highest score in the DB progressively.
+  // This ensures highest score is saved even if matchOver logic has edge cases,
+  // and works correctly across innings changes (tracker is reset at innings 2 start).
+  const trackInningsRun = (playerId, runs) => {
+    if (!playerId) return;
+    const pid = String(playerId);
+    inningsScoreTrackerRef.current[pid] =
+      (inningsScoreTrackerRef.current[pid] || 0) + runs;
+
+    // ✅ PRIMARY FIX: Save highest score progressively as runs are scored.
+    // This is the main mechanism — it fires on every run, so the score is
+    // always up to date in the DB regardless of match-end timing issues.
+    const currentInningsTotal = inningsScoreTrackerRef.current[pid];
+    const existing = playerDBHook.getPlayer(pid);
+    if (existing && currentInningsTotal > (existing.highestScore || 0)) {
+      playerDBHook.setHighestScore(pid, currentInningsTotal);
+    }
+  };
+
   const handleRunClick = (r) => {
     // ─── RUNOUT PATH ───────────────────────────────────────────────
     if (wicketFlow.waitingForRunoutRun) {
@@ -273,7 +347,6 @@ function ScoringPage() {
 
       const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
 
-      // Track first ball bowled
       if (bowler && !bowler.hasBowled) {
         bowler.hasBowled = true;
         if (bowler.playerId) {
@@ -295,21 +368,20 @@ function ScoringPage() {
         }
 
         if (striker?.playerId) {
+          // ✅ Track innings score (also saves highest score progressively)
+          trackInningsRun(striker.playerId, r);
+
           const runStats = {};
           if (r === 1) runStats.ones = 1;
           else if (r === 2) runStats.twos = 1;
           else if (r === 3) runStats.threes = 1;
-          else if (r === 4) {
-            runStats.fours = 1;
-          } else if (r === 6) {
-            runStats.sixes = 1;
-          }
-          runStats.runs = r; // ✅ ADD THIS
-          runStats.balls = 1; // ✅ ADD THIS
+          else if (r === 4) runStats.fours = 1;
+          else if (r === 6) runStats.sixes = 1;
+          runStats.runs = r;
+          runStats.balls = 1;
           playerDBHook.updatePlayerStats(striker.playerId, runStats);
         }
 
-        // ✅ Save bowler ball + runs to DB
         if (bowler?.playerId) {
           playerDBHook.updatePlayerStats(bowler.playerId, {
             ballsBowled: 1,
@@ -333,7 +405,6 @@ function ScoringPage() {
         // r === 0 runout
         playersHook.addBallToBowler();
 
-        // ✅ Save bowler ball to DB (dot ball wicket)
         if (bowler?.playerId) {
           playerDBHook.updatePlayerStats(bowler.playerId, {
             ballsBowled: 1,
@@ -378,7 +449,6 @@ function ScoringPage() {
 
     const striker = playersHook.players[playersHook.strikerIndex];
 
-    // Track batting innings (first ball faced)
     if (striker && !striker.hasBatted) {
       striker.hasBatted = true;
       if (striker.playerId) {
@@ -386,8 +456,10 @@ function ScoringPage() {
       }
     }
 
-    // Save batter ball-by-ball stats
     if (striker?.playerId) {
+      // ✅ Track innings score (also saves highest score progressively)
+      if (r > 0) trackInningsRun(striker.playerId, r);
+
       const stats = {};
       if (r === 1) stats.ones = 1;
       else if (r === 2) stats.twos = 1;
@@ -395,14 +467,13 @@ function ScoringPage() {
       else if (r === 0) stats.dotBalls = 1;
       else if (r === 4) stats.fours = 1;
       else if (r === 6) stats.sixes = 1;
-      stats.runs = r; // ✅ ADD THIS
-      stats.balls = 1; // ✅ ADD THIS
+      stats.runs = r;
+      stats.balls = 1;
       playerDBHook.updatePlayerStats(striker.playerId, stats);
     }
 
     const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
 
-    // Track first ball bowled
     if (bowler && !bowler.hasBowled) {
       bowler.hasBowled = true;
       if (bowler.playerId) {
@@ -413,7 +484,6 @@ function ScoringPage() {
     playersHook.addRunsToBowler(r);
     playersHook.addBallToBowler();
 
-    // ✅ Save bowler ball + runs to DB (LIVE — this is the key fix)
     if (bowler?.playerId) {
       playerDBHook.updatePlayerStats(bowler.playerId, {
         ballsBowled: 1,
@@ -494,8 +564,12 @@ function ScoringPage() {
     );
 
     const outPlayerId = playersHook.players[currentOutBatsman]?.playerId;
+
     if (outPlayerId) {
       dismissedPlayersRef.current.add(String(outPlayerId));
+      // also add to all-time ref which never resets between innings
+      allTimeDismissedRef.current.add(String(outPlayerId));
+      playerDBHook.updatePlayerStats(outPlayerId, { dismissals: 1 });
     }
 
     hatTrickHook.trackBall(
@@ -508,7 +582,6 @@ function ScoringPage() {
 
     if (wicketFlow.selectedWicketType !== "runout") {
       playersHook.addWicketToBowler();
-      // ✅ Save wicket + ball + 0 runs to DB
       if (bowler?.playerId) {
         playerDBHook.updatePlayerStats(bowler.playerId, {
           wickets: 1,
@@ -519,7 +592,6 @@ function ScoringPage() {
       }
     } else {
       playersHook.addBallToBowler();
-      // ✅ Save ball to DB for runout (no wicket credit to bowler)
       if (bowler?.playerId) {
         playerDBHook.updatePlayerStats(bowler.playerId, {
           ballsBowled: 1,
@@ -652,7 +724,6 @@ function ScoringPage() {
     hatTrickHook.trackBall(bowlerName, true, false);
     playersHook.addWicketToBowler();
 
-    // ✅ Save hitwicket ball to DB
     if (bowler?.playerId) {
       playerDBHook.updatePlayerStats(bowler.playerId, {
         wickets: 1,
@@ -660,6 +731,14 @@ function ScoringPage() {
         runsGiven: 0,
         dotBallsBowled: 1,
       });
+    }
+
+    const outPlayerId = playersHook.players[currentOutBatsman]?.playerId;
+    if (outPlayerId) {
+      dismissedPlayersRef.current.add(String(outPlayerId));
+      // also add to all-time ref which never resets between innings
+      allTimeDismissedRef.current.add(String(outPlayerId));
+      playerDBHook.updatePlayerStats(outPlayerId, { dismissals: 1 });
     }
 
     partnershipsHook.addBallToPartnership();
@@ -789,7 +868,6 @@ function ScoringPage() {
 
                 playersHook.addBallToBowler();
 
-                // ✅ Save wide to DB (wide = 1 run given, ball NOT counted as legal)
                 if (bowler?.playerId) {
                   playerDBHook.updatePlayerStats(bowler.playerId, {
                     wides: 1,
@@ -818,7 +896,6 @@ function ScoringPage() {
 
                 playersHook.addBallToBowler();
 
-                // ✅ Save no ball to DB
                 if (bowler?.playerId) {
                   playerDBHook.updatePlayerStats(bowler.playerId, {
                     noBalls: 1,
@@ -847,7 +924,6 @@ function ScoringPage() {
 
                 playersHook.addBallToBowler();
 
-                // ✅ Bye — ball counts, runs don't count against bowler
                 if (bowler?.playerId) {
                   playerDBHook.updatePlayerStats(bowler.playerId, {
                     ballsBowled: 1,
@@ -875,7 +951,6 @@ function ScoringPage() {
 
                 playersHook.addBallToBowler();
 
-                // ✅ Leg bye — ball counts, runs don't count against bowler
                 if (bowler?.playerId) {
                   playerDBHook.updatePlayerStats(bowler.playerId, {
                     ballsBowled: 1,

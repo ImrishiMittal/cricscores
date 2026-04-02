@@ -2,14 +2,45 @@ import { useState, useCallback } from "react";
 
 const DB_KEY = "cricket_player_database";
 
-/**
- * ✅ FIXED: Bowling Innings now only increments ONCE per match
- *
- * How it works:
- * - Each match has a unique matchId (timestamp when match starts)
- * - Player tracks which matchIds they've bowled in
- * - Bowling innings only increments if this is a NEW matchId
- */
+const defaultPlayer = (key, name) => ({
+  jersey: key,
+  name: name || `Player ${key}`,
+  runs: 0,
+  balls: 0,
+  wickets: 0,
+  runsGiven: 0,
+  ballsBowled: 0,
+  fours: 0,
+  sixes: 0,
+  matches: 0,
+  innings: 0,
+  bowlingInnings: 0,
+  catches: 0,
+  runouts: 0,
+  stumpings: 0,
+  dotBalls: 0,
+  dotBallsBowled: 0,
+  ducks: 0,
+  ones: 0,
+  twos: 0,
+  threes: 0,
+  thirties: 0,
+  fifties: 0,
+  hundreds: 0,
+  wides: 0,
+  noBalls: 0,
+  bestBowlingWickets: 0,
+  bestBowlingRuns: 0,
+  bowlingMatchIds: [],
+  maidens: 0,
+  threeWickets: 0,
+  fiveWickets: 0,
+  tenWickets: 0,
+  highestScore: 0,
+  dismissals: 0,
+  notOuts: 0,
+  matchIds: [],
+});
 
 function usePlayerDatabase() {
   const [, forceUpdate] = useState(0);
@@ -32,6 +63,40 @@ function usePlayerDatabase() {
     [loadDB]
   );
 
+  // One-time migration called when PlayerDetailPage opens.
+  // Fixes notOuts for ALL past records by deriving: notOuts = innings - dismissals.
+  // highestScore cannot be recovered from history, so it stays 0 for old matches
+  // and PlayerDetailPage displays "—*" instead of a misleading 0.
+  const migratePlayer = useCallback(
+    (jersey) => {
+      const db = loadDB();
+      const key = String(jersey);
+      const player = db[key];
+      if (!player) return;
+
+      let changed = false;
+
+      // Ensure matchIds array exists (needed for future match deduplication)
+      if (!Array.isArray(player.matchIds)) {
+        player.matchIds = [];
+        changed = true;
+      }
+
+      // Fix notOuts: innings - dismissals is the mathematically correct value.
+      // If stored notOuts is less than derived, correct it.
+      const innings = player.innings || 0;
+      const dismissals = player.dismissals || 0;
+      const derivedNotOuts = Math.max(0, innings - dismissals);
+      if (derivedNotOuts > (player.notOuts || 0)) {
+        player.notOuts = derivedNotOuts;
+        changed = true;
+      }
+
+      if (changed) saveDB(db);
+    },
+    [loadDB, saveDB]
+  );
+
   const searchPlayersByName = useCallback(
     (searchTerm) => {
       if (!searchTerm || searchTerm.trim().length === 0) return [];
@@ -51,7 +116,6 @@ function usePlayerDatabase() {
     [loadDB]
   );
 
-  // Fix 1: setCurrentMatchId
   const setCurrentMatchId = useCallback((matchId) => {
     if (matchId === null) {
       localStorage.removeItem("current_match_id");
@@ -60,7 +124,6 @@ function usePlayerDatabase() {
     }
   }, []);
 
-  // Fix 2: getCurrentMatchId
   const getCurrentMatchId = useCallback(() => {
     const id = localStorage.getItem("current_match_id");
     return id === "null" || id === null ? null : id;
@@ -70,50 +133,13 @@ function usePlayerDatabase() {
     (jersey, name) => {
       const db = loadDB();
       const key = String(jersey);
-
       if (!db[key]) {
-        db[key] = {
-          jersey: key,
-          name: name || `Player ${key}`,
-          runs: 0,
-          balls: 0,
-          wickets: 0,
-          runsGiven: 0,
-          ballsBowled: 0,
-          fours: 0,
-          sixes: 0,
-          matches: 0,
-          innings: 0,
-          bowlingInnings: 0,
-          catches: 0,
-          runouts: 0,
-          stumpings: 0,
-          dotBalls: 0,
-          dotBallsBowled: 0,
-          ducks: 0,
-          ones: 0,
-          twos: 0,
-          threes: 0,
-          thirties: 0,
-          fifties: 0,
-          hundreds: 0,
-          wides: 0,
-          noBalls: 0,
-          bestBowlingWickets: 0,
-          bestBowlingRuns: 0,
-          bowlingMatchIds: [],
-          maidens: 0,
-          threeWickets: 0,
-          fiveWickets: 0,
-          tenWickets: 0,
-        };
+        db[key] = defaultPlayer(key, name);
         saveDB(db);
       } else if (name && db[key].name !== name) {
-        // ✅ Update name if it changed
         db[key].name = name;
         saveDB(db);
       }
-
       return db[key];
     },
     [loadDB, saveDB]
@@ -126,49 +152,32 @@ function usePlayerDatabase() {
       const currentMatchId = getCurrentMatchId();
 
       if (!db[key]) {
-        db[key] = {
-          jersey: key,
-          name: stats.name || `Player ${key}`,
-          runs: 0,
-          balls: 0,
-          wickets: 0,
-          runsGiven: 0,
-          ballsBowled: 0,
-          fours: 0,
-          sixes: 0,
-          matches: 0,
-          innings: 0,
-          bowlingInnings: 0,
-          catches: 0,
-          runouts: 0,
-          stumpings: 0,
-          dotBalls: 0,
-          dotBallsBowled: 0,
-          ducks: 0,
-          ones: 0,
-          twos: 0,
-          threes: 0,
-          thirties: 0,
-          fifties: 0,
-          hundreds: 0,
-          wides: 0,
-          noBalls: 0,
-          maidens: 0,
-          bestBowlingWickets: 0,
-          bestBowlingRuns: 0,
-          bowlingMatchIds: [],
-        };
+        db[key] = defaultPlayer(key, stats.name);
       }
 
       const player = db[key];
       if (stats.name) player.name = stats.name;
 
-      // ✅ Batting
+      if (!Array.isArray(player.matchIds)) player.matchIds = [];
+
+      // matches — deduplicated per matchId so batter+bowler doesn't double-count
+      if (stats.matches !== undefined && currentMatchId) {
+        if (!player.matchIds.includes(currentMatchId)) {
+          player.matches += stats.matches;
+          player.matchIds.push(currentMatchId);
+          if (player.matchIds.length > 200) {
+            player.matchIds = player.matchIds.slice(-200);
+          }
+        }
+      } else if (stats.matches !== undefined && !currentMatchId) {
+        player.matches += stats.matches;
+      }
+
+      // Batting
       if (stats.runs !== undefined) player.runs += stats.runs;
       if (stats.balls !== undefined) player.balls += stats.balls;
       if (stats.fours !== undefined) player.fours += stats.fours;
       if (stats.sixes !== undefined) player.sixes += stats.sixes;
-      if (stats.matches !== undefined) player.matches += stats.matches;
       if (stats.innings !== undefined) player.innings += stats.innings;
       if (stats.dotBalls !== undefined) player.dotBalls += stats.dotBalls;
       if (stats.ones !== undefined) player.ones += stats.ones;
@@ -178,30 +187,23 @@ function usePlayerDatabase() {
       if (stats.fifties !== undefined) player.fifties += stats.fifties;
       if (stats.hundreds !== undefined) player.hundreds += stats.hundreds;
       if (stats.ducks !== undefined) player.ducks += stats.ducks;
+      if (stats.dismissals !== undefined)
+        player.dismissals = (player.dismissals || 0) + stats.dismissals;
+      if (stats.notOuts !== undefined)
+        player.notOuts = (player.notOuts || 0) + stats.notOuts;
 
-      // ✅ Bowling
+      // Bowling
       if (stats.wickets !== undefined) {
-        // Inside updatePlayerStats, after saving to db:
-        // Track per-match bowling for best bowling calculation
-        const currentMatchId = getCurrentMatchId();
-        if (
-          currentMatchId &&
-          (stats.wickets !== undefined || stats.runsGiven !== undefined)
-        ) {
+        if (currentMatchId) {
           const matchKey = `match_bowling_${currentMatchId}_${key}`;
           const existing = localStorage.getItem(matchKey);
           const cur = existing ? JSON.parse(existing) : { w: 0, r: 0 };
           if (stats.wickets) cur.w += stats.wickets;
           if (stats.runsGiven) cur.r += stats.runsGiven;
           localStorage.setItem(matchKey, JSON.stringify(cur));
-
-          // Update best bowling live
           const bestW = player.bestBowlingWickets || 0;
           const bestR = bestW === 0 ? 9999 : player.bestBowlingRuns || 0;
-          if (
-            cur.w > 0 &&
-            (cur.w > bestW || (cur.w === bestW && cur.r < bestR))
-          ) {
+          if (cur.w > 0 && (cur.w > bestW || (cur.w === bestW && cur.r < bestR))) {
             player.bestBowlingWickets = cur.w;
             player.bestBowlingRuns = cur.r;
           }
@@ -209,27 +211,16 @@ function usePlayerDatabase() {
         player.wickets += stats.wickets;
       }
       if (stats.runsGiven !== undefined) {
-        // Inside updatePlayerStats, after saving to db:
-        // Track per-match bowling for best bowling calculation
-        const currentMatchId = getCurrentMatchId();
-        if (
-          currentMatchId &&
-          (stats.wickets !== undefined || stats.runsGiven !== undefined)
-        ) {
+        if (currentMatchId) {
           const matchKey = `match_bowling_${currentMatchId}_${key}`;
           const existing = localStorage.getItem(matchKey);
           const cur = existing ? JSON.parse(existing) : { w: 0, r: 0 };
           if (stats.wickets) cur.w += stats.wickets;
           if (stats.runsGiven) cur.r += stats.runsGiven;
           localStorage.setItem(matchKey, JSON.stringify(cur));
-
-          // Update best bowling live
           const bestW = player.bestBowlingWickets || 0;
           const bestR = bestW === 0 ? 9999 : player.bestBowlingRuns || 0;
-          if (
-            cur.w > 0 &&
-            (cur.w > bestW || (cur.w === bestW && cur.r < bestR))
-          ) {
+          if (cur.w > 0 && (cur.w > bestW || (cur.w === bestW && cur.r < bestR))) {
             player.bestBowlingWickets = cur.w;
             player.bestBowlingRuns = cur.r;
           }
@@ -244,10 +235,7 @@ function usePlayerDatabase() {
         player.maidens = (player.maidens || 0) + stats.maidens;
       if (stats.ballsBowled !== undefined) {
         player.ballsBowled += stats.ballsBowled;
-        if (
-          currentMatchId &&
-          !player.bowlingMatchIds.includes(currentMatchId)
-        ) {
+        if (currentMatchId && !player.bowlingMatchIds.includes(currentMatchId)) {
           player.bowlingInnings += 1;
           player.bowlingMatchIds.push(currentMatchId);
           if (player.bowlingMatchIds.length > 50) {
@@ -265,48 +253,15 @@ function usePlayerDatabase() {
     (jersey, wicketType, playerName) => {
       const db = loadDB();
       const key = String(jersey);
-
       if (!db[key]) {
-        db[key] = {
-          jersey: key,
-          name: playerName || `Player ${key}`,
-          runs: 0,
-          balls: 0,
-          wickets: 0,
-          runsGiven: 0,
-          ballsBowled: 0,
-          fours: 0,
-          sixes: 0,
-          matches: 0,
-          innings: 0,
-          bowlingInnings: 0,
-          catches: 0,
-          runouts: 0,
-          stumpings: 0,
-          dotBalls: 0,
-          dotBallsBowled: 0,
-          ducks: 0,
-          ones: 0,
-          twos: 0,
-          threes: 0,
-          thirties: 0,
-          fifties: 0,
-          hundreds: 0,
-          wides: 0,
-          noBalls: 0,
-          bestBowlingWickets: 0,
-          bestBowlingRuns: 0,
-          bowlingMatchIds: [],
-        };
+        db[key] = defaultPlayer(key, playerName);
       } else if (playerName && db[key].name !== playerName) {
         db[key].name = playerName;
       }
-
+      if (!Array.isArray(db[key].matchIds)) db[key].matchIds = [];
       if (wicketType === "caught") db[key].catches = (db[key].catches || 0) + 1;
       if (wicketType === "runout") db[key].runouts = (db[key].runouts || 0) + 1;
-      if (wicketType === "stumped")
-        db[key].stumpings = (db[key].stumpings || 0) + 1;
-
+      if (wicketType === "stumped") db[key].stumpings = (db[key].stumpings || 0) + 1;
       saveDB(db);
     },
     [loadDB, saveDB]
@@ -337,26 +292,21 @@ function usePlayerDatabase() {
     },
     [loadDB, saveDB]
   );
+
   const updateBestBowlingIfBetter = useCallback(
     (jersey) => {
       const db = loadDB();
       const key = String(jersey);
       const player = db[key];
       if (!player) return;
-
       const currentMatchId = getCurrentMatchId();
       if (!currentMatchId) return;
-
-      // Read current match wickets/runs from a per-match tracker
       const matchKey = `match_bowling_${currentMatchId}_${key}`;
       const matchData = localStorage.getItem(matchKey);
       const { w = 0, r = 0 } = matchData ? JSON.parse(matchData) : {};
-
       if (w === 0) return;
-
       const bestW = player.bestBowlingWickets || 0;
       const bestR = bestW === 0 ? 9999 : player.bestBowlingRuns || 0;
-
       if (w > bestW || (w === bestW && r < bestR)) {
         db[key].bestBowlingWickets = w;
         db[key].bestBowlingRuns = r;
@@ -365,33 +315,38 @@ function usePlayerDatabase() {
     },
     [loadDB, saveDB, getCurrentMatchId]
   );
+
   const updateMatchMilestones = useCallback(() => {
     const db = loadDB();
     const currentMatchId = getCurrentMatchId();
     if (!currentMatchId) return;
-  
     Object.keys(db).forEach((key) => {
       const matchKey = `match_bowling_${currentMatchId}_${key}`;
       const existing = localStorage.getItem(matchKey);
       if (!existing) return;
-  
       const { w = 0 } = JSON.parse(existing);
       if (w === 0) return;
-  
       const player = db[key];
       if (!player) return;
-  
-      if (w >= 10) {
-        player.tenWickets = (player.tenWickets || 0) + 1;
-      } else if (w >= 5) {
-        player.fiveWickets = (player.fiveWickets || 0) + 1;
-      } else if (w >= 3) {
-        player.threeWickets = (player.threeWickets || 0) + 1;
-      }
+      if (w >= 10) player.tenWickets = (player.tenWickets || 0) + 1;
+      else if (w >= 5) player.fiveWickets = (player.fiveWickets || 0) + 1;
+      else if (w >= 3) player.threeWickets = (player.threeWickets || 0) + 1;
     });
-  
     saveDB(db);
   }, [loadDB, saveDB, getCurrentMatchId]);
+
+  const setHighestScore = useCallback(
+    (jersey, runs) => {
+      const db = loadDB();
+      const key = String(jersey);
+      if (!db[key]) return;
+      if (runs > (db[key].highestScore || 0)) {
+        db[key].highestScore = runs;
+        saveDB(db);
+      }
+    },
+    [loadDB, saveDB]
+  );
 
   return {
     getPlayer,
@@ -400,11 +355,14 @@ function usePlayerDatabase() {
     updateFieldingStats,
     deletePlayer,
     getAllPlayers,
-    setCurrentMatchId, // ✅ Export this
-    getCurrentMatchId, // ✅ Export this
+    setCurrentMatchId,
+    getCurrentMatchId,
     setBestBowling,
     createOrGetPlayer,
     updateMatchMilestones,
+    setHighestScore,
+    updateBestBowlingIfBetter,
+    migratePlayer,
   };
 }
 
