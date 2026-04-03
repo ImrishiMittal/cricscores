@@ -218,3 +218,60 @@
   color: #22c55e;
   padding-left: 22px;
 }
+
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  text-align: left;
+  padding: 10px 8px;
+  color: #22c55e;
+  border-bottom: 1px solid #2a2a2a;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tr {
+  border-bottom: 1px solid #1a1a1a;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+.tr:hover {
+  background: #1a2a1a;
+}
+
+.td {
+  padding: 10px 8px;
+  color: #e5e7eb;
+  vertical-align: middle;
+}
+
+.tdNum {
+  padding: 10px 8px;
+  text-align: center;
+  color: #e5e7eb;
+  white-space: nowrap;
+}
+
+.win {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.jerseyBadge {
+  color: #22c55e;
+  font-weight: 700;
+  margin-right: 6px;
+  font-size: 12px;
+}

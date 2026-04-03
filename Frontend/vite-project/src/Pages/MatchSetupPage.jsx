@@ -1,9 +1,70 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./MatchSetupPage.module.css";
 import BrandTitle from "../Components/BrandTitle";
 import CaptainSearch from "../Components/Scoring/CaptainSearch";
+// ADD at top, after imports:
+function TeamAutocomplete({ placeholder, value, onChange }) {
+  const [suggestions, setSuggestions] = useState([]);
+  const [show, setShow] = useState(false);
+  const ref = useRef(null);
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setShow(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    onChange(val);
+    if (val.trim().length === 0) { setSuggestions([]); setShow(false); return; }
+    const raw = localStorage.getItem("cricket_team_stats");
+    const db = raw ? JSON.parse(raw) : {};
+    const matches = Object.keys(db)
+      .filter((name) => name.toLowerCase().startsWith(val.trim().toLowerCase()))
+      .slice(0, 5);
+    setSuggestions(matches);
+    setShow(matches.length > 0);
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative", width: "100%" }}>
+      <input
+        className={styles.input}
+        placeholder={placeholder}
+        value={value}
+        onChange={handleChange}
+        onFocus={() => { if (suggestions.length > 0) setShow(true); }}
+        autoComplete="off"
+      />
+      {show && suggestions.length > 0 && (
+        <div style={{
+          position: "absolute", top: "100%", left: 0, right: 0,
+          background: "#1a1a1a", border: "1px solid #22c55e",
+          borderRadius: "8px", zIndex: 100, overflow: "hidden",
+        }}>
+          {suggestions.map((name) => (
+            <div
+              key={name}
+              onMouseDown={() => { onChange(name); setShow(false); setSuggestions([]); }}
+              style={{
+                padding: "10px 14px", cursor: "pointer", color: "#e5e7eb",
+                fontSize: "14px", borderBottom: "1px solid #2a2a2a",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "#0f2a0f"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+            >
+              🏏 {name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 function MatchSetupPage() {
   const navigate = useNavigate();
 
@@ -103,15 +164,15 @@ function MatchSetupPage() {
         <h2 className={styles.sectionTitle}>Match Setup</h2>
 
         {/* TEAM INFO */}
-        <input
-          className={styles.input}
+        <TeamAutocomplete
           placeholder="Team A Name"
-          onChange={(e) => setTeamA(e.target.value)}
+          value={teamA}
+          onChange={setTeamA}
         />
-        <input
-          className={styles.input}
+        <TeamAutocomplete
           placeholder="Team B Name"
-          onChange={(e) => setTeamB(e.target.value)}
+          value={teamB}
+          onChange={setTeamB}
         />
         <input
           className={styles.input}
