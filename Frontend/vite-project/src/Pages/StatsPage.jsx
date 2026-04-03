@@ -11,6 +11,8 @@ function StatsPage() {
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const searchRef = useRef(null);
   const navigate = useNavigate();
+  const [teams, setTeams] = useState([]);
+  const [captains, setCaptains] = useState([]);
 
   useEffect(() => {
     const raw = localStorage.getItem("cricket_player_database");
@@ -19,6 +21,18 @@ function StatsPage() {
       a.name.localeCompare(b.name)
     );
     setPlayers(sorted);
+
+    const teamRaw = localStorage.getItem("cricket_team_stats");
+    const teamData = teamRaw ? JSON.parse(teamRaw) : {};
+    const teamsSorted = Object.entries(teamData)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort((a, b) => b.matches - a.matches);
+    setTeams(teamsSorted);
+
+    const captainsSorted = sorted
+      .filter((p) => (p.captainMatches || 0) > 0)
+      .sort((a, b) => b.captainMatches - a.captainMatches);
+    setCaptains(captainsSorted);
   }, []);
 
   // ─── Search & Suggestion Logic ───────────────────────────────────
@@ -231,8 +245,96 @@ function StatsPage() {
         </>
       )}
 
-      {tab === "teams" && <div>Team stats coming soon</div>}
-      {tab === "captains" && <div>Captain stats coming soon</div>}
+{tab === "captains" && (
+        <div className={styles.tableWrapper}>
+          {captains.length === 0 ? (
+            <p style={{ padding: "20px", color: "#888" }}>
+              No captaincy records yet. Set a captain in Match Setup first.
+            </p>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.th}>Captain</th>
+                  <th className={styles.th}>M</th>
+                  <th className={styles.th}>W</th>
+                  <th className={styles.th}>L</th>
+                  <th className={styles.th}>T</th>
+                  <th className={styles.th}>NR</th>
+                  <th className={styles.th}>Win%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {captains.map((p) => {
+                  const winPct = p.captainMatches > 0
+                    ? ((p.captainWins / p.captainMatches) * 100).toFixed(1)
+                    : "0.0";
+                  return (
+                    <tr
+                      key={p.jersey}
+                      className={styles.tr}
+                      onClick={() => navigate(`/player/${p.jersey}`)}
+                    >
+                      <td className={styles.td}>
+                        <span className={styles.jerseyBadge}>#{p.jersey}</span>
+                        {p.name}
+                      </td>
+                      <td className={styles.tdNum}>{p.captainMatches}</td>
+                      <td className={`${styles.tdNum} ${styles.win}`}>{p.captainWins}</td>
+                      <td className={styles.tdNum}>{p.captainLosses}</td>
+                      <td className={styles.tdNum}>{p.captainTies || 0}</td>
+                      <td className={styles.tdNum}>{p.captainNR || 0}</td>
+                      <td className={`${styles.tdNum} ${styles.highlight}`}>{winPct}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {tab === "teams" && (
+        <div className={styles.tableWrapper}>
+          {teams.length === 0 ? (
+            <p style={{ padding: "20px", color: "#888" }}>
+              No team records yet. Complete a match first.
+            </p>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.th}>Team</th>
+                  <th className={styles.th}>M</th>
+                  <th className={styles.th}>W</th>
+                  <th className={styles.th}>L</th>
+                  <th className={styles.th}>T</th>
+                  <th className={styles.th}>NR</th>
+                  <th className={styles.th}>Win%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teams.map((team) => {
+                  const winPct = team.matches > 0
+                    ? ((team.wins / team.matches) * 100).toFixed(1)
+                    : "0.0";
+                  return (
+                    <tr key={team.name} className={styles.tr}>
+                      <td className={styles.td}>{team.name}</td>
+                      <td className={styles.tdNum}>{team.matches}</td>
+                      <td className={`${styles.tdNum} ${styles.win}`}>{team.wins}</td>
+                      <td className={styles.tdNum}>{team.losses}</td>
+                      <td className={styles.tdNum}>{team.ties || 0}</td>
+                      <td className={styles.tdNum}>{team.nr || 0}</td>
+                      <td className={`${styles.tdNum} ${styles.highlight}`}>{winPct}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 }
