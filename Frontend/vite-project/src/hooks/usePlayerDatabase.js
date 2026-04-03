@@ -40,6 +40,11 @@ const defaultPlayer = (key, name) => ({
   dismissals: 0,
   notOuts: 0,
   matchIds: [],
+  captainMatches: 0,
+  captainWins: 0,
+  captainLosses: 0,
+  captainTies: 0,
+  captainNR: 0,
 });
 
 function usePlayerDatabase() {
@@ -191,6 +196,16 @@ function usePlayerDatabase() {
         player.dismissals = (player.dismissals || 0) + stats.dismissals;
       if (stats.notOuts !== undefined)
         player.notOuts = (player.notOuts || 0) + stats.notOuts;
+        if (stats.captainMatches !== undefined)
+        player.captainMatches = (player.captainMatches || 0) + stats.captainMatches;
+      if (stats.captainWins !== undefined)
+        player.captainWins = (player.captainWins || 0) + stats.captainWins;
+      if (stats.captainLosses !== undefined)
+        player.captainLosses = (player.captainLosses || 0) + stats.captainLosses;
+      if (stats.captainTies !== undefined)
+        player.captainTies = (player.captainTies || 0) + stats.captainTies;
+      if (stats.captainNR !== undefined)
+        player.captainNR = (player.captainNR || 0) + stats.captainNR;
 
       // Bowling
       if (stats.wickets !== undefined) {
@@ -347,6 +362,24 @@ function usePlayerDatabase() {
     },
     [loadDB, saveDB]
   );
+  const updateTeamStats = useCallback(
+    (teamName, stats) => {
+      if (!teamName) return;
+      const raw = localStorage.getItem("cricket_team_stats");
+      const db = raw ? JSON.parse(raw) : {};
+      const key = teamName.trim();
+      if (!db[key]) {
+        db[key] = { matches: 0, wins: 0, losses: 0, ties: 0, nr: 0 };
+      }
+      if (stats.matches !== undefined) db[key].matches += stats.matches;
+      if (stats.wins    !== undefined) db[key].wins    += stats.wins;
+      if (stats.losses  !== undefined) db[key].losses  += stats.losses;
+      if (stats.ties    !== undefined) db[key].ties    += stats.ties;
+      if (stats.nr      !== undefined) db[key].nr      += stats.nr;
+      localStorage.setItem("cricket_team_stats", JSON.stringify(db));
+    },
+    []
+  );
 
   return {
     getPlayer,
@@ -363,6 +396,7 @@ function usePlayerDatabase() {
     setHighestScore,
     updateBestBowlingIfBetter,
     migratePlayer,
+    updateTeamStats,
   };
 }
 

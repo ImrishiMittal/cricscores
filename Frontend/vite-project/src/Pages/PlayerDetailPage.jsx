@@ -3,11 +3,15 @@ import { useEffect, useState } from "react";
 import usePlayerDatabase from "../hooks/usePlayerDatabase";
 import styles from "./PlayerDetailPage.module.css";
 
-const TABS = ["Batting", "Bowling", "Fielding"];
+const TABS = ["Batting", "Bowling", "Fielding", "Captaincy"];
 
 function StatRow({ label, value, highlight, note }) {
   return (
-    <p className={highlight ? `${styles.statRow} ${styles.highlight}` : styles.statRow}>
+    <p
+      className={
+        highlight ? `${styles.statRow} ${styles.highlight}` : styles.statRow
+      }
+    >
       <span className={styles.statLabel}>{label}</span>
       <span className={styles.statValue}>
         {value}
@@ -29,15 +33,14 @@ function PlayerDetailPage() {
   const player = getPlayer(jersey);
 
   if (!player) {
-    return (
-      <div className={styles.empty}>No Player Found</div>
-    );
+    return <div className={styles.empty}>No Player Found</div>;
   }
 
   const totalRuns = player.runs || 0;
   const balls = player.balls || 0;
   const innings = player.innings || 0;
-  const strikeRate = balls > 0 ? ((totalRuns / balls) * 100).toFixed(2) : "0.00";
+  const strikeRate =
+    balls > 0 ? ((totalRuns / balls) * 100).toFixed(2) : "0.00";
   const dismissals = player.dismissals || 0;
 
   const derivedNotOuts = Math.max(0, innings - dismissals);
@@ -51,7 +54,8 @@ function PlayerDetailPage() {
       : "0.00";
 
   const highestScore = player.highestScore || 0;
-  const highestScoreDisplay = highestScore > 0 ? highestScore : totalRuns > 0 ? "—" : 0;
+  const highestScoreDisplay =
+    highestScore > 0 ? highestScore : totalRuns > 0 ? "—" : 0;
   const highestScoreIsStale = highestScore === 0 && totalRuns > 0;
 
   const overs = player.ballsBowled
@@ -83,7 +87,9 @@ function PlayerDetailPage() {
         {TABS.map((tab, i) => (
           <button
             key={tab}
-            className={i === activeTab ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+            className={
+              i === activeTab ? `${styles.tab} ${styles.tabActive}` : styles.tab
+            }
             onClick={() => setActiveTab(i)}
           >
             {tab}
@@ -98,7 +104,12 @@ function PlayerDetailPage() {
           <StatRow label="Matches" value={player.matches || 0} />
           <StatRow label="Innings" value={innings} />
           <StatRow label="Not Outs" value={notOuts} />
-          <StatRow label="Highest Score" value={highestScoreDisplay} highlight note={highestScoreIsStale ? "(older matches)" : null} />
+          <StatRow
+            label="Highest Score"
+            value={highestScoreDisplay}
+            highlight
+            note={highestScoreIsStale ? "(older matches)" : null}
+          />
           <StatRow label="Runs" value={totalRuns} highlight />
           <StatRow label="Balls" value={balls} />
           <StatRow label="Strike Rate" value={strikeRate} highlight />
@@ -125,8 +136,18 @@ function PlayerDetailPage() {
           <StatRow label="Economy" value={economy} highlight />
           <StatRow label="Average" value={bowlingAvg} highlight />
           <StatRow label="Overs" value={overs} highlight />
-          <StatRow label="Best Bowling" value={(player.bestBowlingWickets || 0) === 0 ? "—" : `${player.bestBowlingWickets}/${player.bestBowlingRuns}`} />
-          <StatRow label="Dot Balls Bowled" value={player.dotBallsBowled || 0} />
+          <StatRow
+            label="Best Bowling"
+            value={
+              (player.bestBowlingWickets || 0) === 0
+                ? "—"
+                : `${player.bestBowlingWickets}/${player.bestBowlingRuns}`
+            }
+          />
+          <StatRow
+            label="Dot Balls Bowled"
+            value={player.dotBallsBowled || 0}
+          />
           <StatRow label="Wides" value={player.wides || 0} />
           <StatRow label="No Balls" value={player.noBalls || 0} />
           <StatRow label="Maiden Overs" value={player.maidens || 0} />
@@ -145,6 +166,31 @@ function PlayerDetailPage() {
           <StatRow label="Stumpings" value={player.stumpings || 0} highlight />
         </div>
       )}
+
+{activeTab === 3 && (
+  <div className={styles.card}>
+    <h2 className={styles.sectionTitle}>🧢 Captaincy</h2>
+    {(player.captainMatches || 0) === 0 ? (
+      <p className={styles.statRow}>No captaincy record yet.</p>
+    ) : (
+      <>
+        <StatRow label="Matches as Captain" value={player.captainMatches || 0} />
+
+        {/* ADD WIN % RIGHT HERE ↓ */}
+        <StatRow
+          label="Win %"
+          value={`${(((player.captainWins || 0) / player.captainMatches) * 100).toFixed(1)}%`}
+          highlight
+        />
+
+        <StatRow label="Wins"      value={player.captainWins    || 0} highlight />
+        <StatRow label="Losses"    value={player.captainLosses  || 0} />
+        <StatRow label="Ties"      value={player.captainTies    || 0} />
+        <StatRow label="No Result" value={player.captainNR      || 0} />
+      </>
+    )}
+  </div>
+)}
     </div>
   );
 }
