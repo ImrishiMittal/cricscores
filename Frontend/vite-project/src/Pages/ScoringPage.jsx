@@ -199,7 +199,56 @@ function ScoringPage() {
   useEffect(() => {
     if (!engine.matchOver || !playerDBHook) return;
 
+    // FIND:
     playerDBHook.updateMatchMilestones();
+
+// ADD AFTER (paste this entire block):
+
+    // ─── CAPTAIN + TEAM RESULT STATS ──────────────────────────────────────────
+    const captainA = matchData.teamACaptain; // { jersey, name } or null
+    const captainB = matchData.teamBCaptain;
+    const teamAName = matchData.teamA || "Team 1";
+    const teamBName = matchData.teamB || "Team 2";
+    const isNR = engine.winner === "NO RESULT";
+
+    // Ensure captain players exist in DB before updating
+    if (captainA?.jersey) playerDBHook.createOrGetPlayer(captainA.jersey, captainA.name);
+    if (captainB?.jersey) playerDBHook.createOrGetPlayer(captainB.jersey, captainB.name);
+
+    if (isNR) {
+      if (captainA?.jersey) playerDBHook.updatePlayerStats(captainA.jersey, { captainMatches: 1, captainNR: 1 });
+      if (captainB?.jersey) playerDBHook.updatePlayerStats(captainB.jersey, { captainMatches: 1, captainNR: 1 });
+      playerDBHook.updateTeamStats(teamAName, { matches: 1, nr: 1 });
+      playerDBHook.updateTeamStats(teamBName, { matches: 1, nr: 1 });
+    } else {
+      // Determine which team won by comparing winner string to team names
+      const teamAWon = engine.winner === teamAName;
+      const teamBWon = engine.winner === teamBName;
+      const isTie = !teamAWon && !teamBWon; // winner set but matches neither (e.g. tie/super over edge)
+
+      if (captainA?.jersey) {
+        playerDBHook.updatePlayerStats(captainA.jersey, {
+          captainMatches: 1,
+          ...(teamAWon ? { captainWins: 1 } : teamBWon ? { captainLosses: 1 } : { captainTies: 1 }),
+        });
+      }
+      if (captainB?.jersey) {
+        playerDBHook.updatePlayerStats(captainB.jersey, {
+          captainMatches: 1,
+          ...(teamBWon ? { captainWins: 1 } : teamAWon ? { captainLosses: 1 } : { captainTies: 1 }),
+        });
+      }
+
+      playerDBHook.updateTeamStats(teamAName, {
+        matches: 1,
+        ...(teamAWon ? { wins: 1 } : teamBWon ? { losses: 1 } : { ties: 1 }),
+      });
+      playerDBHook.updateTeamStats(teamBName, {
+        matches: 1,
+        ...(teamBWon ? { wins: 1 } : teamAWon ? { losses: 1 } : { ties: 1 }),
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // ─── Collect all unique playerIds that participated ───────────────────────
     // We deduplicate here so a player who batted AND bowled only gets 1 match.
