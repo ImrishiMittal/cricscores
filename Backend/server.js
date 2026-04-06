@@ -8,6 +8,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ADD THIS LINE ↓
+const playerRoutes = require("./routes/players");
+
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
@@ -18,6 +21,9 @@ mongoose
 app.get("/", (req, res) => {
   res.json({ message: "API working ✅" });
 });
+
+// ADD THIS LINE ↓
+app.use("/api/players", playerRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
