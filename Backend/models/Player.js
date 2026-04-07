@@ -1,6 +1,11 @@
 const mongoose = require("mongoose");
 
 const playerSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,        // every player must belong to a user
+  },
   name: {
     type: String,
     required: true,
@@ -8,12 +13,12 @@ const playerSchema = new mongoose.Schema({
   },
   country: {
     type: String,
-    required: true,
+    default: "",
   },
   role: {
     type: String,
-    enum: ["Batsman", "Bowler", "All-Rounder", "Wicket-Keeper"],
-    required: true,
+    enum: ["Batsman", "Bowler", "All-Rounder", "Wicket-Keeper", ""],
+    default: "",
   },
   battingAverage: {
     type: Number,
