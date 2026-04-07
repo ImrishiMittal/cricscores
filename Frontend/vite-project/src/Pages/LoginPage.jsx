@@ -1,14 +1,32 @@
+import { useState } from "react";
 import styles from "./Auth.module.css";
 import { useNavigate } from "react-router-dom";
+import { loginUser } from "../api/authApi";
+import { useAuth } from "../context/AuthContext";
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const handleLogin = (e) => {
+  const [email, setEmail]       = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError]       = useState("");
+  const [loading, setLoading]   = useState(false);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // later: backend auth
-    console.log("Login submitted");
-    navigate("/home");
+    setError("");
+
+    setLoading(true);
+    try {
+      const data = await loginUser(email.trim(), password);
+      login(data);
+      navigate("/home");
+    } catch (err) {
+      setError(err.response?.data?.error || "Invalid email or password.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -21,17 +39,23 @@ function LoginPage() {
             className={styles.input}
             placeholder="Email"
             type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
           <input
             className={styles.input}
             placeholder="Password"
             type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
 
-          <button type="submit" className={styles.submitBtn}>
-            Log In
+          {error && <p style={{ color: "#ff6b6b", fontSize: "0.85rem", margin: "0" }}>{error}</p>}
+
+          <button type="submit" className={styles.submitBtn} disabled={loading}>
+            {loading ? "Logging in..." : "Log In"}
           </button>
         </form>
 
@@ -53,4 +77,3 @@ function LoginPage() {
 }
 
 export default LoginPage;
-
