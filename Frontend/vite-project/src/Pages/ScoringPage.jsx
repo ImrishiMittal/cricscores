@@ -21,6 +21,8 @@ import useInningsData from "../hooks/useInningsData";
 import useHistorySnapshot from "../hooks/useHistorySnapshot";
 import useHatTrick from "../hooks/useHatTrick";
 import usePlayerDatabase from "../hooks/usePlayerDatabase";
+import * as matchApi from "../api/matchApi";
+
 
 function ScoringPage() {
   const location = useLocation();
@@ -201,6 +203,35 @@ function ScoringPage() {
 
     // FIND:
     playerDBHook.updateMatchMilestones();
+
+// ─── SAVE MATCH TO MONGODB ────────────────────────────────────────────────
+const currentMatchId = playerDBHook.getCurrentMatchId();
+const innings1 = inningsDataHook.innings1Data;
+const innings2 = inningsDataHook.innings2Data || captureCurrentData();
+
+matchApi.saveMatch({
+  matchId: currentMatchId || `match_${Date.now()}`,
+  totalOvers: updatedMatchData.overs,
+  team1Name: firstBattingTeam,
+  team2Name: secondBattingTeam,
+  team1Score: engine.innings1Score?.runs ?? 0,
+  team1Wickets: engine.innings1Score?.wickets ?? 0,
+  team1Balls: engine.innings1Score?.balls ?? 0,
+  team2Score: engine.score,
+  team2Wickets: engine.wickets,
+  team2Balls: (engine.overs * 6) + engine.balls,
+  winner: engine.winner || "",
+  resultText: engine.winner ? `${engine.winner} won` : "No Result",
+  team1Captain: matchData.teamACaptain?.name || "",
+  team2Captain: matchData.teamBCaptain?.name || "",
+  team1Batting: innings1?.battingStats || [],
+  team2Batting: innings2?.battingStats || [],
+  team1Bowling: innings1?.bowlingStats || [],
+  team2Bowling: innings2?.bowlingStats || [],
+}).catch(err => console.error("❌ saveMatch failed:", err));
+// ─────────────────────────────────────────────────────────────────────────
+
+
 
 // ADD AFTER (paste this entire block):
 
