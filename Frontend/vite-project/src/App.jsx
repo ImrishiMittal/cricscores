@@ -7,6 +7,7 @@ import ScoringPage from "./Pages/ScoringPage"
 import StatsPage from "./Pages/StatsPage"
 import HomePage from "./Pages/HomePage";
 import PlayerDetailPage from "./Pages/PlayerDetailPage";
+import MatchHistoryPage from "./Pages/MatchHistoryPage";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
       <Route path="/stats" element={<StatsPage />} />
       <Route path="/home" element={<HomePage />} />
       <Route path="/player/:jersey" element={<PlayerDetailPage />} />
+      <Route path="/history" element={<MatchHistoryPage />} />
     </Routes>
   )
 }
