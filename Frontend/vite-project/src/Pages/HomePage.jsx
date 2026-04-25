@@ -6,30 +6,50 @@ function HomePage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.leftSection}>
-        <h1 className={styles.title}>
-          Cric<span>Scores</span>
-        </h1>
 
-        <p className={styles.tagline}>Choose what you want to do</p>
-
-        <div className={styles.authLinks}>
-          <button onClick={() => navigate("/setup")} className={styles.login}>
-            🏏 Start Match
-          </button>
-
-          <button onClick={() => navigate("/stats")} className={styles.signup}>
-            📊 View Records
-          </button>
-          <button
-            onClick={() => navigate("/history")}
-            className={styles.signup}
-            style={{ marginTop: 8 }}
-          >
-            📋 Match History
-          </button>
-        </div>
+      {/* Live pill */}
+      <div className={styles.livePill}>
+        <span className={styles.liveDot} />
+        Live Scorer
       </div>
+
+      {/* Title */}
+      <h1 className={styles.title}>
+        Cric<span>Scores</span>
+      </h1>
+      <span className={styles.titleAccent} />
+
+      {/* Tagline */}
+      <p className={styles.tagline}>Choose what you want to do</p>
+
+      {/* Action buttons */}
+      <div className={styles.authLinks}>
+        <button
+          onClick={() => navigate("/setup")}
+          className={styles.btnPrimary}
+        >
+          <span className={styles.btnEmoji}>🏏</span>
+          START MATCH
+        </button>
+
+        <button
+          onClick={() => navigate("/stats")}
+          className={styles.btnSecondary}
+        >
+          <span className={styles.btnEmoji}>📊</span>
+          VIEW RECORDS
+        </button>
+
+        <button
+          onClick={() => navigate("/history")}
+          className={styles.btnSecondary}
+        >
+          <span className={styles.btnEmoji}>📋</span>
+          MATCH HISTORY
+        </button>
+      </div>
+
+      <p className={styles.footerHint}>CricScores · v1.0</p>
     </div>
   );
 }

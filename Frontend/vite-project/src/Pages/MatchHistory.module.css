@@ -1,0 +1,406 @@
+/* ═══════════════════════════════════════════════════════════════
+   MatchHistory.module.css
+   Inherits: Bebas Neue / Barlow / IBM Plex Mono from LandingPage
+   Strategy: ALL tables use fixed-column layout with abbreviated
+   headers so nothing ever gets cut on a 360-400px screen.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Page wrapper ───────────────────────────────────────────── */
+.page {
+    min-height: 100vh;
+    background: #03060a;
+    color: #f8fafc;
+    font-family: 'Barlow', 'Segoe UI', sans-serif;
+    padding: 0 0 60px;
+    position: relative;
+    overflow-x: hidden;
+  }
+  
+  .page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 70% 40% at 50% 0%, rgba(34,197,94,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 25% at 85% 85%, rgba(34,197,94,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .page::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.013) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.013) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .inner {
+    position: relative;
+    z-index: 1;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+  
+  /* ── Top header bar ─────────────────────────────────────────── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 16px 0;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .backBtn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #94a3b8;
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .backBtn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  
+  .pageTitle {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(32px, 9vw, 48px);
+    letter-spacing: 2px;
+    line-height: 1;
+    margin: 0;
+    color: #f8fafc;
+  }
+  .pageTitle span { color: #22c55e; text-shadow: 0 0 30px rgba(34,197,94,0.45); }
+  
+  /* ── State messages ─────────────────────────────────────────── */
+  .stateMsg {
+    padding: 40px 16px;
+    color: #94a3b8;
+    font-size: 15px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+  .stateMsg.error { color: #f87171; }
+  
+  /* ════════════════════════════════════════════════════════════════
+     MATCH CARD LIST
+     ════════════════════════════════════════════════════════════════ */
+  .cardList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px 16px 0;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .matchCard {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s, transform 0.18s;
+  }
+  .matchCard:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(34,197,94,0.2);
+    transform: translateY(-1px);
+  }
+  .matchCard:active { transform: translateY(0); }
+  
+  .teamRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+  .teamName {
+    color: #f8fafc;
+    font-weight: 600;
+    font-size: 14px;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .teamScore {
+    color: #22c55e;
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .teamOvers {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  
+  .cardDivider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    margin: 10px 0;
+  }
+  
+  .cardFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .resultText { color: #fbbf24; font-weight: 600; font-size: 12px; }
+  .dateText   { color: #475569; font-size: 11px; }
+  
+  /* ════════════════════════════════════════════════════════════════
+     MATCH DETAIL VIEW
+     ════════════════════════════════════════════════════════════════ */
+  .detail {
+    padding: 20px 16px 0;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .detailBackBtn {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0;
+    margin-bottom: 14px;
+    transition: color 0.15s;
+  }
+  .detailBackBtn:hover { color: #94a3b8; }
+  
+  .matchTitle {
+    color: #f8fafc;
+    font-size: clamp(16px, 5vw, 20px);
+    font-weight: 700;
+    margin: 0 0 3px;
+  }
+  .matchDate { color: #64748b; font-size: 12px; margin: 0 0 14px; }
+  
+  /* Score summary cards */
+  .scoreCards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .scoreCard {
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  .scoreCardTeam {
+    color: #64748b;
+    font-size: 11px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .scoreCardRuns {
+    color: #f8fafc;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .scoreCardRuns span { color: #64748b; font-size: 14px; font-weight: 400; }
+  .scoreCardOvers { color: #475569; font-size: 11px; margin-top: 3px; }
+  
+  /* Result banner */
+  .resultBanner {
+    background: rgba(34,197,94,0.08);
+    border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 10px;
+    padding: 11px 16px;
+    margin-bottom: 18px;
+    color: #4ade80;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  
+  /* ── Tab switcher ───────────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+  .tabBtn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tabBtn:hover { color: #94a3b8; }
+  .tabBtnActive {
+    background: rgba(34,197,94,0.14);
+    border-color: #22c55e;
+    color: #22c55e;
+  }
+  
+  /* ── Innings switcher ───────────────────────────────────────── */
+  .inningsTabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .innBtn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .innBtnActive {
+    background: rgba(255,215,0,0.12);
+    border-color: #fbbf24;
+    color: #fbbf24;
+  }
+  
+  /* ── Section header ─────────────────────────────────────────── */
+  .sectionHeader {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #fbbf24;
+    margin: 0 0 8px;
+  }
+  
+  /* ════════════════════════════════════════════════════════════════
+     SCORECARD TABLES — MOBILE-FIRST, NO OVERFLOW CUT
+     Key: fixed-layout + % columns + abbreviated cols on mobile
+     ════════════════════════════════════════════════════════════════ */
+  .tableWrap {
+    width: 100%;
+    margin-bottom: 22px;
+    /* Horizontal scroll ONLY if truly needed — last resort */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    /* Fixed layout so we control every column width */
+    table-layout: fixed;
+  }
+  
+  /* ── Column widths — batting ────────────────────────────────── */
+  .table.batting colgroup col:nth-child(1) { width: 30%; } /* Batter */
+  .table.batting colgroup col:nth-child(2) { width: 22%; } /* Dismissal */
+  .table.batting colgroup col:nth-child(3) { width: 9%;  } /* R */
+  .table.batting colgroup col:nth-child(4) { width: 9%;  } /* B */
+  .table.batting colgroup col:nth-child(5) { width: 8%;  } /* 4s */
+  .table.batting colgroup col:nth-child(6) { width: 8%;  } /* 6s */
+  .table.batting colgroup col:nth-child(7) { width: 14%; } /* SR */
+  
+  /* ── Column widths — bowling ────────────────────────────────── */
+  .table.bowling colgroup col:nth-child(1) { width: 30%; } /* Bowler */
+  .table.bowling colgroup col:nth-child(2) { width: 11%; } /* O */
+  .table.bowling colgroup col:nth-child(3) { width: 10%; } /* R */
+  .table.bowling colgroup col:nth-child(4) { width: 10%; } /* W */
+  .table.bowling colgroup col:nth-child(5) { width: 10%; } /* Wd */
+  .table.bowling colgroup col:nth-child(6) { width: 10%; } /* NB */
+  .table.bowling colgroup col:nth-child(7) { width: 19%; } /* Econ */
+  
+  .table th {
+    padding: 9px 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    color: #475569;
+    text-align: right;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .table th:first-child { text-align: left; padding-left: 12px; }
+  
+  .table td {
+    padding: 9px 8px;
+    text-align: right;
+    color: #94a3b8;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .table td:first-child {
+    text-align: left;
+    padding-left: 12px;
+    color: #f8fafc;
+    font-weight: 600;
+  }
+  
+  /* Special colours */
+  .tdRuns  { color: #f8fafc !important; font-weight: 700 !important; }
+  .tdWkts  { color: #22c55e !important; font-weight: 700 !important; }
+  .tdOut   { color: #64748b; font-size: 11px !important; }
+  .tdNotOut { color: #22c55e; font-size: 11px !important; }
+  
+  /* ── Match Info tab ─────────────────────────────────────────── */
+  .infoTable {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .infoRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    gap: 12px;
+  }
+  .infoRow:last-child { border-bottom: none; }
+  .infoLabel { color: #64748b; font-size: 12px; flex-shrink: 0; }
+  .infoValue { color: #f8fafc; font-size: 12px; font-weight: 600; text-align: right; min-width: 0; word-break: break-word; }
+  
+  /* ── Empty state ────────────────────────────────────────────── */
+  .empty { color: #334155; font-size: 12px; padding: 10px 0 18px; }
