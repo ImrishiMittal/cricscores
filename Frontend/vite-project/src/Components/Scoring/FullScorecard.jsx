@@ -216,73 +216,29 @@ function FullScorecard({
               </div>
             </div>
 
-            {bowlers.map(
-              (bowler, idx) => {
-                const totalO =
-                  bowler.overs +
-                  bowler.balls / 6;
+            {bowlers.map((bowler, idx) => {
+  const ballsBowled = bowler.ballsBowled || bowler.balls || 0;
+  const runsGiven = bowler.runsGiven || bowler.runs || 0;
+  const fullOvers = Math.floor(ballsBowled / 6);
+  const remBalls = ballsBowled % 6;
+  const oversToShow = bowler.oversDisplay ||
+    (remBalls > 0 ? `${fullOvers}.${remBalls}` : `${fullOvers}.0`);
+  const eco = ballsBowled > 0
+    ? ((runsGiven / ballsBowled) * 6).toFixed(2)
+    : "0.00";
 
-                const eco =
-                  totalO > 0
-                    ? (
-                        bowler.runs /
-                        totalO
-                      ).toFixed(2)
-                    : "0.00";
-
-                return (
-                  <div
-                    key={idx}
-                    className={
-                      styles.tableRow
-                    }
-                  >
-                    <div
-                      className={
-                        styles.playerCol
-                      }
-                    >
-                      {
-                        bowler.displayName
-                      }
-                    </div>
-
-                    <div
-                      className={
-                        styles.statCol
-                      }
-                    >
-                      {bowler.overs}.
-                      {bowler.balls}
-                    </div>
-
-                    <div
-                      className={
-                        styles.statCol
-                      }
-                    >
-                      {bowler.runs}
-                    </div>
-
-                    <div
-                      className={
-                        styles.statCol
-                      }
-                    >
-                      {bowler.wickets}
-                    </div>
-
-                    <div
-                      className={
-                        styles.statCol
-                      }
-                    >
-                      {eco}
-                    </div>
-                  </div>
-                );
-              }
-            )}
+  return (
+    <div key={idx} className={styles.tableRow}>
+      <div className={styles.playerCol}>
+        {bowler.displayName || bowler.playerName || bowler.name}
+      </div>
+      <div className={styles.statCol}>{oversToShow}</div>
+      <div className={styles.statCol}>{runsGiven}</div>
+      <div className={styles.statCol}>{bowler.wickets}</div>
+      <div className={styles.statCol}>{eco}</div>
+    </div>
+  );
+})}
           </div>
         </div>
       </div>

@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import * as playerApi from "../api/playerApi";
 import * as matchApi  from "../api/matchApi";
+import * as teamApi from "../api/teamApi";
 
 // ── In-memory cache so callers can read synchronously after first load ────────
 let _cache = {};          // { [jersey]: playerObject }
@@ -284,8 +285,17 @@ function usePlayerDatabase() {
 
   // ── updateTeamStats ───────────────────────────────────────────────────────
   // Team stats are still in localStorage (no Team model yet — Day 10 adds this)
-  const updateTeamStats = useCallback((teamName, stats) => {
-    if (!teamName) return;
+  // ── updateTeamStats — now writes to MongoDB via teamApi ──────────────────
+const updateTeamStats = useCallback(async (teamName, stats) => {
+  if (!teamName) return;
+  try {
+    // ensure the team document exists, get its _id back
+    const team = await teamApi.ensureTeam(teamName.trim());
+    // increment the stats
+    await teamApi.updateTeamStats(team._id, stats);
+  } catch (err) {
+    console.error("updateTeamStats failed, falling back to localStorage", err);
+    // graceful fallback so the match isn't broken if the network is down
     const raw = localStorage.getItem("cricket_team_stats");
     const db  = raw ? JSON.parse(raw) : {};
     const key = teamName.trim();
@@ -296,8 +306,8 @@ function usePlayerDatabase() {
     if (stats.ties    !== undefined) db[key].ties    += stats.ties;
     if (stats.nr      !== undefined) db[key].nr      += stats.nr;
     localStorage.setItem("cricket_team_stats", JSON.stringify(db));
-  }, []);
-
+  }
+}, []);
   return {
     // Core reads
     getPlayer,
