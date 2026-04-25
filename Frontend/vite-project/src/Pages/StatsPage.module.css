@@ -1,277 +1,428 @@
-.container {
-  padding: 24px 16px 40px 16px;
-  background: #0a0a0a;
-  min-height: 100vh;
-}
+/* ═══════════════════════════════════════════════════
+   StatsPage.module.css  — Cricket Records UI
+   Aesthetic: Dark stadium glass + neon cricket vibes
+   ═══════════════════════════════════════════════════ */
 
-/* ─── TITLE ──────────────────────────────────────────────── */
-.title {
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  color: #22c55e;
-  margin-bottom: 22px;
-  opacity: 0.8;
-}
+   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
 
-/* ─── TABS ───────────────────────────────────────────────── */
-.tabs {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 22px;
-  background: #111;
-  border: 1px solid rgba(34, 197, 94, 0.15);
-  border-radius: 10px;
-  padding: 5px;
-}
-
-.tabBtn {
-  flex: 1;
-  padding: 9px 12px;
-  border-radius: 7px;
-  border: none;
-  background: transparent;
-  color: #555;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.tabBtn:hover {
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.06);
-}
-
-.activeTab {
-  background: #22c55e !important;
-  color: #000 !important;
-  font-weight: 900;
-}
-
-/* ─── SEARCH ─────────────────────────────────────────────── */
-.searchWrapper {
-  position: relative;
-  margin-bottom: 14px;
-  z-index: 100;
-}
-
-.searchBox {
-  display: flex;
-  align-items: center;
-  background: #111;
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  border-radius: 10px;
-  padding: 0 14px;
-  gap: 10px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.searchBox:focus-within {
-  border-color: #22c55e;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.08);
-}
-
-.searchIcon {
-  font-size: 14px;
-  flex-shrink: 0;
-  opacity: 0.4;
-}
-
-.searchInput {
-  flex: 1;
-  border: none;
-  outline: none;
-  padding: 13px 0;
-  font-size: 14px;
-  background: transparent;
-  color: #e5e5e5;
-}
-
-.searchInput::placeholder {
-  color: #333;
-}
-
-.clearBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #444;
-  font-size: 13px;
-  padding: 4px 6px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s ease;
-  flex-shrink: 0;
-}
-
-.clearBtn:hover {
-  color: #22c55e;
-}
-
-/* ─── SUGGESTIONS DROPDOWN ───────────────────────────────── */
-.suggestionsBox {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: #111;
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
-  animation: dropIn 0.15s ease;
-}
-
-@keyframes dropIn {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.suggestionItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 16px;
-  cursor: pointer;
-  transition: background 0.12s ease;
-  border-bottom: 1px solid rgba(34, 197, 94, 0.06);
-}
-
-.suggestionItem:last-child {
-  border-bottom: none;
-}
-
-.suggestionItem:hover,
-.activeSuggestion {
-  background: rgba(34, 197, 94, 0.07);
-}
-
-.suggestionJersey {
-  font-size: 12px;
-  font-weight: 800;
-  color: #22c55e;
-  min-width: 52px;
-  flex-shrink: 0;
-  letter-spacing: 0.5px;
-}
-
-.suggestionName {
-  font-size: 13px;
-  font-weight: 600;
-  color: #e5e5e5;
-  flex: 1;
-}
-
-.suggestionMeta {
-  font-size: 11px;
-  color: #444;
-  flex-shrink: 0;
-}
-
-.highlight {
-  background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
-  border-radius: 3px;
-  padding: 0 2px;
-  font-weight: 900;
-}
-
-/* ─── PLAYER LIST ────────────────────────────────────────── */
-.playerList {
-  background: #111;
-  border: 1px solid rgba(34, 197, 94, 0.15);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.playerItem {
-  padding: 15px 18px;
-  border-bottom: 1px solid rgba(34, 197, 94, 0.06);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
-  transition: all 0.15s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.playerItem:last-child {
-  border-bottom: none;
-}
-
-.playerItem:hover {
-  background: rgba(34, 197, 94, 0.05);
-  color: #22c55e;
-  padding-left: 22px;
-}
-
-
-.tableWrapper {
-  width: 100%;
-  overflow-x: auto;
-  margin-top: 12px;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.th {
-  text-align: left;
-  padding: 10px 8px;
-  color: #22c55e;
-  border-bottom: 1px solid #2a2a2a;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.tr {
-  border-bottom: 1px solid #1a1a1a;
-  transition: background 0.15s;
-  cursor: pointer;
-}
-
-.tr:hover {
-  background: #1a2a1a;
-}
-
-.td {
-  padding: 10px 8px;
-  color: #e5e7eb;
-  vertical-align: middle;
-}
-
-.tdNum {
-  padding: 10px 8px;
-  text-align: center;
-  color: #e5e7eb;
-  white-space: nowrap;
-}
-
-.win {
-  color: #22c55e;
-  font-weight: 600;
-}
-
-.jerseyBadge {
-  color: #22c55e;
-  font-weight: 700;
-  margin-right: 6px;
-  font-size: 12px;
-}
+   /* ── CSS Variables ─────────────────────────────── */
+   :root {
+     --bg-deep:        #080c10;
+     --bg-card:        #0d1117;
+     --bg-glass:       rgba(255, 255, 255, 0.035);
+     --bg-glass-hover: rgba(255, 255, 255, 0.065);
+     --border:         rgba(255, 255, 255, 0.07);
+     --border-bright:  rgba(255, 255, 255, 0.14);
+   
+     --green-neon:     #00e676;
+     --green-mid:      #4caf50;
+     --green-dim:      rgba(0, 230, 118, 0.12);
+     --green-glow:     rgba(0, 230, 118, 0.25);
+   
+     --gold:           #ffd700;
+     --gold-dim:       rgba(255, 215, 0, 0.12);
+   
+     --text-primary:   #f0f4f8;
+     --text-secondary: #8a9bb0;
+     --text-muted:     #4a5568;
+   
+     --font-display:   'Rajdhani', sans-serif;
+     --font-mono:      'IBM Plex Mono', monospace;
+     --font-body:      'Outfit', sans-serif;
+   
+     --radius-sm:      8px;
+     --radius-md:      14px;
+     --radius-lg:      20px;
+     --radius-xl:      28px;
+   
+     --shadow-green:   0 0 24px rgba(0, 230, 118, 0.18);
+     --shadow-card:    0 8px 32px rgba(0, 0, 0, 0.4);
+     --shadow-glow:    0 0 60px rgba(0, 230, 118, 0.08);
+   }
+   
+   /* ── Container ─────────────────────────────────── */
+   .container {
+     font-family: var(--font-body);
+     min-height: 100vh;
+     background: var(--bg-deep);
+     background-image:
+       radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 230, 118, 0.07) 0%, transparent 60%),
+       radial-gradient(ellipse 60% 40% at 90% 80%, rgba(0, 180, 100, 0.04) 0%, transparent 50%);
+     padding: 28px 20px 60px;
+     max-width: 720px;
+     margin: 0 auto;
+     box-sizing: border-box;
+   }
+   
+   /* ── Page Title ─────────────────────────────────── */
+   .title {
+     font-family: var(--font-display);
+     font-size: clamp(26px, 7vw, 38px);
+     font-weight: 700;
+     letter-spacing: 2px;
+     text-transform: uppercase;
+     color: var(--text-primary);
+     margin: 0 0 28px;
+     display: flex;
+     align-items: center;
+     gap: 10px;
+   }
+   
+   .title::after {
+     content: '';
+     flex: 1;
+     height: 1px;
+     background: linear-gradient(90deg, var(--border-bright), transparent);
+     margin-left: 8px;
+   }
+   
+   /* ── Tab Bar ─────────────────────────────────────── */
+   .tabs {
+     display: flex;
+     gap: 6px;
+     margin-bottom: 24px;
+     background: rgba(255, 255, 255, 0.03);
+     border: 1px solid var(--border);
+     border-radius: var(--radius-lg);
+     padding: 5px;
+     width: fit-content;
+   }
+   
+   .tabBtn {
+     font-family: var(--font-display);
+     font-size: 13px;
+     font-weight: 600;
+     letter-spacing: 1.2px;
+     text-transform: uppercase;
+     padding: 9px 20px;
+     border-radius: var(--radius-md);
+     border: 1px solid transparent;
+     background: transparent;
+     color: var(--text-muted);
+     cursor: pointer;
+     transition: all 0.22s ease;
+     white-space: nowrap;
+   }
+   
+   .tabBtn:hover {
+     color: var(--text-secondary);
+     background: var(--bg-glass);
+   }
+   
+   .activeTab {
+     background: var(--green-dim) !important;
+     border-color: var(--green-neon) !important;
+     color: var(--green-neon) !important;
+     box-shadow: var(--shadow-green);
+   }
+   
+   /* ── Search ──────────────────────────────────────── */
+   .searchWrapper {
+     position: relative;
+     margin-bottom: 20px;
+   }
+   
+   .searchBox {
+     display: flex;
+     align-items: center;
+     gap: 10px;
+     background: var(--bg-glass);
+     border: 1px solid var(--border-bright);
+     border-radius: var(--radius-md);
+     padding: 12px 16px;
+     transition: border-color 0.2s, box-shadow 0.2s;
+   }
+   
+   .searchBox:focus-within {
+     border-color: rgba(0, 230, 118, 0.4);
+     box-shadow: 0 0 0 3px rgba(0, 230, 118, 0.08);
+   }
+   
+   .searchIcon {
+     font-size: 15px;
+     flex-shrink: 0;
+     opacity: 0.6;
+   }
+   
+   .searchInput {
+     flex: 1;
+     background: transparent;
+     border: none;
+     outline: none;
+     color: var(--text-primary);
+     font-family: var(--font-body);
+     font-size: 14px;
+     min-width: 0;
+   }
+   
+   .searchInput::placeholder {
+     color: var(--text-muted);
+   }
+   
+   .clearBtn {
+     background: none;
+     border: none;
+     color: var(--text-muted);
+     cursor: pointer;
+     font-size: 13px;
+     padding: 2px 4px;
+     border-radius: 4px;
+     transition: color 0.15s;
+     flex-shrink: 0;
+   }
+   
+   .clearBtn:hover {
+     color: var(--text-secondary);
+   }
+   
+   /* ── Suggestions Dropdown ────────────────────────── */
+   .suggestionsBox {
+     position: absolute;
+     top: calc(100% + 6px);
+     left: 0;
+     right: 0;
+     background: #111820;
+     border: 1px solid var(--border-bright);
+     border-radius: var(--radius-md);
+     overflow: hidden;
+     z-index: 100;
+     box-shadow: var(--shadow-card);
+     animation: slideDown 0.15s ease;
+   }
+   
+   @keyframes slideDown {
+     from { opacity: 0; transform: translateY(-6px); }
+     to   { opacity: 1; transform: translateY(0); }
+   }
+   
+   .suggestionItem {
+     display: flex;
+     align-items: center;
+     gap: 10px;
+     padding: 11px 16px;
+     cursor: pointer;
+     border-bottom: 1px solid var(--border);
+     transition: background 0.15s;
+   }
+   
+   .suggestionItem:last-child {
+     border-bottom: none;
+   }
+   
+   .suggestionItem:hover,
+   .activeSuggestion {
+     background: var(--bg-glass-hover);
+   }
+   
+   .suggestionJersey {
+     font-family: var(--font-mono);
+     font-size: 11px;
+     color: var(--green-neon);
+     background: var(--green-dim);
+     border: 1px solid rgba(0, 230, 118, 0.2);
+     padding: 2px 7px;
+     border-radius: 5px;
+     white-space: nowrap;
+   }
+   
+   .suggestionName {
+     flex: 1;
+     color: var(--text-primary);
+     font-size: 14px;
+     font-weight: 500;
+   }
+   
+   .suggestionMeta {
+     font-family: var(--font-mono);
+     font-size: 10px;
+     color: var(--text-muted);
+     white-space: nowrap;
+   }
+   
+   /* ── Player List ─────────────────────────────────── */
+   .playerList {
+     display: flex;
+     flex-direction: column;
+     gap: 4px;
+   }
+   
+   .playerItem {
+     display: flex;
+     align-items: center;
+     padding: 13px 18px;
+     background: var(--bg-glass);
+     border: 1px solid var(--border);
+     border-radius: var(--radius-sm);
+     color: var(--text-primary);
+     font-size: 14px;
+     font-weight: 500;
+     cursor: pointer;
+     transition: all 0.18s ease;
+     gap: 10px;
+   }
+   
+   .playerItem:hover {
+     background: var(--bg-glass-hover);
+     border-color: var(--border-bright);
+     transform: translateX(4px);
+   }
+   
+   /* ── Table Wrapper ───────────────────────────────── */
+   .tableWrapper {
+     overflow-x: auto;
+     -webkit-overflow-scrolling: touch;
+     border-radius: var(--radius-md);
+     background: var(--bg-glass);
+     border: 1px solid var(--border);
+     box-shadow: var(--shadow-card);
+   }
+   
+   /* ── Table ───────────────────────────────────────── */
+   .table {
+     width: 100%;
+     border-collapse: collapse;
+     min-width: 340px;
+     font-family: var(--font-body);
+   }
+   
+   /* ── Table Head ──────────────────────────────────── */
+   .th {
+     padding: 13px 14px;
+     font-family: var(--font-display);
+     font-size: 11px;
+     font-weight: 600;
+     letter-spacing: 1.5px;
+     text-transform: uppercase;
+     color: var(--text-muted);
+     text-align: left;
+     background: rgba(255, 255, 255, 0.025);
+     border-bottom: 1px solid var(--border-bright);
+     white-space: nowrap;
+   }
+   
+   .th:not(:first-child) {
+     text-align: right;
+   }
+   
+   /* ── Table Row ───────────────────────────────────── */
+   .tr {
+     border-bottom: 1px solid var(--border);
+     cursor: pointer;
+     transition: background 0.15s;
+   }
+   
+   .tr:last-child {
+     border-bottom: none;
+   }
+   
+   .tr:hover {
+     background: var(--bg-glass-hover);
+   }
+   
+   /* ── Table Cell ──────────────────────────────────── */
+   .td {
+     padding: 13px 14px;
+     color: var(--text-primary);
+     font-size: 14px;
+     font-weight: 500;
+     white-space: nowrap;
+   }
+   
+   .tdNum {
+     padding: 13px 14px;
+     color: var(--text-secondary);
+     font-family: var(--font-mono);
+     font-size: 13px;
+     text-align: right;
+     white-space: nowrap;
+   }
+   
+   /* ── Highlight / Win% ────────────────────────────── */
+   .highlight {
+     color: var(--green-neon);
+     font-weight: 700;
+     background: var(--green-dim);
+     padding: 2px 8px;
+     border-radius: 5px;
+     font-family: var(--font-mono);
+     font-size: 12px;
+     border: 1px solid rgba(0, 230, 118, 0.18);
+   }
+   
+   .win {
+     color: var(--green-mid);
+     font-weight: 700;
+   }
+   
+   /* ── Jersey Badge ────────────────────────────────── */
+   .jerseyBadge {
+     font-family: var(--font-mono);
+     font-size: 10px;
+     color: var(--gold);
+     background: var(--gold-dim);
+     border: 1px solid rgba(255, 215, 0, 0.2);
+     border-radius: 5px;
+     padding: 2px 6px;
+     margin-right: 8px;
+     white-space: nowrap;
+   }
+   
+   /* ── Search highlight ─────────────────────────────── */
+   :global(.highlight),
+   .suggestionsBox .highlight {
+     color: var(--green-neon);
+     font-weight: 700;
+     text-decoration: underline;
+     text-underline-offset: 2px;
+   }
+   
+   /* ══════════════════════════════════════════════════
+      RESPONSIVE — Mobile First
+      ══════════════════════════════════════════════════ */
+   @media (max-width: 480px) {
+     .container {
+       padding: 18px 14px 48px;
+     }
+   
+     .tabs {
+       width: 100%;
+       justify-content: stretch;
+     }
+   
+     .tabBtn {
+       flex: 1;
+       padding: 9px 8px;
+       font-size: 11px;
+       letter-spacing: 0.8px;
+       text-align: center;
+     }
+   
+     .th,
+     .td,
+     .tdNum {
+       padding: 11px 10px;
+       font-size: 12px;
+     }
+   
+     .jerseyBadge {
+       display: none; /* saves space on smallest screens */
+     }
+   
+     .suggestionMeta {
+       display: none;
+     }
+   
+     .playerItem {
+       font-size: 13px;
+       padding: 12px 14px;
+     }
+   }
+   
+   @media (max-width: 360px) {
+     .tabBtn {
+       font-size: 10px;
+       padding: 8px 5px;
+       letter-spacing: 0.4px;
+     }
+   }
+   
