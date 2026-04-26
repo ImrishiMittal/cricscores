@@ -51,6 +51,9 @@ function ScoringPage() {
 
   const innings1BowlersSnapshotRef = useRef([]);
   const lastKnownBowlersRef = useRef([]);
+  const allTimeBowlersRef = useRef(new Set());
+
+  const captainStatsSavedRef = useRef(false);
 
   const modalStates = useModalStates();
   const wicketFlow = useWicketFlow();
@@ -62,9 +65,10 @@ function ScoringPage() {
     if (!existingMatchId) {
       const matchId = `match_${Date.now()}`;
       playerDBHook.setCurrentMatchId(matchId);
+      captainStatsSavedRef.current = false;
       console.log("🆔 Match ID set:", matchId);
     }
-  }, [playerDBHook]);
+  }, []); // ← empty deps: run once on mount only
 
   const playersHook = usePlayersAndBowlers(updatedMatchData, playerDBHook);
   const partnershipsHook = usePartnerships();
@@ -160,6 +164,9 @@ function ScoringPage() {
     engine.setOverCompleteEvent(null);
     lastKnownBowlersRef.current = [...playersHook.bowlers];
     innings1BowlersSnapshotRef.current = [...lastKnownBowlersRef.current];
+    playersHook.bowlers.forEach(b => {
+      if (b?.playerId) allTimeBowlersRef.current.add(String(b.playerId));
+    });
     console.log(
       "📸 Bowlers snapshot captured:",
       innings1BowlersSnapshotRef.current
@@ -197,6 +204,9 @@ function ScoringPage() {
   
         lastKnownBowlersRef.current = snapshot;
         innings1BowlersSnapshotRef.current = snapshot;
+        snapshot.forEach(b => {
+          if (b?.playerId) allTimeBowlersRef.current.add(String(b.playerId));
+        });
   
         console.log("📸 [FIXED] Merged bowlers snapshot:", snapshot);
   
@@ -240,23 +250,124 @@ function ScoringPage() {
     engine.saveSuperOverComplete(engine.superOverNumber, soInnings2Data);
   }, [engine.matchOver, engine.isSuperOver, engine.superOverNumber]);
 
-  useEffect(() => {
-    if (!engine.matchOver || !playerDBHook) return;
+  // ─── REPLACE the captain+team stats useEffect in ScoringPage.js ──────────────
+// Find the useEffect block that starts with:
+//   useEffect(() => {
+//     if (!engine.matchOver || !playerDBHook) return;
+//     if (captainStatsSavedRef.current) return;
+//     captainStatsSavedRef.current = true;
+//
+// Replace the entire body with the code below.
+// ─────────────────────────────────────────────────────────────────────────────
 
-    playerDBHook.updateMatchMilestones();
+useEffect(() => {
+  if (!engine.matchOver || !playerDBHook) return;
+  if (captainStatsSavedRef.current) return;
+  captainStatsSavedRef.current = true;
 
-    // ─── SAVE MATCH TO MONGODB ────────────────────────────────────────────────
+  (async () => {
+    const captainA = matchData.teamACaptain;
+    const captainB = matchData.teamBCaptain;
+    const teamAName = matchData.teamA || "Team 1";
+    const teamBName = matchData.teamB || "Team 2";
+    const isNR = engine.winner === "NO RESULT";
+
+    // ── STEP 1: Warm cache for captains (may not have batted/bowled) ─────────
+    if (captainA?.jersey) {
+      await playerDBHook.createOrGetPlayer(captainA.jersey, captainA.name);
+    }
+    if (captainB?.jersey) {
+      await playerDBHook.createOrGetPlayer(captainB.jersey, captainB.name);
+    }
+
+    // ── STEP 2: Write captain stats into buffer ──────────────────────────────
+    if (isNR) {
+      if (captainA?.jersey)
+        playerDBHook.updatePlayerStats(captainA.jersey, { captainMatches: 1, captainNR: 1 });
+      if (captainB?.jersey)
+        playerDBHook.updatePlayerStats(captainB.jersey, { captainMatches: 1, captainNR: 1 });
+    } else {
+      const teamAWon = engine.winner === teamAName;
+      const teamBWon = engine.winner === teamBName;
+
+      if (captainA?.jersey) {
+        playerDBHook.updatePlayerStats(captainA.jersey, {
+          captainMatches: 1,
+          ...(teamAWon ? { captainWins: 1 } : teamBWon ? { captainLosses: 1 } : { captainTies: 1 }),
+        });
+      }
+      if (captainB?.jersey) {
+        playerDBHook.updatePlayerStats(captainB.jersey, {
+          captainMatches: 1,
+          ...(teamBWon ? { captainWins: 1 } : teamAWon ? { captainLosses: 1 } : { captainTies: 1 }),
+        });
+      }
+    }
+
+    // ── STEP 3: Write team stats (async, fire and forget) ────────────────────
+    if (isNR) {
+      playerDBHook.updateTeamStats(teamAName, { matches: 1, nr: 1 });
+      playerDBHook.updateTeamStats(teamBName, { matches: 1, nr: 1 });
+    } else {
+      const teamAWon = engine.winner === teamAName;
+      const teamBWon = engine.winner === teamBName;
+      playerDBHook.updateTeamStats(teamAName, {
+        matches: 1,
+        ...(teamAWon ? { wins: 1 } : teamBWon ? { losses: 1 } : { ties: 1 }),
+      });
+      playerDBHook.updateTeamStats(teamBName, {
+        matches: 1,
+        ...(teamBWon ? { wins: 1 } : teamAWon ? { losses: 1 } : { ties: 1 }),
+      });
+    }
+
+    // ── STEP 4: Write matches:1 for every participant into buffer ────────────
+    // Must happen BEFORE updateMatchMilestones() flushes the buffer.
+    const allParticipantIds = new Set();
+    [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
+      if (p?.playerId) allParticipantIds.add(String(p.playerId));
+    });
+    bowlersRef.current.forEach((b) => {
+      if (b?.playerId) allParticipantIds.add(String(b.playerId));
+    });
+    // ← ADD THIS: include innings 1 bowlers who are no longer in bowlersRef
+    allTimeBowlersRef.current.forEach((pid) => {
+      allParticipantIds.add(pid);
+    });
+    allParticipantIds.forEach((pid) => {
+      playerDBHook.updatePlayerStats(pid, { matches: 1 });
+    });
+
+    // ── STEP 5: Write highestScore + notOuts into buffer ─────────────────────
+    // Also before the flush.
+    [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
+      if (!p?.playerId) return;
+      const pid = String(p.playerId);
+      const inningsRuns = inningsScoreTrackerRef.current[pid] ?? (p.runs || 0);
+      const hasBatted = inningsRuns > 0 || (p.balls || 0) > 0 || p.hasBatted;
+      if (inningsRuns > 0) {
+        const existing = playerDBHook.getPlayer(pid);
+        if (existing && inningsRuns > (existing.highestScore || 0)) {
+          playerDBHook.setHighestScore(pid, inningsRuns);
+        }
+      }
+      if (hasBatted && !allTimeDismissedRef.current.has(pid)) {
+        playerDBHook.updatePlayerStats(pid, { notOuts: 1 });
+      }
+    });
+
+    // ── STEP 6: Flush everything to MongoDB in one pass ──────────────────────
+    await playerDBHook.updateMatchMilestones();
+
+    // ── STEP 7: Save match document to MongoDB ───────────────────────────────
     const currentMatchId = playerDBHook.getCurrentMatchId();
     const innings1 = inningsDataHook.innings1DataRef.current;
-    const innings2 =
-      inningsDataHook.innings2DataRef.current || captureCurrentData();
+    const innings2 = inningsDataHook.innings2DataRef.current || captureCurrentData();
 
     const cleanPlayer = (p) => {
       const name = p.playerName || p.displayName || p.name || "";
       if (!name || name === "Unknown") return null;
-
       const dismissalObj = p.dismissal || {};
-
       return {
         playerName: name,
         jersey: p.jersey || p.playerId || "",
@@ -308,36 +419,18 @@ function ScoringPage() {
         ...(innings1?.bowlingStats || []),
         ...(innings2?.bowlingStats || []),
       ];
-      let bestW = 0,
-        bestR = 9999;
+      let bestW = 0, bestR = 9999;
       for (const b of allBowlersForMOM) {
-        const w = b.wickets || 0,
-          r = b.runsGiven || 9999;
+        const w = b.wickets || 0, r = b.runsGiven || 9999;
         const name = b.playerName || b.displayName || b.name || "";
-        if (
-          name &&
-          name !== "Unknown" &&
-          (w > bestW || (w === bestW && r < bestR))
-        ) {
-          bestW = w;
-          bestR = r;
-          mom = name;
+        if (name && name !== "Unknown" && (w > bestW || (w === bestW && r < bestR))) {
+          bestW = w; bestR = r; mom = name;
         }
       }
     }
 
-    // ── Build clean innings arrays ────────────────────────────────────────────
-    const clean1Batting = (innings1?.battingStats || [])
-      .map(cleanPlayer)
-      .filter(Boolean);
-    const clean2Batting = (innings2?.battingStats || [])
-      .map(cleanPlayer)
-      .filter(Boolean);
-
-    // ✅ FIX: Use innings1DataRef.bowlingStats as the PRIMARY source.
-    // This is captured by captureCurrentInningsData at the innings boundary
-    // with the correct ballsBowled values. Only fall back to raw bowler
-    // snapshots if innings1DataRef is somehow unavailable.
+    const clean1Batting = (innings1?.battingStats || []).map(cleanPlayer).filter(Boolean);
+    const clean2Batting = (innings2?.battingStats || []).map(cleanPlayer).filter(Boolean);
     const inn1BowlingStats = innings1?.bowlingStats || [];
 
     const clean1Bowling = inn1BowlingStats.length > 0
@@ -364,8 +457,7 @@ function ScoringPage() {
               maidens: b.maidens || 0,
             };
           })
-      : // Fallback: raw snapshot refs (last resort)
-        (
+      : (
           inningsDataHook.innings1BowlersSnapshotRef?.current?.length > 0
             ? inningsDataHook.innings1BowlersSnapshotRef.current
             : innings1BowlersSnapshotRef.current
@@ -393,26 +485,12 @@ function ScoringPage() {
             };
           });
 
-    const clean2Bowling = (innings2?.bowlingStats || [])
-      .map(cleanPlayer)
-      .filter(Boolean);
-
+    const clean2Bowling = (innings2?.bowlingStats || []).map(cleanPlayer).filter(Boolean);
     const inn1Balls =
       (engine.innings1Score?.overs ?? 0) * 6 +
       (engine.innings1Score?.balls ?? 0);
 
-    console.log(
-      "💾 Saving match with toss:",
-      matchData.tossWinner,
-      "MoM:",
-      mom
-    );
-    console.log("🎳 clean1Bowling:", clean1Bowling);
-    console.log("🎳 inn1BowlingStats (from innings1DataRef):", inn1BowlingStats);
-    console.log(
-      "🎳 innings1BowlersSnapshot (raw ref):",
-      innings1BowlersSnapshotRef.current
-    );
+    console.log("💾 Saving match with toss:", matchData.tossWinner, "MoM:", mom);
 
     matchApi
       .saveMatch({
@@ -433,8 +511,12 @@ function ScoringPage() {
             ? engine.winner
             : `${engine.winner} won`
           : "No Result",
-        team1Captain: matchData.teamACaptain?.name || "",
-        team2Captain: matchData.teamBCaptain?.name || "",
+        team1Captain: firstBattingTeam === matchData.teamA
+          ? matchData.teamACaptain?.name || ""
+          : matchData.teamBCaptain?.name || "",
+        team2Captain: firstBattingTeam === matchData.teamA
+          ? matchData.teamBCaptain?.name || ""
+          : matchData.teamACaptain?.name || "",
         manOfTheMatch: mom || "",
         team1Batting: clean1Batting,
         team2Batting: clean2Batting,
@@ -444,103 +526,13 @@ function ScoringPage() {
         innings2DataBlob: innings2,
       })
       .catch((err) => console.error("❌ saveMatch failed:", err));
-    // ─────────────────────────────────────────────────────────────────────────
-
-    // ─── CAPTAIN + TEAM RESULT STATS ─────────────────────────────────────────
-    const captainA = matchData.teamACaptain;
-    const captainB = matchData.teamBCaptain;
-    const teamAName = matchData.teamA || "Team 1";
-    const teamBName = matchData.teamB || "Team 2";
-    const isNR = engine.winner === "NO RESULT";
-
-    if (captainA?.jersey)
-      playerDBHook.createOrGetPlayer(captainA.jersey, captainA.name);
-    if (captainB?.jersey)
-      playerDBHook.createOrGetPlayer(captainB.jersey, captainB.name);
-
-    if (isNR) {
-      if (captainA?.jersey)
-        playerDBHook.updatePlayerStats(captainA.jersey, {
-          captainMatches: 1,
-          captainNR: 1,
-        });
-      if (captainB?.jersey)
-        playerDBHook.updatePlayerStats(captainB.jersey, {
-          captainMatches: 1,
-          captainNR: 1,
-        });
-      playerDBHook.updateTeamStats(teamAName, { matches: 1, nr: 1 });
-      playerDBHook.updateTeamStats(teamBName, { matches: 1, nr: 1 });
-    } else {
-      const teamAWon = engine.winner === teamAName;
-      const teamBWon = engine.winner === teamBName;
-
-      if (captainA?.jersey) {
-        playerDBHook.updatePlayerStats(captainA.jersey, {
-          captainMatches: 1,
-          ...(teamAWon
-            ? { captainWins: 1 }
-            : teamBWon
-            ? { captainLosses: 1 }
-            : { captainTies: 1 }),
-        });
-      }
-      if (captainB?.jersey) {
-        playerDBHook.updatePlayerStats(captainB.jersey, {
-          captainMatches: 1,
-          ...(teamBWon
-            ? { captainWins: 1 }
-            : teamAWon
-            ? { captainLosses: 1 }
-            : { captainTies: 1 }),
-        });
-      }
-
-      playerDBHook.updateTeamStats(teamAName, {
-        matches: 1,
-        ...(teamAWon ? { wins: 1 } : teamBWon ? { losses: 1 } : { ties: 1 }),
-      });
-      playerDBHook.updateTeamStats(teamBName, {
-        matches: 1,
-        ...(teamBWon ? { wins: 1 } : teamAWon ? { losses: 1 } : { ties: 1 }),
-      });
-    }
-    // ─────────────────────────────────────────────────────────────────────────
-
-    // ─── Collect all unique playerIds that participated ───────────────────────
-    const allParticipantIds = new Set();
-    [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
-      if (p?.playerId) allParticipantIds.add(String(p.playerId));
-    });
-    bowlersRef.current.forEach((b) => {
-      if (b?.playerId) allParticipantIds.add(String(b.playerId));
-    });
-    allParticipantIds.forEach((pid) => {
-      playerDBHook.updatePlayerStats(pid, { matches: 1 });
-    });
-
-    // ─── Highest Score + Not Outs ─────────────────────────────────────────────
-    [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
-      if (!p?.playerId) return;
-      const pid = String(p.playerId);
-      const inningsRuns = inningsScoreTrackerRef.current[pid] ?? (p.runs || 0);
-      const hasBatted = inningsRuns > 0 || (p.balls || 0) > 0 || p.hasBatted;
-
-      if (inningsRuns > 0) {
-        const existing = playerDBHook.getPlayer(pid);
-        if (existing && inningsRuns > (existing.highestScore || 0)) {
-          playerDBHook.setHighestScore(pid, inningsRuns);
-        }
-      }
-      if (hasBatted && !allTimeDismissedRef.current.has(pid)) {
-        playerDBHook.updatePlayerStats(pid, { notOuts: 1 });
-      }
-    });
 
     setTimeout(() => {
       playerDBHook.setCurrentMatchId(null);
     }, 500);
-  }, [engine.matchOver]);
+  })();
+}, [engine.matchOver]);
+
 
   useEffect(() => {
     if (!engine.tieDetected) return;
