@@ -49,3 +49,23 @@ export const deletePlayer = async (id) => {
   const res = await axios.delete(`${BASE_URL}/players/${id}`, authHeader());
   return res.data;
 };
+
+export async function createOrFindByJersey(jersey, name) {
+  try {
+    const res = await axios.get(
+      `${BASE_URL}/players/jersey/${String(jersey)}`,
+      authHeader()
+    );
+    return res.data;
+  } catch (err) {
+    // 404 means not found — create them
+    if (err.response?.status === 404) {
+      return await addPlayer({
+        jersey: String(jersey),
+        name: name || `Player ${jersey}`,
+      });
+    }
+    console.error("createOrFindByJersey failed:", err);
+    return null;
+  }
+}

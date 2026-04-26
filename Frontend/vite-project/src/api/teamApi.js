@@ -22,7 +22,11 @@ export async function ensureTeam(name) {
     headers: headers(),
     body: JSON.stringify({ name }),
   });
-  if (!res.ok) throw new Error("Failed to create team");
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error("ensureTeam failed:", res.status, errBody); // ← ADD THIS
+    throw new Error("Failed to create team");
+  }
   return res.json();
 }
 
