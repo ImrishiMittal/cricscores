@@ -404,3 +404,8 @@
   
   /* ── Empty state ────────────────────────────────────────────── */
   .empty { color: #334155; font-size: 12px; padding: 10px 0 18px; }
+
+  .pdfBtn { display:block; width:100%; margin-top:8px; padding:6px 0; background:transparent; border:1px solid #1e5aa0; border-radius:6px; color:#1e5aa0; font-size:12px; font-weight:600; cursor:pointer; transition:background 0.15s,color 0.15s; }
+.pdfBtn:hover { background:#1e5aa0; color:#fff; }
+.pdfBtnDetail { display:block; margin:8px auto 12px; padding:8px 20px; background:#1e5aa0; border:none; border-radius:8px; color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
+.pdfBtnDetail:hover { background:#174d8a; }

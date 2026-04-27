@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+import { generateScorecardPDF, buildScoringPagePayload } from "../utils/generateScorecardPDF";
 import BrandTitle from "../Components/BrandTitle";
 import ScoreHeader from "../Components/Scoring/ScoreHeader";
 import InfoStrip from "../Components/Scoring/InfoStrip";
@@ -1265,30 +1266,23 @@ if (isNR) {
         onMatchSummary={() => modalStates.setShowSummary(true)}
       />
       {engine.matchOver && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            marginTop: "15px",
-          }}
-        >
-          <button
-            onClick={() => navigate("/home")}
-            style={{
-              background: "#22c55e",
-              color: "white",
-              padding: "12px 20px",
-              borderRadius: "10px",
-              border: "none",
-              cursor: "pointer",
-              fontWeight: "600",
-              fontSize: "15px",
-            }}
-          >
-            🏠 Go to Home
-          </button>
-        </div>
-      )}
+  <div style={{ display:"flex", justifyContent:"center", gap:"12px", marginTop:"15px", flexWrap:"wrap" }}>
+    <button onClick={() => navigate("/home")} style={{ background:"#22c55e", color:"white", padding:"12px 20px", borderRadius:"10px", border:"none", cursor:"pointer", fontWeight:"600", fontSize:"15px" }}>
+      🏠 Go to Home
+    </button>
+    <button
+      onClick={() => generateScorecardPDF(buildScoringPagePayload({
+        matchData, updatedMatchData, engine,
+        firstBattingTeam, secondBattingTeam,
+        inningsDataHook,
+        inn1BowlersSnapshotRef: innings1BowlersSnapshotRef,
+      }))}
+      style={{ background:"#1e5aa0", color:"white", padding:"12px 20px", borderRadius:"10px", border:"none", cursor:"pointer", fontWeight:"600", fontSize:"15px" }}
+    >
+      📄 Download Scorecard PDF
+    </button>
+  </div>
+)}
       <ModalManager
         modalStates={modalStates}
         wicketFlow={wicketFlow}
