@@ -3,11 +3,14 @@ import { useNavigate } from "react-router-dom";
 import styles from "./MatchSetupPage.module.css";
 import BrandTitle from "../Components/BrandTitle";
 import CaptainSearch from "../Components/Scoring/CaptainSearch";
-// ADD at top, after imports:
-function TeamAutocomplete({ placeholder, value, onChange }) {
+import * as teamApi from "../api/teamApi";
+
+function TeamAutocomplete({ placeholder, value, onChange, allTeams = [] }) {
   const [suggestions, setSuggestions] = useState([]);
   const [show, setShow] = useState(false);
   const ref = useRef(null);
+
+  // ✅ REMOVED: teamNames state and fetch — now received via allTeams prop from parent
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -20,10 +23,12 @@ function TeamAutocomplete({ placeholder, value, onChange }) {
   const handleChange = (e) => {
     const val = e.target.value;
     onChange(val);
-    if (val.trim().length === 0) { setSuggestions([]); setShow(false); return; }
-    const raw = localStorage.getItem("cricket_team_stats");
-    const db = raw ? JSON.parse(raw) : {};
-    const matches = Object.keys(db)
+    if (val.trim().length === 0) {
+      setSuggestions([]);
+      setShow(false);
+      return;
+    }
+    const matches = allTeams
       .filter((name) => name.toLowerCase().startsWith(val.trim().toLowerCase()))
       .slice(0, 5);
     setSuggestions(matches);
@@ -37,25 +42,46 @@ function TeamAutocomplete({ placeholder, value, onChange }) {
         placeholder={placeholder}
         value={value}
         onChange={handleChange}
-        onFocus={() => { if (suggestions.length > 0) setShow(true); }}
+        onFocus={() => {
+          if (suggestions.length > 0) setShow(true);
+        }}
         autoComplete="off"
       />
       {show && suggestions.length > 0 && (
-        <div style={{
-          position: "absolute", top: "100%", left: 0, right: 0,
-          background: "#1a1a1a", border: "1px solid #22c55e",
-          borderRadius: "8px", zIndex: 100, overflow: "hidden",
-        }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            background: "#1a1a1a",
+            border: "1px solid #22c55e",
+            borderRadius: "8px",
+            zIndex: 100,
+            overflow: "hidden",
+          }}
+        >
           {suggestions.map((name) => (
             <div
               key={name}
-              onMouseDown={() => { onChange(name); setShow(false); setSuggestions([]); }}
-              style={{
-                padding: "10px 14px", cursor: "pointer", color: "#e5e7eb",
-                fontSize: "14px", borderBottom: "1px solid #2a2a2a",
+              onMouseDown={() => {
+                onChange(name);
+                setShow(false);
+                setSuggestions([]);
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "#0f2a0f"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+              style={{
+                padding: "10px 14px",
+                cursor: "pointer",
+                color: "#e5e7eb",
+                fontSize: "14px",
+                borderBottom: "1px solid #2a2a2a",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "#0f2a0f")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "transparent")
+              }
             >
               🏏 {name}
             </div>
@@ -65,6 +91,7 @@ function TeamAutocomplete({ placeholder, value, onChange }) {
     </div>
   );
 }
+
 function MatchSetupPage() {
   const navigate = useNavigate();
 
@@ -106,11 +133,21 @@ function MatchSetupPage() {
 
   const [enableSuperOver, setEnableSuperOver] = useState(false);
 
-  //--------------------Single Batsman---------------
+  // ----------------Single Batsman ---------------
   const [lastManBatting, setLastManBatting] = useState(false);
 
   const [maxOversPerBowler, setMaxOversPerBowler] = useState("");
   const [showAdditionalSetup, setShowAdditionalSetup] = useState(false);
+
+  // ✅ ADDED: teamNames lives here so it can be passed down to both TeamAutocomplete instances
+  const [teamNames, setTeamNames] = useState([]);
+
+  useEffect(() => {
+    teamApi
+      .getTeams()
+      .then((teams) => setTeamNames(teams.map((t) => t.name)))
+      .catch(() => {});
+  }, []);
 
   // ---------------- TOSS LOGIC ----------------
   const handleToss = () => {
@@ -136,7 +173,6 @@ function MatchSetupPage() {
       teamB: teamB || "Team 2",
       teamAPlayers,
       teamBPlayers,
-      // Store full captain object { jersey, name } so both are always available
       teamACaptain: teamACaptain || null,
       teamBCaptain: teamBCaptain || null,
       overs,
@@ -168,11 +204,13 @@ function MatchSetupPage() {
           placeholder="Team A Name"
           value={teamA}
           onChange={setTeamA}
+          allTeams={teamNames}
         />
         <TeamAutocomplete
           placeholder="Team B Name"
           value={teamB}
           onChange={setTeamB}
+          allTeams={teamNames}
         />
         <input
           className={styles.input}
@@ -218,7 +256,6 @@ function MatchSetupPage() {
 
           {showAdditionalSetup && (
             <div className={styles.additionalContent}>
-
               {/* Gully Mode */}
               <label className={styles.additionalOption}>
                 <input
@@ -309,7 +346,6 @@ function MatchSetupPage() {
                   </div>
                 </div>
               )}
-
             </div>
           )}
         </div>

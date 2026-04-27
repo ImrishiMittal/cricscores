@@ -34,7 +34,6 @@ function CaptainSearch({ placeholder, onSelect, value }) {
   useEffect(() => {
     const term = query.trim().toLowerCase();
 
-    // If the query matches the currently selected display string, don't re-search
     if (value?.name && value?.jersey) {
       const displayStr = `#${value.jersey} - ${value.name}`.toLowerCase();
       if (term === displayStr) {
@@ -51,21 +50,18 @@ function CaptainSearch({ placeholder, onSelect, value }) {
       return;
     }
 
-    const raw = localStorage.getItem("cricket_player_database");
-    const db = raw ? JSON.parse(raw) : {};
-    const players = Object.values(db);
+    const allPlayers = playerDB.getAllPlayers();
 
-    const matched = players.filter((p) => {
+    const matched = allPlayers.filter((p) => {
+      if (!p.name || p.name === "Unknown") return false;
       const nameMatch = p.name.toLowerCase().includes(term);
       const jerseyMatch = String(p.jersey).startsWith(term);
       return nameMatch || jerseyMatch;
     });
 
     matched.sort((a, b) => {
-      const aExact =
-        a.name.toLowerCase() === term || String(a.jersey) === term;
-      const bExact =
-        b.name.toLowerCase() === term || String(b.jersey) === term;
+      const aExact = a.name.toLowerCase() === term || String(a.jersey) === term;
+      const bExact = b.name.toLowerCase() === term || String(b.jersey) === term;
       if (aExact && !bExact) return -1;
       if (!aExact && bExact) return 1;
       return a.name.localeCompare(b.name);
@@ -73,9 +69,9 @@ function CaptainSearch({ placeholder, onSelect, value }) {
 
     const top = matched.slice(0, 6);
     setSuggestions(top);
-    setShowSuggestions(top.length > 0 || term.length > 0); // Show dropdown even if no matches
+    setShowSuggestions(top.length > 0 || term.length > 0);
     setActiveSuggestion(-1);
-  }, [query, value]);
+  }, [query, value?.jersey, value?.name]); // ← removed playerDB, narrowed value to primitives
 
   // Close on outside click
   useEffect(() => {
@@ -106,8 +102,12 @@ function CaptainSearch({ placeholder, onSelect, value }) {
 
   const handleKeyDown = (e) => {
     if (showNewCaptainForm) return; // Don't handle keys when form is open
-    if (!showSuggestions || (suggestions.length === 0 && query.trim().length === 0)) return;
-    
+    if (
+      !showSuggestions ||
+      (suggestions.length === 0 && query.trim().length === 0)
+    )
+      return;
+
     if (e.key === "ArrowDown") {
       e.preventDefault();
       const maxIdx = suggestions.length > 0 ? suggestions.length : 0; // +1 for "Add New" option
@@ -155,7 +155,9 @@ function CaptainSearch({ placeholder, onSelect, value }) {
     // Check if jersey already exists
     const existing = playerDB.getPlayer(newJersey.trim());
     if (existing) {
-      setFormError(`⚠️ Jersey #${newJersey.trim()} already belongs to ${existing.name}`);
+      setFormError(
+        `⚠️ Jersey #${newJersey.trim()} already belongs to ${existing.name}`
+      );
       return;
     }
 
@@ -267,7 +269,9 @@ function CaptainSearch({ placeholder, onSelect, value }) {
               onMouseDown={handleAddNewClick}
             >
               <span className={styles.addNewIcon}>➕</span>
-              <span className={styles.addNewText}>No match found - Add New Captain</span>
+              <span className={styles.addNewText}>
+                No match found - Add New Captain
+              </span>
             </div>
           )}
         </div>
