@@ -250,22 +250,13 @@ function ScoringPage() {
     engine.saveSuperOverComplete(engine.superOverNumber, soInnings2Data);
   }, [engine.matchOver, engine.isSuperOver, engine.superOverNumber]);
 
-  // ─── REPLACE the captain+team stats useEffect in ScoringPage.js ──────────────
-// Find the useEffect block that starts with:
-//   useEffect(() => {
-//     if (!engine.matchOver || !playerDBHook) return;
-//     if (captainStatsSavedRef.current) return;
-//     captainStatsSavedRef.current = true;
-//
-// Replace the entire body with the code below.
-// ─────────────────────────────────────────────────────────────────────────────
-
 useEffect(() => {
   if (!engine.matchOver || !playerDBHook) return;
   if (captainStatsSavedRef.current) return;
   captainStatsSavedRef.current = true;
 
   (async () => {
+    const currentMatchId = playerDBHook.getCurrentMatchId();
     const captainA = matchData.teamACaptain;
     const captainB = matchData.teamBCaptain;
     const teamAName = matchData.teamA || "Team 1";
@@ -305,21 +296,22 @@ useEffect(() => {
     }
 
     // ── STEP 3: Write team stats (async, fire and forget) ────────────────────
-    if (isNR) {
-      playerDBHook.updateTeamStats(teamAName, { matches: 1, nr: 1 });
-      playerDBHook.updateTeamStats(teamBName, { matches: 1, nr: 1 });
-    } else {
-      const teamAWon = engine.winner === teamAName;
-      const teamBWon = engine.winner === teamBName;
-      playerDBHook.updateTeamStats(teamAName, {
-        matches: 1,
-        ...(teamAWon ? { wins: 1 } : teamBWon ? { losses: 1 } : { ties: 1 }),
-      });
-      playerDBHook.updateTeamStats(teamBName, {
-        matches: 1,
-        ...(teamBWon ? { wins: 1 } : teamAWon ? { losses: 1 } : { ties: 1 }),
-      });
-    }
+    // ── STEP 3: Write team stats ──────────────────────────────────────────────
+if (isNR) {
+  playerDBHook.updateTeamStats(teamAName, { matches: 1, nr: 1 }, currentMatchId);
+  playerDBHook.updateTeamStats(teamBName, { matches: 1, nr: 1 }, currentMatchId);
+} else {
+  const teamAWon = engine.winner === teamAName;
+  const teamBWon = engine.winner === teamBName;
+  playerDBHook.updateTeamStats(teamAName, {
+    matches: 1,
+    ...(teamAWon ? { wins: 1 } : teamBWon ? { losses: 1 } : { ties: 1 }),
+  }, currentMatchId);
+  playerDBHook.updateTeamStats(teamBName, {
+    matches: 1,
+    ...(teamBWon ? { wins: 1 } : teamAWon ? { losses: 1 } : { ties: 1 }),
+  }, currentMatchId);
+}
 
     // ── STEP 4: Write matches:1 for every participant into buffer ────────────
     // Must happen BEFORE updateMatchMilestones() flushes the buffer.
@@ -360,7 +352,6 @@ useEffect(() => {
     await playerDBHook.updateMatchMilestones();
 
     // ── STEP 7: Save match document to MongoDB ───────────────────────────────
-    const currentMatchId = playerDBHook.getCurrentMatchId();
     const innings1 = inningsDataHook.innings1DataRef.current;
     const innings2 = inningsDataHook.innings2DataRef.current || captureCurrentData();
 

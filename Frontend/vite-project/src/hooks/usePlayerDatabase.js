@@ -418,17 +418,12 @@ function usePlayerDatabase() {
   }, []);
 
   // ── updateTeamStats — writes to MongoDB via teamApi ──────────────────────
-  const updateTeamStats = useCallback(async (teamName, stats) => {
+  const updateTeamStats = useCallback(async (teamName, stats, matchId) => {
     if (!teamName) return;
     try {
       // ensure the team document exists, get its _id back
       const team = await teamApi.ensureTeam(teamName.trim());
-      // increment the stats
-      const currentMatchId = localStorage.getItem("current_match_id");
-      await teamApi.updateTeamStats(team._id, {
-        ...stats,
-        matchId: currentMatchId,
-      });
+      await teamApi.updateTeamStats(team._id, { ...stats, matchId: matchId || null });
       console.log(`✅ Team stats saved for "${teamName}":`, stats);
     } catch (err) {
       console.error(
