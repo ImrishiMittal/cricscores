@@ -156,7 +156,7 @@ function MatchSummary({
                   </div>
                   {innings1Data.battingStats.map((player, idx) => (
                     <div key={idx} className={styles.tableRow}>
-                      <div className={styles.playerCol}>{player.name}</div>
+                      <div className={styles.playerCol}>{player.playerName || player.displayName || player.name || "Unknown"}</div>
                       <div className={styles.statCol}>{player.runs}</div>
                       <div className={styles.statCol}>{player.balls}</div>
                       <div className={styles.statCol}>{player.strikeRate}</div>
@@ -176,11 +176,11 @@ function MatchSummary({
                   </div>
                   {innings1Data.bowlingStats.map((bowler, idx) => (
                     <div key={idx} className={styles.tableRow}>
-                      <div className={styles.playerCol}>{bowler.name}</div>
+                      <div className={styles.playerCol}>{bowler.playerName || bowler.displayName || bowler.name || "Unknown"}</div>
                       <div className={styles.statCol}>
-                        {bowler.overs}.{bowler.balls}
+                        {bowler.overs}
                       </div>
-                      <div className={styles.statCol}>{bowler.runs}</div>
+                      <div className={styles.statCol}>{bowler.runsGiven ?? bowler.runs}</div>
                       <div className={styles.statCol}>{bowler.wickets}</div>
                     </div>
                   ))}
@@ -215,7 +215,7 @@ function MatchSummary({
                   </div>
                   {innings2Data.battingStats.map((player, idx) => (
                     <div key={idx} className={styles.tableRow}>
-                      <div className={styles.playerCol}>{player.name}</div>
+                      <div className={styles.playerCol}>{player.playerName || player.displayName || player.name || "Unknown"}</div>
                       <div className={styles.statCol}>{player.runs}</div>
                       <div className={styles.statCol}>{player.balls}</div>
                       <div className={styles.statCol}>{player.strikeRate}</div>
@@ -235,11 +235,11 @@ function MatchSummary({
                   </div>
                   {innings2Data.bowlingStats.map((bowler, idx) => (
                     <div key={idx} className={styles.tableRow}>
-                      <div className={styles.playerCol}>{bowler.name}</div>
+                      <div className={styles.playerCol}>{bowler.playerName || bowler.displayName || bowler.name || "Unknown"}</div>
                       <div className={styles.statCol}>
-                        {bowler.overs}.{bowler.balls}
+                        {bowler.overs}
                       </div>
-                      <div className={styles.statCol}>{bowler.runs}</div>
+                      <div className={styles.statCol}>{bowler.runsGiven ?? bowler.runs}</div>
                       <div className={styles.statCol}>{bowler.wickets}</div>
                     </div>
                   ))}

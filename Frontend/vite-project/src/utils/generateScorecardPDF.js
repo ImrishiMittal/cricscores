@@ -401,6 +401,7 @@ export function buildScoringPagePayload({
   secondBattingTeam,
   inningsDataHook,
   inn1BowlersSnapshotRef,
+  manOfTheMatch,
 }) {
   const inn1 = inningsDataHook.innings1DataRef?.current;
   const inn2 = inningsDataHook.innings2DataRef?.current;
@@ -423,7 +424,6 @@ export function buildScoringPagePayload({
     team2Captain:  firstBattingTeam === matchData.teamA
       ? matchData.teamBCaptain?.name || ""
       : matchData.teamACaptain?.name || "",
-    manOfTheMatch: engine.manOfTheMatch || "",
 
     // scores
     team1Score:   engine.innings1Score?.score   ?? 0,
@@ -444,6 +444,7 @@ export function buildScoringPagePayload({
     // blob data — richer dismissal strings etc.
     innings1DataBlob: inn1,
     innings2DataBlob: inn2,
+    manOfTheMatch: manOfTheMatch || "",
   };
 }
 

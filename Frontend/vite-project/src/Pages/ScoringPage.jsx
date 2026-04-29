@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { generateScorecardPDF, buildScoringPagePayload } from "../utils/generateScorecardPDF";
+import {
+  generateScorecardPDF,
+  buildScoringPagePayload,
+} from "../utils/generateScorecardPDF";
 import BrandTitle from "../Components/BrandTitle";
 import ScoreHeader from "../Components/Scoring/ScoreHeader";
 import InfoStrip from "../Components/Scoring/InfoStrip";
@@ -23,12 +26,14 @@ import useHistorySnapshot from "../hooks/useHistorySnapshot";
 import useHatTrick from "../hooks/useHatTrick";
 import usePlayerDatabase from "../hooks/usePlayerDatabase";
 import * as matchApi from "../api/matchApi";
+import { calculateManOfTheMatch } from "../utils/momCalculator";
 
 function ScoringPage() {
   const location = useLocation();
   const matchData = location.state || {};
   const navigate = useNavigate();
   const [updatedMatchData, setUpdatedMatchData] = useState(matchData);
+  const [matchSaved, setMatchSaved] = useState(false);
 
   const innings2SnapshotCountRef = useRef(0);
   const currentInningsRef = useRef(1);
@@ -55,6 +60,7 @@ function ScoringPage() {
   const allTimeBowlersRef = useRef(new Set());
 
   const captainStatsSavedRef = useRef(false);
+  const momRef = useRef(null);
 
   const modalStates = useModalStates();
   const wicketFlow = useWicketFlow();
@@ -165,7 +171,7 @@ function ScoringPage() {
     engine.setOverCompleteEvent(null);
     lastKnownBowlersRef.current = [...playersHook.bowlers];
     innings1BowlersSnapshotRef.current = [...lastKnownBowlersRef.current];
-    playersHook.bowlers.forEach(b => {
+    playersHook.bowlers.forEach((b) => {
       if (b?.playerId) allTimeBowlersRef.current.add(String(b.playerId));
     });
     console.log(
@@ -176,25 +182,29 @@ function ScoringPage() {
   }, [engine.overCompleteEvent]);
 
   useEffect(() => {
-    if (!engine.inningsChangeEvent || engine.inningsChangeEvent.superOver) return;
-  
+    if (!engine.inningsChangeEvent || engine.inningsChangeEvent.superOver)
+      return;
+
     if (engine.innings === 1) {
       setTimeout(() => {
         // ✅ THIS DELAY FIXES YOUR ISSUE
-  
+
         const liveBowlers = playersHook.bowlers;
         const snapshot = [...lastKnownBowlersRef.current];
-  
+
         for (const liveBowler of liveBowlers) {
-          const key = String(liveBowler.playerId || liveBowler.displayName || "");
-          const idx = snapshot.findIndex(
-            b => String(b.playerId || b.displayName || "") === key
+          const key = String(
+            liveBowler.playerId || liveBowler.displayName || ""
           );
-  
+          const idx = snapshot.findIndex(
+            (b) => String(b.playerId || b.displayName || "") === key
+          );
+
           if (idx >= 0) {
-            const snapBalls = snapshot[idx].ballsBowled || snapshot[idx].balls || 0;
+            const snapBalls =
+              snapshot[idx].ballsBowled || snapshot[idx].balls || 0;
             const liveBalls = liveBowler.ballsBowled || liveBowler.balls || 0;
-  
+
             if (liveBalls > snapBalls) {
               snapshot[idx] = { ...liveBowler };
             }
@@ -202,15 +212,14 @@ function ScoringPage() {
             snapshot.push({ ...liveBowler });
           }
         }
-  
+
         lastKnownBowlersRef.current = snapshot;
         innings1BowlersSnapshotRef.current = snapshot;
-        snapshot.forEach(b => {
+        snapshot.forEach((b) => {
           if (b?.playerId) allTimeBowlersRef.current.add(String(b.playerId));
         });
-  
+
         console.log("📸 [FIXED] Merged bowlers snapshot:", snapshot);
-  
       }, 50); // 🔥 IMPORTANT DELAY
     }
   }, [engine.inningsChangeEvent]);
@@ -251,281 +260,348 @@ function ScoringPage() {
     engine.saveSuperOverComplete(engine.superOverNumber, soInnings2Data);
   }, [engine.matchOver, engine.isSuperOver, engine.superOverNumber]);
 
-useEffect(() => {
-  if (!engine.matchOver || !playerDBHook) return;
-  if (captainStatsSavedRef.current) return;
-  captainStatsSavedRef.current = true;
+  useEffect(() => {
+    if (!engine.matchOver || !playerDBHook) return;
+    if (captainStatsSavedRef.current) return;
+    captainStatsSavedRef.current = true;
 
-  (async () => {
-    const currentMatchId = playerDBHook.getCurrentMatchId();
-    const captainA = matchData.teamACaptain;
-    const captainB = matchData.teamBCaptain;
-    const teamAName = matchData.teamA || "Team 1";
-    const teamBName = matchData.teamB || "Team 2";
-    const isNR = engine.winner === "NO RESULT";
-
-    // ── STEP 1: Warm cache for captains (may not have batted/bowled) ─────────
-    if (captainA?.jersey) {
-      await playerDBHook.createOrGetPlayer(captainA.jersey, captainA.name);
-    }
-    if (captainB?.jersey) {
-      await playerDBHook.createOrGetPlayer(captainB.jersey, captainB.name);
-    }
-
-    // ── STEP 2: Write captain stats into buffer ──────────────────────────────
-    if (isNR) {
-      if (captainA?.jersey)
-        playerDBHook.updatePlayerStats(captainA.jersey, { captainMatches: 1, captainNR: 1 });
-      if (captainB?.jersey)
-        playerDBHook.updatePlayerStats(captainB.jersey, { captainMatches: 1, captainNR: 1 });
-    } else {
-      const teamAWon = engine.winner === teamAName;
-      const teamBWon = engine.winner === teamBName;
+    (async () => {
+      const currentMatchId = playerDBHook.getCurrentMatchId();
+      const captainA = matchData.teamACaptain;
+      const captainB = matchData.teamBCaptain;
+      const teamAName = matchData.teamA || "Team 1";
+      const teamBName = matchData.teamB || "Team 2";
+      const isNR = engine.winner === "NO RESULT";
 
       if (captainA?.jersey) {
-        playerDBHook.updatePlayerStats(captainA.jersey, {
-          captainMatches: 1,
-          ...(teamAWon ? { captainWins: 1 } : teamBWon ? { captainLosses: 1 } : { captainTies: 1 }),
-        });
+        await playerDBHook.createOrGetPlayer(captainA.jersey, captainA.name);
       }
       if (captainB?.jersey) {
-        playerDBHook.updatePlayerStats(captainB.jersey, {
-          captainMatches: 1,
-          ...(teamBWon ? { captainWins: 1 } : teamAWon ? { captainLosses: 1 } : { captainTies: 1 }),
-        });
+        await playerDBHook.createOrGetPlayer(captainB.jersey, captainB.name);
       }
-    }
 
-    // ── STEP 3: Write team stats (async, fire and forget) ────────────────────
-    // ── STEP 3: Write team stats ──────────────────────────────────────────────
-if (isNR) {
-  playerDBHook.updateTeamStats(teamAName, { matches: 1, nr: 1 }, currentMatchId);
-  playerDBHook.updateTeamStats(teamBName, { matches: 1, nr: 1 }, currentMatchId);
-} else {
-  const teamAWon = engine.winner === teamAName;
-  const teamBWon = engine.winner === teamBName;
-  playerDBHook.updateTeamStats(teamAName, {
-    matches: 1,
-    ...(teamAWon ? { wins: 1 } : teamBWon ? { losses: 1 } : { ties: 1 }),
-  }, currentMatchId);
-  playerDBHook.updateTeamStats(teamBName, {
-    matches: 1,
-    ...(teamBWon ? { wins: 1 } : teamAWon ? { losses: 1 } : { ties: 1 }),
-  }, currentMatchId);
-}
-
-    // ── STEP 4: Write matches:1 for every participant into buffer ────────────
-    // Must happen BEFORE updateMatchMilestones() flushes the buffer.
-    const allParticipantIds = new Set();
-    [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
-      if (p?.playerId) allParticipantIds.add(String(p.playerId));
-    });
-    bowlersRef.current.forEach((b) => {
-      if (b?.playerId) allParticipantIds.add(String(b.playerId));
-    });
-    // ← ADD THIS: include innings 1 bowlers who are no longer in bowlersRef
-    allTimeBowlersRef.current.forEach((pid) => {
-      allParticipantIds.add(pid);
-    });
-    allParticipantIds.forEach((pid) => {
-      playerDBHook.updatePlayerStats(pid, { matches: 1 });
-    });
-
-    // ── STEP 5: Write highestScore + notOuts into buffer ─────────────────────
-    // Also before the flush.
-    [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
-      if (!p?.playerId) return;
-      const pid = String(p.playerId);
-      const inningsRuns = inningsScoreTrackerRef.current[pid] ?? (p.runs || 0);
-      const hasBatted = inningsRuns > 0 || (p.balls || 0) > 0 || p.hasBatted;
-      if (inningsRuns > 0) {
-        const existing = playerDBHook.getPlayer(pid);
-        if (existing && inningsRuns > (existing.highestScore || 0)) {
-          playerDBHook.setHighestScore(pid, inningsRuns);
-        }
-      }
-      if (hasBatted && !allTimeDismissedRef.current.has(pid)) {
-        playerDBHook.updatePlayerStats(pid, { notOuts: 1 });
-      }
-    });
-
-    // ── STEP 6: Flush everything to MongoDB in one pass ──────────────────────
-    await playerDBHook.updateMatchMilestones();
-
-    // ── STEP 7: Save match document to MongoDB ───────────────────────────────
-    const innings1 = inningsDataHook.innings1DataRef.current;
-    const innings2 = inningsDataHook.innings2DataRef.current || captureCurrentData();
-
-    const cleanPlayer = (p) => {
-      const name = p.playerName || p.displayName || p.name || "";
-      if (!name || name === "Unknown") return null;
-      const dismissalObj = p.dismissal || {};
-      return {
-        playerName: name,
-        jersey: p.jersey || p.playerId || "",
-        runs: p.runs ?? 0,
-        balls: p.balls ?? 0,
-        fours: p.fours ?? 0,
-        sixes: p.sixes ?? 0,
-        dotBalls: p.dotBalls ?? 0,
-        ones: p.ones ?? 0,
-        twos: p.twos ?? 0,
-        threes: p.threes ?? 0,
-        isOut: p.isOut ?? !!p.dismissal,
-        dismissalType: p.dismissalType || dismissalObj.type || "",
-        fielderName: p.fielderName || dismissalObj.fielder || "",
-        bowlerName: p.bowlerName || dismissalObj.bowler || "",
-        ballsBowled: p.ballsBowled ?? 0,
-        runsGiven: p.runsGiven ?? 0,
-        wickets: p.wickets ?? 0,
-        wides: p.wides ?? 0,
-        noBalls: p.noBalls ?? 0,
-        dotBallsBowled: p.dotBallsBowled ?? 0,
-        maidens: p.maidens ?? 0,
-      };
-    };
-
-    const allBattersForMOM = [
-      ...(innings1?.battingStats || []),
-      ...(innings2?.battingStats || []),
-    ];
-    let mom = null;
-    let momScore = -1;
-    for (const b of allBattersForMOM) {
-      const pid = String(b.playerId || b.jersey || "");
-      const trackedRuns =
-        inningsScoreTrackerRef.current[pid] ??
-        innings1ScoreSnapshotRef.current[pid];
-      const liveRuns = pid && trackedRuns != null ? trackedRuns : b.runs || 0;
-      const liveBalls = (b.balls || 0) + (liveRuns > (b.runs || 0) ? 1 : 0);
-      const sr = liveBalls > 0 ? liveRuns / liveBalls : 0;
-      const score = liveRuns * 1000 + sr;
-      if (score > momScore) {
-        momScore = score;
-        const name = b.playerName || b.displayName || b.name || "";
-        if (name && name !== "Unknown") mom = name;
-      }
-    }
-    if (!mom) {
-      const allBowlersForMOM = [
-        ...(innings1?.bowlingStats || []),
-        ...(innings2?.bowlingStats || []),
-      ];
-      let bestW = 0, bestR = 9999;
-      for (const b of allBowlersForMOM) {
-        const w = b.wickets || 0, r = b.runsGiven || 9999;
-        const name = b.playerName || b.displayName || b.name || "";
-        if (name && name !== "Unknown" && (w > bestW || (w === bestW && r < bestR))) {
-          bestW = w; bestR = r; mom = name;
-        }
-      }
-    }
-
-    const clean1Batting = (innings1?.battingStats || []).map(cleanPlayer).filter(Boolean);
-    const clean2Batting = (innings2?.battingStats || []).map(cleanPlayer).filter(Boolean);
-    const inn1BowlingStats = innings1?.bowlingStats || [];
-
-    const clean1Bowling = inn1BowlingStats.length > 0
-      ? inn1BowlingStats
-          .filter((b) => {
-            const name = b.playerName || b.displayName || b.name || "";
-            return name && name !== "Unknown";
-          })
-          .map((b) => {
-            const ballsBowled = b.ballsBowled || b.balls || 0;
-            const runsGiven = b.runsGiven || b.runs || 0;
-            const fullOvers = Math.floor(ballsBowled / 6);
-            const remBalls = ballsBowled % 6;
-            return {
-              playerName: b.playerName || b.displayName || b.name || "",
-              jersey: String(b.playerId || ""),
-              ballsBowled,
-              overs: remBalls > 0 ? `${fullOvers}.${remBalls}` : `${fullOvers}.0`,
-              runsGiven,
-              wickets: b.wickets || 0,
-              wides: b.wides || 0,
-              noBalls: b.noBalls || 0,
-              dotBallsBowled: b.dotBallsBowled || 0,
-              maidens: b.maidens || 0,
-            };
-          })
-      : (
-          inningsDataHook.innings1BowlersSnapshotRef?.current?.length > 0
-            ? inningsDataHook.innings1BowlersSnapshotRef.current
-            : innings1BowlersSnapshotRef.current
-        )
-          .filter((b) => {
-            const name = b.displayName || b.playerName || b.name || "";
-            return name && name !== "Unknown";
-          })
-          .map((b) => {
-            const ballsBowled = b.ballsBowled || b.balls || 0;
-            const runsGiven = b.runsGiven || b.runs || 0;
-            const fullOvers = Math.floor(ballsBowled / 6);
-            const remBalls = ballsBowled % 6;
-            return {
-              playerName: b.displayName || b.playerName || b.name || "",
-              jersey: String(b.playerId || ""),
-              ballsBowled,
-              overs: remBalls > 0 ? `${fullOvers}.${remBalls}` : `${fullOvers}.0`,
-              runsGiven,
-              wickets: b.wickets || 0,
-              wides: b.wides || 0,
-              noBalls: b.noBalls || 0,
-              dotBallsBowled: b.dotBallsBowled || 0,
-              maidens: b.maidens || 0,
-            };
+      if (isNR) {
+        if (captainA?.jersey)
+          playerDBHook.updatePlayerStats(captainA.jersey, {
+            captainMatches: 1,
+            captainNR: 1,
           });
+        if (captainB?.jersey)
+          playerDBHook.updatePlayerStats(captainB.jersey, {
+            captainMatches: 1,
+            captainNR: 1,
+          });
+      } else {
+        const teamAWon = engine.winner === teamAName;
+        const teamBWon = engine.winner === teamBName;
 
-    const clean2Bowling = (innings2?.bowlingStats || []).map(cleanPlayer).filter(Boolean);
-    const inn1Balls =
-      (engine.innings1Score?.overs ?? 0) * 6 +
-      (engine.innings1Score?.balls ?? 0);
+        if (captainA?.jersey) {
+          playerDBHook.updatePlayerStats(captainA.jersey, {
+            captainMatches: 1,
+            ...(teamAWon
+              ? { captainWins: 1 }
+              : teamBWon
+              ? { captainLosses: 1 }
+              : { captainTies: 1 }),
+          });
+        }
+        if (captainB?.jersey) {
+          playerDBHook.updatePlayerStats(captainB.jersey, {
+            captainMatches: 1,
+            ...(teamBWon
+              ? { captainWins: 1 }
+              : teamAWon
+              ? { captainLosses: 1 }
+              : { captainTies: 1 }),
+          });
+        }
+      }
 
-    console.log("💾 Saving match with toss:", matchData.tossWinner, "MoM:", mom);
+      if (isNR) {
+        playerDBHook.updateTeamStats(
+          teamAName,
+          { matches: 1, nr: 1 },
+          currentMatchId
+        );
+        playerDBHook.updateTeamStats(
+          teamBName,
+          { matches: 1, nr: 1 },
+          currentMatchId
+        );
+      } else {
+        const teamAWon = engine.winner === teamAName;
+        const teamBWon = engine.winner === teamBName;
+        playerDBHook.updateTeamStats(
+          teamAName,
+          {
+            matches: 1,
+            ...(teamAWon
+              ? { wins: 1 }
+              : teamBWon
+              ? { losses: 1 }
+              : { ties: 1 }),
+          },
+          currentMatchId
+        );
+        playerDBHook.updateTeamStats(
+          teamBName,
+          {
+            matches: 1,
+            ...(teamBWon
+              ? { wins: 1 }
+              : teamAWon
+              ? { losses: 1 }
+              : { ties: 1 }),
+          },
+          currentMatchId
+        );
+      }
 
-    matchApi
-      .saveMatch({
-        matchId: currentMatchId || `match_${Date.now()}`,
-        totalOvers: updatedMatchData.overs,
-        team1Name: firstBattingTeam,
-        team2Name: secondBattingTeam,
-        tossWinner: matchData.tossWinner || "",
-        team1Score: engine.innings1Score?.score ?? 0,
-        team1Wickets: engine.innings1Score?.wickets ?? 0,
-        team1Balls: inn1Balls,
-        team2Score: engine.score,
-        team2Wickets: engine.wickets,
-        team2Balls: engine.overs * 6 + engine.balls,
-        winner: engine.winner || "",
-        resultText: engine.winner
-          ? ["TIE", "NO RESULT"].includes(engine.winner)
-            ? engine.winner
-            : `${engine.winner} won`
-          : "No Result",
-        team1Captain: firstBattingTeam === matchData.teamA
-          ? matchData.teamACaptain?.name || ""
-          : matchData.teamBCaptain?.name || "",
-        team2Captain: firstBattingTeam === matchData.teamA
-          ? matchData.teamBCaptain?.name || ""
-          : matchData.teamACaptain?.name || "",
-        manOfTheMatch: mom || "",
-        team1Batting: clean1Batting,
-        team2Batting: clean2Batting,
-        team1Bowling: clean1Bowling,
-        team2Bowling: clean2Bowling,
-        innings1DataBlob: innings1,
-        innings2DataBlob: innings2,
-      })
-      .catch((err) => console.error("❌ saveMatch failed:", err));
+      const allParticipantIds = new Set();
+      [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
+        if (p?.playerId) allParticipantIds.add(String(p.playerId));
+      });
+      bowlersRef.current.forEach((b) => {
+        if (b?.playerId) allParticipantIds.add(String(b.playerId));
+      });
+      allTimeBowlersRef.current.forEach((pid) => {
+        allParticipantIds.add(pid);
+      });
+      allParticipantIds.forEach((pid) => {
+        playerDBHook.updatePlayerStats(pid, { matches: 1 });
+      });
 
-    setTimeout(() => {
-      playerDBHook.setCurrentMatchId(null);
-    }, 500);
-  })();
-}, [engine.matchOver]);
+      [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
+        if (!p?.playerId) return;
+        const pid = String(p.playerId);
+        const inningsRuns =
+          inningsScoreTrackerRef.current[pid] ?? (p.runs || 0);
+        const hasBatted = inningsRuns > 0 || (p.balls || 0) > 0 || p.hasBatted;
+        if (inningsRuns > 0) {
+          const existing = playerDBHook.getPlayer(pid);
+          if (existing && inningsRuns > (existing.highestScore || 0)) {
+            playerDBHook.setHighestScore(pid, inningsRuns);
+          }
+        }
+        if (hasBatted && !allTimeDismissedRef.current.has(pid)) {
+          playerDBHook.updatePlayerStats(pid, { notOuts: 1 });
+        }
+      });
 
+      await playerDBHook.updateMatchMilestones();
 
+      const innings1 = inningsDataHook.innings1DataRef.current;
+      const innings2 =
+        inningsDataHook.innings2DataRef.current || captureCurrentData();
+      console.log(
+        "🧪 innings1 batters:",
+        innings1?.battingStats?.map((b) => b.playerName + ":" + b.runs)
+      );
+      console.log(
+        "🧪 innings2 batters:",
+        innings2?.battingStats?.map((b) => b.playerName + ":" + b.runs)
+      );
+
+      const cleanPlayer = (p) => {
+        const name = p.playerName || p.displayName || p.name || "";
+        if (!name || name === "Unknown") return null;
+        const dismissalObj = p.dismissal || {};
+        return {
+          playerName: name,
+          jersey: p.jersey || p.playerId || "",
+          runs: p.runs ?? 0,
+          balls: p.balls ?? 0,
+          fours: p.fours ?? 0,
+          sixes: p.sixes ?? 0,
+          dotBalls: p.dotBalls ?? 0,
+          ones: p.ones ?? 0,
+          twos: p.twos ?? 0,
+          threes: p.threes ?? 0,
+          isOut: p.isOut ?? !!p.dismissal,
+          dismissalType: p.dismissalType || dismissalObj.type || "",
+          fielderName: p.fielderName || dismissalObj.fielder || "",
+          bowlerName: p.bowlerName || dismissalObj.bowler || "",
+          ballsBowled: p.ballsBowled ?? 0,
+          runsGiven: p.runsGiven ?? 0,
+          wickets: p.wickets ?? 0,
+          wides: p.wides ?? 0,
+          noBalls: p.noBalls ?? 0,
+          dotBallsBowled: p.dotBallsBowled ?? 0,
+          maidens: p.maidens ?? 0,
+        };
+      };
+
+      const allBattersForMOM = [
+        ...(innings1?.battingStats || []),
+        ...(innings2?.battingStats || []),
+      ];
+      let mom = null;
+      let momScore = -1;
+      for (const b of allBattersForMOM) {
+        const pid = String(b.playerId || b.jersey || "");
+        const trackedRuns =
+          inningsScoreTrackerRef.current[pid] ??
+          innings1ScoreSnapshotRef.current[pid];
+        const liveRuns = pid && trackedRuns != null ? trackedRuns : b.runs || 0;
+        const liveBalls = (b.balls || 0) + (liveRuns > (b.runs || 0) ? 1 : 0);
+        const sr = liveBalls > 0 ? liveRuns / liveBalls : 0;
+        const score = liveRuns * 1000 + sr;
+        if (score > momScore) {
+          momScore = score;
+          const name = b.playerName || b.displayName || b.name || "";
+          if (name && name !== "Unknown") mom = name;
+        }
+      }
+      if (!mom) {
+        const allBowlersForMOM = [
+          ...(innings1?.bowlingStats || []),
+          ...(innings2?.bowlingStats || []),
+        ];
+        let bestW = 0,
+          bestR = 9999;
+        for (const b of allBowlersForMOM) {
+          const w = b.wickets || 0,
+            r = b.runsGiven || 9999;
+          const name = b.playerName || b.displayName || b.name || "";
+          if (
+            name &&
+            name !== "Unknown" &&
+            (w > bestW || (w === bestW && r < bestR))
+          ) {
+            bestW = w;
+            bestR = r;
+            mom = name;
+          }
+        }
+      }
+
+      const clean1Batting = (innings1?.battingStats || [])
+        .map(cleanPlayer)
+        .filter(Boolean);
+      const clean2Batting = (innings2?.battingStats || [])
+        .map(cleanPlayer)
+        .filter(Boolean);
+      const inn1BowlingStats = innings1?.bowlingStats || [];
+
+      const clean1Bowling =
+        inn1BowlingStats.length > 0
+          ? inn1BowlingStats
+              .filter((b) => {
+                const name = b.playerName || b.displayName || b.name || "";
+                return name && name !== "Unknown";
+              })
+              .map((b) => {
+                const ballsBowled = b.ballsBowled || b.balls || 0;
+                const runsGiven = b.runsGiven || b.runs || 0;
+                const fullOvers = Math.floor(ballsBowled / 6);
+                const remBalls = ballsBowled % 6;
+                return {
+                  playerName: b.playerName || b.displayName || b.name || "",
+                  jersey: String(b.playerId || ""),
+                  ballsBowled,
+                  overs:
+                    remBalls > 0
+                      ? `${fullOvers}.${remBalls}`
+                      : `${fullOvers}.0`,
+                  runsGiven,
+                  wickets: b.wickets || 0,
+                  wides: b.wides || 0,
+                  noBalls: b.noBalls || 0,
+                  dotBallsBowled: b.dotBallsBowled || 0,
+                  maidens: b.maidens || 0,
+                };
+              })
+          : (inningsDataHook.innings1BowlersSnapshotRef?.current?.length > 0
+              ? inningsDataHook.innings1BowlersSnapshotRef.current
+              : innings1BowlersSnapshotRef.current
+            )
+              .filter((b) => {
+                const name = b.displayName || b.playerName || b.name || "";
+                return name && name !== "Unknown";
+              })
+              .map((b) => {
+                const ballsBowled = b.ballsBowled || b.balls || 0;
+                const runsGiven = b.runsGiven || b.runs || 0;
+                const fullOvers = Math.floor(ballsBowled / 6);
+                const remBalls = ballsBowled % 6;
+                return {
+                  playerName: b.displayName || b.playerName || b.name || "",
+                  jersey: String(b.playerId || ""),
+                  ballsBowled,
+                  overs:
+                    remBalls > 0
+                      ? `${fullOvers}.${remBalls}`
+                      : `${fullOvers}.0`,
+                  runsGiven,
+                  wickets: b.wickets || 0,
+                  wides: b.wides || 0,
+                  noBalls: b.noBalls || 0,
+                  dotBallsBowled: b.dotBallsBowled || 0,
+                  maidens: b.maidens || 0,
+                };
+              });
+
+      const clean2Bowling = (innings2?.bowlingStats || [])
+        .map(cleanPlayer)
+        .filter(Boolean);
+      const inn1Balls =
+        (engine.innings1Score?.overs ?? 0) * 6 +
+        (engine.innings1Score?.balls ?? 0);
+
+      momRef.current = mom || "";
+      console.log(
+        "💾 Saving match with toss:",
+        matchData.tossWinner,
+        "MoM:",
+        mom
+      );
+
+      try {
+        await matchApi.saveMatch({
+          matchId: currentMatchId || `match_${Date.now()}`,
+          totalOvers: updatedMatchData.overs,
+          team1Name: firstBattingTeam,
+          team2Name: secondBattingTeam,
+          tossWinner: matchData.tossWinner || "",
+          team1Score: engine.innings1Score?.score ?? 0,
+          team1Wickets: engine.innings1Score?.wickets ?? 0,
+          team1Balls: inn1Balls,
+          team2Score: engine.score,
+          team2Wickets: engine.wickets,
+          team2Balls: engine.overs * 6 + engine.balls,
+          winner: engine.winner || "",
+          resultText: engine.winner
+            ? ["TIE", "NO RESULT"].includes(engine.winner)
+              ? engine.winner
+              : `${engine.winner} won`
+            : "No Result",
+          team1Captain:
+            firstBattingTeam === matchData.teamA
+              ? matchData.teamACaptain?.name || ""
+              : matchData.teamBCaptain?.name || "",
+          team2Captain:
+            firstBattingTeam === matchData.teamA
+              ? matchData.teamBCaptain?.name || ""
+              : matchData.teamACaptain?.name || "",
+          manOfTheMatch: mom || "",
+          team1Batting: clean1Batting,
+          team2Batting: clean2Batting,
+          team1Bowling: clean1Bowling,
+          team2Bowling: clean2Bowling,
+          innings1DataBlob: innings1,
+          innings2DataBlob: innings2,
+        });
+        console.log("✅ saveMatch completed");
+        setMatchSaved(true);
+        setTimeout(() => {
+          playerDBHook.setCurrentMatchId(null);
+        }, 500);
+      } catch (err) {
+        console.error("❌ saveMatch failed:", err);
+        // matchSaved stays false — button stays disabled so user cannot navigate away
+      }
+    })();
+  }, [engine.matchOver]);
   useEffect(() => {
     if (!engine.tieDetected) return;
     modalStates.openSuperOverModal(
@@ -605,86 +681,62 @@ if (isNR) {
     lastKnownBowlersRef.current = [...playersHook.bowlers];
 
     // ─── RUNOUT PATH ───────────────────────────────────────────────
+    // ─── RUNOUT PATH ───────────────────────────────────────────────
     if (wicketFlow.waitingForRunoutRun) {
       wicketFlow.handleRunoutWithRuns(r);
-      engine.handleWicket(
-        true,
-        false,
-        playersHook.players[playersHook.strikerIndex]?.playerId,
-        true,
-        playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName || ""  // ← add
-      );
+
       const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
+      const striker = playersHook.players[playersHook.strikerIndex];
 
       if (bowler && !bowler.hasBowled) {
         bowler.hasBowled = true;
-        if (bowler.playerId) {
+        if (bowler.playerId)
           playerDBHook.updatePlayerStats(bowler.playerId, {
             bowlingInnings: 1,
           });
-        }
       }
 
       if (r > 0) {
         playersHook.addRunsToStriker(r);
-        const striker = playersHook.players[playersHook.strikerIndex];
-
         if (striker && !striker.hasBatted) {
           striker.hasBatted = true;
-          if (striker.playerId) {
+          if (striker.playerId)
             playerDBHook.updatePlayerStats(striker.playerId, { innings: 1 });
-          }
         }
-
         if (striker?.playerId) {
           trackInningsRun(striker.playerId, r);
-          const runStats = {};
+          const runStats = { runs: r, balls: 1 };
           if (r === 1) runStats.ones = 1;
           else if (r === 2) runStats.twos = 1;
           else if (r === 3) runStats.threes = 1;
           else if (r === 4) runStats.fours = 1;
           else if (r === 6) runStats.sixes = 1;
-          runStats.runs = r;
-          runStats.balls = 1;
           playerDBHook.updatePlayerStats(striker.playerId, runStats);
         }
-
-        if (bowler?.playerId) {
+        if (bowler?.playerId)
           playerDBHook.updatePlayerStats(bowler.playerId, {
             ballsBowled: 1,
             runsGiven: r,
           });
-        }
-
         playersHook.addRunsToBowler(r);
-        if (
-          playersHook.strikerIndex >= 0 &&
-          playersHook.players[playersHook.strikerIndex]
-        )
-          partnershipsHook.addRunsToPartnership(
-            r,
-            playersHook.players[playersHook.strikerIndex].playerId
-          );
-        engine.addScore(r);
-        engine.addRunToCurrentOver(r, true);
+        partnershipsHook.addRunsToPartnership(r, striker?.playerId);
         if (r % 2 !== 0) playersHook.swapStrike();
       } else {
         playersHook.addBallToBowler();
-        if (bowler?.playerId) {
+        if (bowler?.playerId)
           playerDBHook.updatePlayerStats(bowler.playerId, {
             ballsBowled: 1,
             runsGiven: 0,
             dotBallsBowled: 1,
           });
-        }
-        const striker = playersHook.players[playersHook.strikerIndex];
-        if (striker?.playerId) {
+        if (striker?.playerId)
           playerDBHook.updatePlayerStats(striker.playerId, { dotBalls: 1 });
-        }
         partnershipsHook.addBallToPartnership();
       }
 
-      engine.addRunToCurrentOver("W", false);
+      engine.addToCurrentOverRuns(r);
+      // ✅ Single call — advances ball/over count, updates score+wicket, pushes one merged bubble
+      engine.handleRunout(r, striker?.playerId, bowler?.displayName || "");
       playersHook.registerWicket();
       return;
     }
@@ -800,7 +852,7 @@ if (isNR) {
     engine.handleRun(
       r,
       playersHook.players[playersHook.strikerIndex]?.playerId,
-      bowler?.displayName || ""          // ← bowlerName (bowler is already declared above)
+      bowler?.displayName || "" // ← bowlerName (bowler is already declared above)
     );
 
     hatTrickHook.trackBall(
@@ -905,13 +957,14 @@ if (isNR) {
     partnershipsHook.savePartnership(engine.score, nextWickets);
     partnershipsHook.resetPartnership();
 
-    engine.handleWicket(
-      wicketFlow.selectedWicketType === "runout",
-      false,
-      playersHook.players[currentOutBatsman]?.playerId,
-      bowlerName
-    );
-
+    if (wicketFlow.selectedWicketType !== "runout") {
+      engine.handleWicket(
+        false,
+        false,
+        playersHook.players[currentOutBatsman]?.playerId,
+        bowlerName
+      );
+    }
 
     if (fielderJersey) {
       playerDBHook.updateFieldingStats(
@@ -1047,7 +1100,7 @@ if (isNR) {
       false,
       true,
       playersHook.players[currentOutBatsman]?.playerId,
-      bowlerName             
+      bowlerName
     );
 
     playersHook.setOutBatsman(currentOutBatsman);
@@ -1099,6 +1152,7 @@ if (isNR) {
     engine.innings === 1 ? teamABattersRef.current : teamBBattersRef.current;
   const activeBowlerJerseys =
     engine.innings === 1 ? teamBBowlersRef.current : teamABowlersRef.current;
+  
 
   return (
     <div className={styles.container}>
@@ -1165,7 +1219,6 @@ if (isNR) {
                       bowlingInnings: 1,
                     });
                 }
-                playersHook.addBallToBowler();
                 if (bowler?.playerId)
                   playerDBHook.updatePlayerStats(bowler.playerId, {
                     wides: 1,
@@ -1173,7 +1226,8 @@ if (isNR) {
                   });
                 playersHook.addRunsToBowler(1);
                 partnershipsHook.addExtraToPartnership(1);
-                engine.handleWide(bowler?.displayName || "");               engine.addToCurrentOverRuns(1);
+                engine.handleWide(bowler?.displayName || "");
+                engine.addToCurrentOverRuns(1);
               }}
               onNoBall={() => {
                 lastKnownBowlersRef.current = [...playersHook.bowlers];
@@ -1187,7 +1241,6 @@ if (isNR) {
                       bowlingInnings: 1,
                     });
                 }
-                playersHook.addBallToBowler();
                 if (bowler?.playerId)
                   playerDBHook.updatePlayerStats(bowler.playerId, {
                     noBalls: 1,
@@ -1217,7 +1270,8 @@ if (isNR) {
                   });
                 partnershipsHook.addExtraToPartnership(r);
                 partnershipsHook.addBallToPartnership();
-               engine.handleBye(r, bowler?.displayName || "");                engine.addToCurrentOverRuns(r);
+                engine.handleBye(r, bowler?.displayName || "");
+                engine.addToCurrentOverRuns(r);
               }}
               onLegBye={(r) => {
                 lastKnownBowlersRef.current = [...playersHook.bowlers];
@@ -1238,7 +1292,7 @@ if (isNR) {
                   });
                 partnershipsHook.addExtraToPartnership(r);
                 partnershipsHook.addBallToPartnership();
-                 engine.handleLegBye(r, bowler?.displayName || "");
+                engine.handleLegBye(r, bowler?.displayName || "");
 
                 engine.addToCurrentOverRuns(r);
               }}
@@ -1266,23 +1320,70 @@ if (isNR) {
         onMatchSummary={() => modalStates.setShowSummary(true)}
       />
       {engine.matchOver && (
-  <div style={{ display:"flex", justifyContent:"center", gap:"12px", marginTop:"15px", flexWrap:"wrap" }}>
-    <button onClick={() => navigate("/home")} style={{ background:"#22c55e", color:"white", padding:"12px 20px", borderRadius:"10px", border:"none", cursor:"pointer", fontWeight:"600", fontSize:"15px" }}>
-      🏠 Go to Home
-    </button>
-    <button
-      onClick={() => generateScorecardPDF(buildScoringPagePayload({
-        matchData, updatedMatchData, engine,
-        firstBattingTeam, secondBattingTeam,
-        inningsDataHook,
-        inn1BowlersSnapshotRef: innings1BowlersSnapshotRef,
-      }))}
-      style={{ background:"#1e5aa0", color:"white", padding:"12px 20px", borderRadius:"10px", border:"none", cursor:"pointer", fontWeight:"600", fontSize:"15px" }}
-    >
-      📄 Download Scorecard PDF
-    </button>
-  </div>
-)}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "12px",
+            marginTop: "15px",
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            onClick={() => navigate("/home")}
+            disabled={!matchSaved}
+            style={{
+              background: matchSaved ? "#22c55e" : "#64748b",
+              color: "white",
+              padding: "12px 20px",
+              borderRadius: "10px",
+              border: "none",
+              cursor: matchSaved ? "pointer" : "not-allowed",
+              fontWeight: "600",
+              fontSize: "15px",
+              opacity: matchSaved ? 1 : 0.7,
+            }}
+          >
+            {matchSaved ? "🏠 Go to Home" : "⏳ Saving..."}
+          </button>
+          <button
+            onClick={() => {
+              // Compute MoM fresh at click time using the same algorithm as MatchSummary
+              const freshMom = calculateManOfTheMatch(
+                inningsDataHook.innings1DataRef?.current,
+                inningsDataHook.innings2DataRef?.current,
+                engine.winner,
+                matchData
+              );
+
+              generateScorecardPDF(
+                buildScoringPagePayload({
+                  matchData,
+                  updatedMatchData,
+                  engine,
+                  firstBattingTeam,
+                  secondBattingTeam,
+                  inningsDataHook,
+                  inn1BowlersSnapshotRef: innings1BowlersSnapshotRef,
+                  manOfTheMatch: freshMom?.name || momRef.current || "",
+                })
+              );
+            }}
+            style={{
+              background: "#1e5aa0",
+              color: "white",
+              padding: "12px 20px",
+              borderRadius: "10px",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "15px",
+            }}
+          >
+            📄 Download Scorecard PDF
+          </button>
+        </div>
+      )}
       <ModalManager
         modalStates={modalStates}
         wicketFlow={wicketFlow}
