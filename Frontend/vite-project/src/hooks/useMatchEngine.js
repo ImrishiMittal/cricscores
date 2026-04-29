@@ -71,7 +71,15 @@ export default function useMatchEngine(matchData, swapStrike) {
   };
 
   const addRunToCurrentOver = (runs, isWicket = false) => {
-    setCurrentOver((prev) => [...prev, { runs, isWicket }]);
+    if (runs === "W") {
+      setCurrentOver(prev => [...prev, { type: "W", runs: 0, isWicket: true }]);
+    } else {
+      setCurrentOver(prev => [...prev, { 
+        type: "RUN", 
+        runs, 
+        isWicket: isWicket   // ✅ merged flag
+      }]);
+    }
   };
 
   const restoreState = (snap) => {
@@ -356,6 +364,42 @@ export default function useMatchEngine(matchData, swapStrike) {
     checkMatchStatus(score, nextWickets, nextBalls, nextOvers);
   };
 
+  const handleRunout = (runs, strikerId, bowlerName = "") => {
+    if (matchOver) return;
+    if (isFreeHit) setIsFreeHit(false);
+  
+    const newScore = score + runs;
+    setScore(newScore);
+  
+    let nextBalls = balls + 1;
+    let nextOvers = overs;
+  
+    // Push single merged entry: run + wicket on same ball
+    setCurrentOver((prev) => [...prev, { type: "RUN", runs, isWicket: true }]);
+    const entry = { event: "RUNOUT", runs, over: overs, ball: balls, strikerId, bowler: bowlerName, isWicket: true };
+    completeHistoryRef.current = [...completeHistoryRef.current, entry];
+    setCompleteHistory((prev) => [...prev, entry]);
+  
+    if (nextBalls === 6) {
+      nextOvers++;
+      nextBalls = 0;
+      swapStrike();
+      setCurrentOver([]);
+      setCurrentOverRuns(0);
+      const ballsBowled = nextOvers * 6;
+      if (ballsBowled < totalBalls) {
+        setOverCompleteEvent({ overNumber: nextOvers, isMaiden: currentOverRuns === 0 });
+      }
+    }
+  
+    setBalls(nextBalls);
+    setOvers(nextOvers);
+  
+    const nextWickets = wickets + 1;
+    setWickets(nextWickets);
+    checkMatchStatus(newScore, nextWickets, nextBalls, nextOvers);
+  };
+
   /* ================= WIDE ================= */
   // ✅ Added bowlerName parameter
   const handleWide = (bowlerName = "") => {
@@ -547,5 +591,6 @@ export default function useMatchEngine(matchData, swapStrike) {
     realMatchInnings2Score,
     superOverBattingFirst: superOverBattingFirstRef.current,
     addToCurrentOverRuns,
+    handleRunout,
   };
 }

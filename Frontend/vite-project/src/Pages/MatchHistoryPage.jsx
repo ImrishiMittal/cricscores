@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { getMatches } from "../api/matchApi";
 import s from "./MatchHistory.module.css";
 import { generateScorecardPDF } from "../utils/generateScorecardPDF";
@@ -63,12 +63,12 @@ function MatchCard({ match, onClick }) {
         <span className={s.dateText}>{fmtDate(match.createdAt)}</span>
       </div>
 
-      {/* ── NEW: PDF download button ── */}
+      {/* ── PDF download button ── */}
       <button
         className={s.pdfBtn}
         onClick={(e) => {
-          e.stopPropagation(); // don't open detail view
-          generateScorecardPDF(match); // match already has all needed fields
+          e.stopPropagation();
+          generateScorecardPDF(match);
         }}
       >
         ⬇ PDF
@@ -133,14 +133,10 @@ function BattingTable({ batting, hasBlob }) {
 
             return (
               <tr key={i}>
-                {/* Batter name */}
                 <td>{p.playerName || p.displayName || p.name}</td>
-
-                {/* Dismissal — truncated naturally by fixed layout */}
                 <td className={dismissalText ? s.tdOut : s.tdNotOut}>
                   {dismissalText || "not out"}
                 </td>
-
                 <td className={s.tdRuns}>{p.runs ?? "-"}</td>
                 <td>{p.balls ?? "-"}</td>
                 <td>{p.fours ?? "-"}</td>
@@ -231,7 +227,6 @@ function ScorecardTab({ match, t1, t2 }) {
 
   return (
     <div>
-      {/* Innings selector */}
       <div className={s.inningsTabs}>
         {[1, 2].map((inn) => (
           <button
@@ -246,11 +241,9 @@ function ScorecardTab({ match, t1, t2 }) {
         ))}
       </div>
 
-      {/* Batting */}
       <p className={s.sectionHeader}>{battingTeam} — Batting</p>
       <BattingTable batting={batting} hasBlob={hasBlob} />
 
-      {/* Bowling */}
       <p className={s.sectionHeader}>{bowlingTeam} — Bowling</p>
       <BowlingTable bowling={bowling} />
     </div>
@@ -288,6 +281,7 @@ function InfoTab({ match, t1, t2, result }) {
 }
 
 // ── Match detail ──────────────────────────────────────────────────────────────
+// ✅ FIXED: removed broken useEffect, handleRefresh, and misplaced header JSX
 function MatchDetail({ match, onBack }) {
   const [tab, setTab] = useState("scorecard");
   const t1 = match.team1Name || match.team1 || "Team A";
@@ -327,6 +321,7 @@ function MatchDetail({ match, onBack }) {
       >
         📄 Download Scorecard PDF
       </button>
+
       {/* Tab switcher */}
       <div className={s.tabs}>
         {[
@@ -352,14 +347,18 @@ function MatchDetail({ match, onBack }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
+// ✅ FIXED: added location, fetchMatches, [location.pathname] dep, refresh button
 function MatchHistoryPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [matches, setMatches] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const fetchMatches = () => {
+    setLoading(true);
+    setError(null);
     getMatches()
       .then((data) => {
         setMatches(
@@ -370,7 +369,11 @@ function MatchHistoryPage() {
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchMatches();
+  }, [location.key]);
 
   return (
     <div className={s.page}>
@@ -385,6 +388,9 @@ function MatchHistoryPage() {
         <h1 className={s.pageTitle}>
           Match <span>History</span>
         </h1>
+        <button className={s.refreshBtn} onClick={fetchMatches}>
+          🔄
+        </button>
       </div>
 
       {/* ── Body ───────────────────────────────────────────────────── */}
