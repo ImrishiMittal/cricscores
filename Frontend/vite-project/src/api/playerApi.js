@@ -1,9 +1,7 @@
 // src/api/playerApi.js
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : "http://localhost:5000/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const authHeader = () => ({
   headers: {
