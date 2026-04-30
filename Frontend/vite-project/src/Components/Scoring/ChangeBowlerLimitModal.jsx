@@ -16,14 +16,10 @@ function ChangeBowlerLimitModal({
 
   // Set validation info on mount
   useEffect(() => {
-    const maxAllowed = Math.floor(totalOvers / 2);
-    
     setValidationInfo({
       totalOvers: totalOvers,
       currentLimit: currentLimit || 'Not set',
       minAllowed: 1,
-      maxAllowed: maxAllowed,
-      recommendation: `Recommended: ${maxAllowed} (TotalOvers/2)`,
     });
   }, [totalOvers, currentLimit]);
 
@@ -36,14 +32,12 @@ function ChangeBowlerLimitModal({
       return;
     }
 
-    const limit = parseFloat(value);
+    const limit = parseInt(value);
 
     if (isNaN(limit)) {
       setWarning('');
       return;
     }
-
-    const maxAllowed = Math.floor(totalOvers / 2);
 
     // Show warnings
     if (currentLimit === 0 || !currentLimit) {
@@ -67,7 +61,7 @@ function ChangeBowlerLimitModal({
       return;
     }
 
-    const limit = parseFloat(newLimit);
+    const limit = parseInt(newLimit);
 
     if (isNaN(limit)) {
       setError('Please enter a valid number');
@@ -76,19 +70,6 @@ function ChangeBowlerLimitModal({
 
     if (limit <= 0) {
       setError('Limit must be greater than 0');
-      return;
-    }
-
-    const maxAllowed = Math.floor(totalOvers / 2);
-
-    if (limit > maxAllowed) {
-      setError(`Cannot exceed ${maxAllowed} overs (TotalOvers/2)`);
-      return;
-    }
-
-    // Check decimal places - maximum 1 decimal place
-    if (limit % 1 !== 0 && (limit * 10) % 1 !== 0) {
-      setError('Maximum 1 decimal place allowed');
       return;
     }
 
@@ -121,16 +102,11 @@ function ChangeBowlerLimitModal({
 
         {validationInfo && (
           <div className={styles.infoBox}>
-            <p className={styles.infoTitle}>Constraints:</p>
-            <ul className={styles.infoList}>
-              <li>✅ Minimum allowed: <strong>{validationInfo.minAllowed}</strong></li>
-              <li>🔺 Maximum allowed: <strong>{validationInfo.maxAllowed}</strong></li>
-              <li>💡 {validationInfo.recommendation}</li>
-            </ul>
-            <p className={styles.reasonText}>
-              Each bowler can bowl a maximum of TotalOvers/2 overs per innings
-            </p>
-          </div>
+          <p className={styles.infoTitle}>Constraints:</p>
+          <ul className={styles.infoList}>
+            <li>✅ Minimum allowed: <strong>{validationInfo.minAllowed}</strong></li>
+          </ul>
+        </div>
         )}
 
         <div className={styles.inputSection}>
@@ -138,12 +114,11 @@ function ChangeBowlerLimitModal({
           <input
             type="number"
             min="1"
-            max={validationInfo?.maxAllowed}
-            step="0.1"
+            step="1"
             className={`${styles.input} ${error ? styles.inputError : ''}`}
             value={newLimit}
             onChange={(e) => handleLimitChange(e.target.value)}
-            placeholder={`1 - ${validationInfo?.maxAllowed}`}
+            placeholder="Enter over limit"
             autoFocus
           />
         </div>
