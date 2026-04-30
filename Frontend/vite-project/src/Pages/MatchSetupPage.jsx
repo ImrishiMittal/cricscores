@@ -168,9 +168,31 @@ function MatchSetupPage() {
 
   // ---------------- START MATCH ----------------
   const startMatch = () => {
+    // ── Required field validation ──────────────────────────────
+    const errors = [];
+
+    if (!teamA.trim()) errors.push("Team A Name");
+    if (!teamB.trim()) errors.push("Team B Name");
+    if (!teamAPlayers) errors.push("Team A Number of Players");
+    if (!teamBPlayers) errors.push("Team B Number of Players");
+    if (!overs) errors.push("Number of Overs");
+
+    // Toss must be completed AND bat/bowl choice must be made
+    if (!tossWinner) errors.push("Toss (flip the coin first)");
+    if (tossWinner && !batChoice) errors.push("Bat / Bowl choice after toss");
+
+    if (errors.length > 0) {
+      alert(
+        `⚠️ Please complete the following before starting:\n\n• ${errors.join(
+          "\n• "
+        )}`
+      );
+      return;
+    }
+
     const matchData = {
-      teamA: teamA || "Team 1",
-      teamB: teamB || "Team 2",
+      teamA: teamA.trim(),
+      teamB: teamB.trim(),
       teamAPlayers,
       teamBPlayers,
       teamACaptain: teamACaptain || null,
@@ -184,7 +206,11 @@ function MatchSetupPage() {
       inningsPerTeam,
       oversPerDay,
       lastManBatting,
-      maxOversPerBowler: isTestMatch ? null : Number(maxOversPerBowler),
+      maxOversPerBowler: isTestMatch
+        ? null
+        : maxOversPerBowler !== "" && maxOversPerBowler !== null
+        ? Number(maxOversPerBowler)
+        : null,
       enableSuperOver,
     };
 
@@ -283,6 +309,7 @@ function MatchSetupPage() {
                   type="number"
                   min="1"
                   value={maxOversPerBowler}
+                  placeholder="No limit"
                   onChange={(e) => setMaxOversPerBowler(e.target.value)}
                   disabled={isTestMatch}
                 />
@@ -484,9 +511,30 @@ function MatchSetupPage() {
           </div>
         )}
 
-        <button className={styles.startBtn} onClick={startMatch}>
-          Start Match
-        </button>
+        {(() => {
+          const ready =
+            teamA.trim() &&
+            teamB.trim() &&
+            teamAPlayers &&
+            teamBPlayers &&
+            overs &&
+            tossWinner &&
+            batChoice;
+
+          return (
+            <button
+              className={styles.startBtn}
+              onClick={startMatch}
+              disabled={!ready}
+              style={{
+                opacity: ready ? 1 : 0.45,
+                cursor: ready ? "pointer" : "not-allowed",
+              }}
+            >
+              Start Match
+            </button>
+          );
+        })()}
       </div>
     </div>
   );
