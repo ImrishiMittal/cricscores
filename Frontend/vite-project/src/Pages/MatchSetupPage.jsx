@@ -316,13 +316,26 @@ function MatchSetupPage() {
               </div>
 
               {/* Test Match Toggle */}
-              <label className={styles.additionalOption}>
+              <label
+                className={styles.additionalOption}
+                style={{ opacity: 0.5, cursor: "not-allowed" }}
+              >
                 <input
                   type="checkbox"
                   checked={isTestMatch}
-                  onChange={(e) => setIsTestMatch(e.target.checked)}
+                  onChange={() => {}}
+                  disabled
                 />
-                Test Match Setup
+                Test Match Setup{" "}
+                <span
+                  style={{
+                    fontSize: "11px",
+                    color: "#facc15",
+                    marginLeft: "6px",
+                  }}
+                >
+                  🚧 Coming Soon
+                </span>
               </label>
 
               {/* Test Match Options */}
