@@ -215,7 +215,8 @@ function MatchSetupPage() {
     };
 
     localStorage.setItem("matchData", JSON.stringify(matchData));
-    navigate("/scoring", { state: matchData });
+try { localStorage.removeItem("cricket_match_snapshot"); } catch(e) {}
+navigate("/scoring", { state: matchData });
   };
 
   return (
