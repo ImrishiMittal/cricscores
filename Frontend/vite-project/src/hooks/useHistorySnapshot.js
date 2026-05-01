@@ -1,5 +1,5 @@
+export const STORAGE_KEY = "cricket_match_snapshot";
 import { useState, useEffect, useRef } from "react";
-
 function useHistorySnapshot(
   showStartModal,
   players,
@@ -25,8 +25,20 @@ function useHistorySnapshot(
   innings,
   extras,   // ✅ NEW
 ) {
+  const STORAGE_KEY = "cricket_match_snapshot";
   const [historyStack, setHistoryStack] = useState([]);
   const shouldSaveSnapshot = useRef(false);
+
+  useEffect(() => {
+    if (historyStack.length === 0) return;
+    const latest = historyStack[historyStack.length - 1];
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(latest));
+    } catch (e) {
+      // Storage full or unavailable — fail silently
+      console.warn("localStorage save failed:", e);
+    }
+  }, [historyStack]);
 
   /* ================= INITIAL SNAPSHOT ================= */
   useEffect(() => {
@@ -131,6 +143,7 @@ function useHistorySnapshot(
     popSnapshot,
     triggerSnapshot,
     shouldSaveSnapshot,
+    clearSavedMatch: () => localStorage.removeItem(STORAGE_KEY),
   };
 }
 

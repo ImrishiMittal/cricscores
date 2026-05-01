@@ -5,6 +5,7 @@ import {
   generateScorecardPDF,
   buildScoringPagePayload,
 } from "../utils/generateScorecardPDF";
+import { STORAGE_KEY } from "../hooks/useHistorySnapshot";
 import BrandTitle from "../Components/BrandTitle";
 import ScoreHeader from "../Components/Scoring/ScoreHeader";
 import InfoStrip from "../Components/Scoring/InfoStrip";
@@ -66,6 +67,24 @@ function ScoringPage() {
   const wicketFlow = useWicketFlow();
   const hatTrickHook = useHatTrick();
   const playerDBHook = usePlayerDatabase();
+
+  const [resumePrompt, setResumePrompt] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useState(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const snap = JSON.parse(raw);
+        // Only prompt if there's real ball data (not a blank pre-game snapshot)
+        if (snap && (snap.score > 0 || snap.balls > 0 || snap.wickets > 0)) {
+          setSavedSnapshot(snap);
+          setResumePrompt(true);
+        }
+      }
+    } catch (e) {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
 
   useEffect(() => {
     const existingMatchId = playerDBHook.getCurrentMatchId();
@@ -592,6 +611,7 @@ function ScoringPage() {
           innings2DataBlob: innings2,
         });
         console.log("✅ saveMatch completed");
+        historySnapshotHook.clearSavedMatch();
         setMatchSaved(true);
         setTimeout(() => {
           playerDBHook.setCurrentMatchId(null);
@@ -1152,7 +1172,6 @@ function ScoringPage() {
     engine.innings === 1 ? teamABattersRef.current : teamBBattersRef.current;
   const activeBowlerJerseys =
     engine.innings === 1 ? teamBBowlersRef.current : teamABowlersRef.current;
-  
 
   return (
     <div className={styles.container}>
@@ -1382,6 +1401,110 @@ function ScoringPage() {
           >
             📄 Download Scorecard PDF
           </button>
+        </div>
+      )}
+      {resumePrompt && savedSnapshot && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              background: "#1a1a1a",
+              border: "1px solid #22c55e",
+              borderRadius: "14px",
+              padding: "28px 24px",
+              maxWidth: "360px",
+              width: "90%",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: "32px", marginBottom: "12px" }}>🏏</div>
+            <h3
+              style={{
+                color: "#e5e7eb",
+                marginBottom: "8px",
+                fontSize: "18px",
+              }}
+            >
+              Unfinished Match Found
+            </h3>
+            <p
+              style={{
+                color: "#9ca3af",
+                fontSize: "14px",
+                marginBottom: "20px",
+                lineHeight: 1.5,
+              }}
+            >
+              You have an unfinished match in progress
+              {savedSnapshot.score != null
+                ? ` (${savedSnapshot.score}/${savedSnapshot.wickets} in ${savedSnapshot.overs}.${savedSnapshot.balls} overs)`
+                : ""}
+              . Would you like to resume?
+            </p>
+            <div
+              style={{ display: "flex", gap: "12px", justifyContent: "center" }}
+            >
+              <button
+                onClick={() => {
+                  // Restore all state from snapshot
+                  engine.restoreState(savedSnapshot);
+                  playersHook.restorePlayersState(savedSnapshot);
+                  playersHook.restoreBowlersState(savedSnapshot);
+                  partnershipsHook.restorePartnershipState(savedSnapshot);
+                  historySnapshotHook.shouldSaveSnapshot.current = false;
+                  // Directly seed the history stack with the saved snapshot
+                  // by triggering a save after state is restored
+                  setTimeout(() => {
+                    historySnapshotHook.triggerSnapshot();
+                  }, 200);
+                  setResumePrompt(false);
+                  setSavedSnapshot(null);
+                  // Don't show start modal — we're resuming
+                  modalStates.setShowStartModal(false);
+                }}
+                style={{
+                  background: "#22c55e",
+                  color: "#000",
+                  padding: "10px 22px",
+                  borderRadius: "8px",
+                  border: "none",
+                  fontWeight: "600",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                }}
+              >
+                ▶ Resume
+              </button>
+              <button
+                onClick={() => {
+                  historySnapshotHook.clearSavedMatch();
+                  setResumePrompt(false);
+                  setSavedSnapshot(null);
+                }}
+                style={{
+                  background: "#374151",
+                  color: "#e5e7eb",
+                  padding: "10px 22px",
+                  borderRadius: "8px",
+                  border: "none",
+                  fontWeight: "600",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                }}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
         </div>
       )}
       <ModalManager
