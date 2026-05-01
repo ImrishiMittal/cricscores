@@ -12,6 +12,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // ✅ NEW
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -43,14 +44,38 @@ function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <input
-            className={styles.input}
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+
+          {/* ✅ Password field with eye toggle */}
+          <div style={{ position: "relative", width: "100%" }}>
+            <input
+              className={styles.input}
+              placeholder="Password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{ paddingRight: "42px" }}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              style={{
+                position: "absolute",
+                right: "12px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "#9ca3af",
+                fontSize: "16px",
+                padding: 0,
+                lineHeight: 1,
+              }}
+            >
+              <i className={showPassword ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"} />
+            </button>
+          </div>
 
           {error && <p style={{ color: "#ff6b6b", fontSize: "0.85rem", margin: "0" }}>{error}</p>}
 
