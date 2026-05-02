@@ -28,14 +28,15 @@ import useHatTrick from "../hooks/useHatTrick";
 import usePlayerDatabase from "../hooks/usePlayerDatabase";
 import * as matchApi from "../api/matchApi";
 import { calculateManOfTheMatch } from "../utils/momCalculator";
-let _matchSaveInProgress = false;
 
 function ScoringPage() {
   const location = useLocation();
+  const matchSaveInProgressRef = useRef(false);
   const matchData = location.state || {};
   const navigate = useNavigate();
   const [updatedMatchData, setUpdatedMatchData] = useState(matchData);
   const [matchSaved, setMatchSaved] = useState(false);
+  
 
   const innings2SnapshotCountRef = useRef(0);
   const currentInningsRef = useRef(1);
@@ -61,6 +62,7 @@ function ScoringPage() {
   const lastKnownBowlersRef = useRef([]);
   const allTimeBowlersRef = useRef(new Set());
   const momRef = useRef(null);
+const captainStatsSavedRef = useRef(false);
 
   const modalStates = useModalStates();
   const wicketFlow = useWicketFlow();
@@ -86,15 +88,14 @@ function ScoringPage() {
   }, []);
 
   useEffect(() => {
-    _matchSaveInProgress = false;
     const existingMatchId = playerDBHook.getCurrentMatchId();
     if (!existingMatchId) {
       const matchId = `match_${Date.now()}`;
       playerDBHook.setCurrentMatchId(matchId);
-      captainStatsSavedRef.current = false;
+      captainStatsSavedRef.current = false;  // ← ERROR: ref never declared
       console.log("🆔 Match ID set:", matchId);
     }
-  }, []); // ← empty deps: run once on mount only
+  }, []);
 
   const playersHook = usePlayersAndBowlers(updatedMatchData, playerDBHook);
   const partnershipsHook = usePartnerships();
@@ -284,8 +285,8 @@ function ScoringPage() {
 
   useEffect(() => {
     if (!engine.matchOver || !playerDBHook) return;
-    if (_matchSaveInProgress) return;
-  _matchSaveInProgress = true;
+    if (matchSaveInProgressRef.current) return;
+  matchSaveInProgressRef.current = true;
 
     (async () => {
       const currentMatchId = playerDBHook.getCurrentMatchId();
@@ -610,6 +611,7 @@ function ScoringPage() {
         console.error("❌ saveMatch failed:", err);
         // matchSaved stays false — button stays disabled so user cannot navigate away
       }
+      matchSaveInProgressRef.current = false;
     })();
   }, [engine.matchOver]);
   useEffect(() => {
