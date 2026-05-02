@@ -15,6 +15,20 @@ router.get("/", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+router.get('/jersey/:jersey', async (req, res) => {
+  try {
+    const player = await Player.findOne({ 
+      jersey: String(req.params.jersey),
+      userId: req.userId  // ← ADD THIS so it only finds your own players
+    });
+    if (!player) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+    res.json(player);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ── GET single player ─────────────────────────────────────────────────────────
 router.get("/:id", async (req, res) => {
@@ -155,6 +169,58 @@ router.patch("/:id/stats", async (req, res) => {
   }
 });
 
+// routes/players.js — add this PATCH route for flushing buffered stats
+router.patch("/:id/flush", async (req, res) => {
+  try {
+    const player = await Player.findOne({ _id: req.params.id, userId: req.userId });
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    const {
+      runs, balls, wickets, runsGiven, ballsBowled,
+      fours, sixes, innings, bowlingInnings,
+      dotBalls, dotBallsBowled, ones, twos, threes,
+      ducks, thirties, fifties, hundreds,
+      wides, noBalls, maidens,
+      threeWickets, fiveWickets, tenWickets,
+      dismissals, notOuts, matches,
+      captainMatches, captainWins, captainLosses, captainTies, captainNR,
+      highestScore,
+    } = req.body;
+
+    const inc = {};
+    const addFields = [
+      "runs","balls","wickets","runsGiven","ballsBowled","fours","sixes",
+      "innings","bowlingInnings","dotBalls","dotBallsBowled","ones","twos",
+      "threes","ducks","thirties","fifties","hundreds","wides","noBalls",
+      "maidens","threeWickets","fiveWickets","tenWickets","dismissals",
+      "notOuts","matches","captainMatches","captainWins","captainLosses",
+      "captainTies","captainNR",
+    ];
+
+    for (const field of addFields) {
+      if (req.body[field] !== undefined && req.body[field] !== 0) {
+        inc[field] = req.body[field];
+      }
+    }
+
+    const updateOp = { $inc: inc };
+
+    // ✅ highestScore uses $max so it only updates if new score is higher
+    if (highestScore !== undefined) {
+      updateOp.$max = { highestScore };
+    }
+
+    const updated = await Player.findByIdAndUpdate(
+      req.params.id,
+      updateOp,
+      { new: true }
+    );
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 // ── DELETE player ─────────────────────────────────────────────────────────────
 router.delete("/:id", async (req, res) => {
   try {

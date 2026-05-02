@@ -5,16 +5,24 @@ require("dotenv").config();
 
 const authRoutes   = require("./routes/auth");
 const playerRoutes = require("./routes/players");
-const matchRoutes  = require("./routes/matches");   // ← ADD THIS
+const matchRoutes  = require("./routes/matches");
+const teamRoutes   = require("./routes/teams");   // ← ADD
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://cricscores.netlify.app" // update after you get Netlify URL
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 app.use("/api/auth",    authRoutes);
 app.use("/api/players", playerRoutes);
-app.use("/api/matches", matchRoutes);              // ← ADD THIS
+app.use("/api/matches", matchRoutes);
+app.use("/api/teams",   teamRoutes);              // ← ADD
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
