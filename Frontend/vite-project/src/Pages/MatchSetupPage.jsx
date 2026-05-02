@@ -146,7 +146,15 @@ function MatchSetupPage() {
     teamApi
       .getTeams()
       .then((teams) => setTeamNames(teams.map((t) => t.name)))
-      .catch((err) => console.error("❌ getTeams failed:", err)); // ← was .catch(() => {})
+      .catch(() => {
+        try {
+          const raw = localStorage.getItem("cricket_team_stats");
+          if (raw) {
+            const db = JSON.parse(raw);
+            setTeamNames(Object.keys(db));
+          }
+        } catch (e) {}
+      });
   }, []);
 
   // ---------------- TOSS LOGIC ----------------
