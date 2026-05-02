@@ -28,6 +28,7 @@ import useHatTrick from "../hooks/useHatTrick";
 import usePlayerDatabase from "../hooks/usePlayerDatabase";
 import * as matchApi from "../api/matchApi";
 import { calculateManOfTheMatch } from "../utils/momCalculator";
+let _matchSaveInProgress = false;
 
 function ScoringPage() {
   const location = useLocation();
@@ -59,8 +60,6 @@ function ScoringPage() {
   const innings1BowlersSnapshotRef = useRef([]);
   const lastKnownBowlersRef = useRef([]);
   const allTimeBowlersRef = useRef(new Set());
-
-  const captainStatsSavedRef = useRef(false);
   const momRef = useRef(null);
 
   const modalStates = useModalStates();
@@ -87,6 +86,7 @@ function ScoringPage() {
   }, []);
 
   useEffect(() => {
+    _matchSaveInProgress = false;
     const existingMatchId = playerDBHook.getCurrentMatchId();
     if (!existingMatchId) {
       const matchId = `match_${Date.now()}`;
@@ -284,8 +284,8 @@ function ScoringPage() {
 
   useEffect(() => {
     if (!engine.matchOver || !playerDBHook) return;
-    if (captainStatsSavedRef.current) return;
-    captainStatsSavedRef.current = true;
+    if (_matchSaveInProgress) return;
+  _matchSaveInProgress = true;
 
     (async () => {
       const currentMatchId = playerDBHook.getCurrentMatchId();
@@ -340,43 +340,31 @@ function ScoringPage() {
       }
 
       if (isNR) {
-        playerDBHook.updateTeamStats(
-          teamAName,
-          { matches: 1, nr: 1 },
-          currentMatchId
-        );
-        playerDBHook.updateTeamStats(
-          teamBName,
-          { matches: 1, nr: 1 },
-          currentMatchId
-        );
+        await Promise.all([
+          playerDBHook.updateTeamStats(teamAName, { matches: 1, nr: 1 }, currentMatchId),
+          playerDBHook.updateTeamStats(teamBName, { matches: 1, nr: 1 }, currentMatchId),
+        ]);
       } else {
         const teamAWon = engine.winner === teamAName;
         const teamBWon = engine.winner === teamBName;
-        playerDBHook.updateTeamStats(
-          teamAName,
-          {
-            matches: 1,
-            ...(teamAWon
-              ? { wins: 1 }
-              : teamBWon
-              ? { losses: 1 }
-              : { ties: 1 }),
-          },
-          currentMatchId
-        );
-        playerDBHook.updateTeamStats(
-          teamBName,
-          {
-            matches: 1,
-            ...(teamBWon
-              ? { wins: 1 }
-              : teamAWon
-              ? { losses: 1 }
-              : { ties: 1 }),
-          },
-          currentMatchId
-        );
+        await Promise.all([
+          playerDBHook.updateTeamStats(
+            teamAName,
+            {
+              matches: 1,
+              ...(teamAWon ? { wins: 1 } : teamBWon ? { losses: 1 } : { ties: 1 }),
+            },
+            currentMatchId
+          ),
+          playerDBHook.updateTeamStats(
+            teamBName,
+            {
+              matches: 1,
+              ...(teamBWon ? { wins: 1 } : teamAWon ? { losses: 1 } : { ties: 1 }),
+            },
+            currentMatchId
+          ),
+        ]);
       }
 
       const allParticipantIds = new Set();
@@ -396,9 +384,8 @@ function ScoringPage() {
       [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
         if (!p?.playerId) return;
         const pid = String(p.playerId);
-        const inningsRuns =
-          inningsScoreTrackerRef.current[pid] ?? (p.runs || 0);
-        const hasBatted = inningsRuns > 0 || (p.balls || 0) > 0 || p.hasBatted;
+        const inningsRuns = inningsScoreTrackerRef.current[pid] ?? (p.runs || 0);
+        const hasBatted = (p.balls || 0) > 0 || inningsRuns > 0;
         if (inningsRuns > 0) {
           const existing = playerDBHook.getPlayer(pid);
           if (existing && inningsRuns > (existing.highestScore || 0)) {
