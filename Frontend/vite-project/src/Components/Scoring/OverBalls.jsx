@@ -1,73 +1,88 @@
 import styles from "./scoring.module.css";
 
-function OverBalls({ history }) {
-  if (!history || history.length === 0) {
-    return null;
+// Original ball color logic — simple and clean
+const getBallStyle = (entry) => {
+  if (!entry) return {};
+  const ev = entry.type; // ← was entry.event
+
+  if (ev === "WD") {
+    return { background: "#7c3aed", color: "#fff", border: "2px solid #a78bfa" };
   }
+  if (ev === "NB") {
+    return { background: "#b45309", color: "#fff", border: "2px solid #fbbf24" };
+  }
+  if (ev === "W" || ev === "HW" || ev === "WICKET") {
+    return { background: "#dc2626", color: "#fff", border: "2px solid #f87171" };
+  }
+  if (ev === "BYE") {
+    return { background: "#1a1a2e", color: "#a855f7", border: "2px solid #a855f7" };
+  }
+  if (ev === "LB") {
+    return { background: "#1a1a2e", color: "#a855f7", border: "2px solid #a855f7" };
+  }
+  if (entry.runs === 4) {
+    return { background: "#1a1a2e", color: "#00d9ff", border: "2px solid #00d9ff" };
+  }
+  if (entry.runs === 6) {
+    return { background: "#1a1a2e", color: "#ff00ff", border: "2px solid #ff00ff" };
+  }
+  if (entry.runs === 0) {
+    return { background: "#1a1a2e", color: "#555", border: "2px solid #444" };
+  }
+  return { background: "#1a1a2e", color: "#00ff88", border: "2px solid #00ff88" };
+};
 
+const getBallLabel = (entry) => {
+  if (!entry) return "";
+  const ev = entry.type; // ← was entry.event
+  if (ev === "WD")   return "Wd";
+  if (ev === "NB")   return "Nb";
+  if (ev === "W" || ev === "WICKET") return "W";
+  if (ev === "HW")   return "W";
+  if (ev === "BYE")  return `${entry.runs}b`;
+  if (ev === "LB")   return `${entry.runs}lb`;
+  if (entry.isWicket) return `${entry.runs}W`; // runout with runs
+  return String(entry.runs ?? "");
+};
+
+export default function OverBalls({ history = [] }) {
   return (
-    <div className={styles.overBalls}>
-      {history.map((ball, idx) => {
-        let label = "";
-        let dataType = "";
-
-        const ballType = ball.type || ball.event;
-
-        if (ballType === "W" || ballType === "WICKET") {
-          label = "W";
-          dataType = "W";
-        }
-        else if (ballType === "HW") {                   // ✅ NEW: hit wicket
-          label = "HW";
-          dataType = "W";
-        }
-        else if (ballType === "WD" || ballType === "WIDE") {
-          label = ball.runs > 0 ? `${ball.runs}WD` : "WD";
-          dataType = "WD";
-        }
-        else if (ballType === "NB" || ballType === "NO_BALL") {
-          label = ball.runs > 0 ? `${ball.runs}NB` : "NB";
-          dataType = "NB";
-        }
-        else if (ballType === "FH" || ballType === "FREE_HIT") {
-          label = "FH";
-          dataType = "FH";
-        }
-        else if (ballType === "BYE") {
-          label = `B${ball.runs || ""}`;
-          dataType = "BYE";
-        }
-        else if (ballType === "LB") {                   // ✅ already handled in engine
-          label = `LB${ball.runs || ""}`;
-          dataType = "BYE";
-        }
-        else if (ball.isWicket) {
-          const runs = ball.runs ?? 0;
-          label = runs > 0 ? `${runs}+W` : "W";
-          dataType = "RUN_WICKET";
-        }
-        else if (ballType === "RUN" || ball.runs !== undefined) {
-          const runs = ball.runs ?? 0;
-          label = runs;
-          dataType = runs === 0 ? "0" : runs === 4 ? "4" : runs === 6 ? "6" : "RUN";
-        }
-        else {
-          label = "•";
-          dataType = "DOT";
-        }
-
-        return (
-          <div
-            key={idx}
-            className={styles.ball}
-            data-type={dataType}
-          >
-            {label}
-          </div>
-        );
-      })}
+    <div style={{ width: "100%", overflowX: "auto", padding: "8px 4px" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          flexWrap: "nowrap",
+          gap: "8px",
+          minWidth: "max-content",
+        }}
+      >
+        {history.length === 0 ? (
+          <span style={{ color: "#555", fontSize: "13px", whiteSpace: "nowrap" }}>
+            No balls bowled yet
+          </span>
+        ) : (
+          history.map((entry, i) => (
+            <div
+              key={i}
+              style={{
+                width: "38px",
+                height: "38px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "13px",
+                flexShrink: 0,
+                ...getBallStyle(entry),
+              }}
+            >
+              {getBallLabel(entry)}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
-
-export default OverBalls;

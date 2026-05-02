@@ -101,6 +101,15 @@ export default function usePlayersAndBowlers(matchData, playerDB) {
       return updated;
     });
   };
+  const addBallToStriker = () => {
+    setPlayers((prev) => {
+      const updated = [...prev];
+      const s = updated[strikerIndex];
+      if (!s) return prev;
+      updated[strikerIndex] = { ...s, balls: s.balls + 1 };
+      return updated;
+    });
+  };
 
   /* ================= UPDATE BOWLER STATS ================= */
   const addRunsToBowler = (runs) => {
@@ -593,6 +602,7 @@ return {
   swapStrike,
   addRunsToStriker,
   addRunsToBowler,
+  addBallToStriker,
   addBallToBowler,
   addWicketToBowler,
   registerWicket,
