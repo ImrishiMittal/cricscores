@@ -146,7 +146,7 @@ function MatchSetupPage() {
     teamApi
       .getTeams()
       .then((teams) => setTeamNames(teams.map((t) => t.name)))
-      .catch(() => {});
+      .catch((err) => console.error("❌ getTeams failed:", err)); // ← was .catch(() => {})
   }, []);
 
   // ---------------- TOSS LOGIC ----------------
@@ -215,8 +215,10 @@ function MatchSetupPage() {
     };
 
     localStorage.setItem("matchData", JSON.stringify(matchData));
-try { localStorage.removeItem("cricket_match_snapshot"); } catch(e) {}
-navigate("/scoring", { state: matchData });
+    try {
+      localStorage.removeItem("cricket_match_snapshot");
+    } catch (e) {}
+    navigate("/scoring", { state: matchData });
   };
 
   return (

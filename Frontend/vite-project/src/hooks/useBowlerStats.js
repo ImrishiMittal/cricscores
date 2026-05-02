@@ -2,17 +2,14 @@ import { useMemo } from 'react';
 
 /**
  * useBowlerStats
- * Mirrors usePlayerStats but for bowlers.
  * Computes wide %, dot ball %, no ball %, wicket %, economy from completeHistory.
- *
- * @param {object|null} bowler   — bowler object from bowlers[] (has playerId, displayName, overs, balls, runs, wickets)
- * @param {array}       history  — completeHistory from useMatchEngine
+ * FIX (xii): Filter history entries by bowler name so dot ball % can't exceed 100%.
  */
 export default function useBowlerStats(bowler, history) {
   return useMemo(() => {
     const empty = {
-      totalDeliveries: 0,   // all deliveries including wides/no-balls
-      legalBalls: 0,        // overs * 6 + balls
+      totalDeliveries: 0,
+      legalBalls: 0,
       dotBallPercent: '0.0',
       widePct: '0.0',
       noBallPct: '0.0',
@@ -22,32 +19,35 @@ export default function useBowlerStats(bowler, history) {
 
     if (!bowler) return empty;
 
-    // legalBalls directly from bowler state (already tracked)
     const legalBalls = (bowler.overs || 0) * 6 + (bowler.balls || 0);
     const economy = legalBalls > 0
       ? ((bowler.runs / (legalBalls / 6))).toFixed(2)
       : '0.00';
 
-    // We can't easily filter history by bowler without bowlerId on each event.
-    // Instead, we compute percentages from the bowler's aggregate stats,
-    // which are already maintained by usePlayersAndBowlers:
-    //   bowler.overs, bowler.balls  → legal deliveries
-    //   bowler.runs                 → runs conceded
-    //   bowler.wickets              → wickets taken
-    //
-    // For wides and no-balls we DO walk the history and count WD/NB events.
-    // (These events don't increment bowler.balls so they're not in legalBalls.)
-    // Since we don't tag history entries with bowlerId yet, we count ALL wides/no-balls.
-    // This is acceptable for a single-bowler view; it won't be shown for retired bowlers.
-
     let wides = 0;
     let noBalls = 0;
     let dotBalls = 0;
 
+    // FIX: Filter by bowler name/id so we only count THIS bowler's deliveries
+    const bowlerName = bowler.displayName || bowler.name || '';
+    const bowlerId = bowler.playerId ? String(bowler.playerId) : null;
+
     (history || []).forEach((entry) => {
+      // Match by bowler field on the entry (added in useMatchEngine)
+      const entryBowler = entry.bowler || '';
+      const isThisBowler =
+        (bowlerId && entryBowler && String(entryBowler) === bowlerId) ||
+        (bowlerName && entryBowler === bowlerName);
+
+      // If history entries have no bowler tag yet, fall back to counting all
+      // (graceful degradation for older match data)
+      const hasTag = !!entry.bowler;
+      if (hasTag && !isThisBowler) return;
+
       if (entry.event === 'WD') wides++;
       else if (entry.event === 'NB') noBalls++;
       else if (entry.event === 'RUN' && entry.runs === 0) dotBalls++;
+      else if (entry.event === 'WICKET' || entry.event === 'HW') dotBalls++; // wicket ball = dot
     });
 
     const totalDeliveries = legalBalls + wides + noBalls;
@@ -58,7 +58,9 @@ export default function useBowlerStats(bowler, history) {
     return {
       totalDeliveries,
       legalBalls,
+      // FIX: dot balls as % of legal balls (can never exceed 100%)
       dotBallPercent: pct(dotBalls, legalBalls),
+      // wides and no-balls as % of total deliveries
       widePct: pct(wides, totalDeliveries),
       noBallPct: pct(noBalls, totalDeliveries),
       wicketPct: pct(bowler.wickets || 0, legalBalls),

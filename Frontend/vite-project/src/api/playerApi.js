@@ -23,7 +23,6 @@ export const getPlayer = async (id) => {
 
 // ── Add a player ──────────────────────────────────────────────────────────────
 export const addPlayer = async (playerData) => {
-  // playerData: { name, jersey, country?, role? }
   const res = await axios.post(`${BASE_URL}/players`, playerData, authHeader());
   return res.data;
 };
@@ -48,6 +47,7 @@ export const deletePlayer = async (id) => {
   return res.data;
 };
 
+// ── Find by jersey or create ──────────────────────────────────────────────────
 export async function createOrFindByJersey(jersey, name) {
   try {
     const res = await axios.get(
@@ -56,7 +56,6 @@ export async function createOrFindByJersey(jersey, name) {
     );
     return res.data;
   } catch (err) {
-    // 404 means not found — create them
     if (err.response?.status === 404) {
       return await addPlayer({
         jersey: String(jersey),

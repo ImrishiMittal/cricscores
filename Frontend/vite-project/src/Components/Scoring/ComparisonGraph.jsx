@@ -1,360 +1,400 @@
-import { useRef, useEffect } from 'react';
-import styles from './ComparisonGraph.module.css';
+import { useEffect, useRef, useCallback, useState } from "react";
 
-function ComparisonGraph({
-  team1Name,
-  team2Name,
-  innings1Data,
-  innings2Data,
+export default function ComparisonGraph({
+  innings1History = [],
+  innings2History = [],
   innings1Score,
   innings2Score,
-  innings1History,
-  innings2History,
+  team1Name = "Inn 1",
+  team2Name = "Inn 2",
   matchData,
-  currentInnings,
   onClose,
 }) {
   const canvasRef = useRef(null);
+  const wrapperRef = useRef(null);
+  const in1Ref = useRef(innings1History);
+  const in2Ref = useRef(innings2History);
+  const hoverRef = useRef(null); // { x, y } in display pixels
 
-  useEffect(() => {
-    console.log("🎨 Drawing graph with:", {
-      currentInnings,
-      innings1HistoryLength: innings1History?.length || 0,
-      innings2HistoryLength: innings2History?.length || 0,
-      innings1DataExists: !!innings1Data,
-      innings1DataHistoryLength: innings1Data?.history?.length || 0,
-      innings2DataExists: !!innings2Data,
-      innings1Score,
-      innings2Score
-    });
+  useEffect(() => { in1Ref.current = innings1History; }, [innings1History]);
+  useEffect(() => { in2Ref.current = innings2History; }, [innings2History]);
 
-    // Log first few balls to verify data
-    if (innings1History?.length > 0) {
-      console.log("📊 Innings 1 first 3 balls:", innings1History.slice(0, 3));
-    }
-    if (innings2History?.length > 0) {
-      console.log("📊 Innings 2 first 3 balls:", innings2History.slice(0, 3));
-    }
-
-    drawGraph();
-  }, [
-    innings1History,
-    innings2History,
-    currentInnings,
-    innings1Data,
-    innings2Data,
-    innings1Score,
-    innings2Score,
-    team1Name,
-    team2Name,
-    matchData
-  ]);
-
-  const buildProgressionData = (history) => {
-    const points = [];
+  const buildSeries = (history) => {
+    const points = [{ ball: 0, score: 0, wickets: 0 }];
     const wicketPoints = [];
-    let cumulativeScore = 0;
-    let cumulativeWickets = 0;
+    let score = 0;
+    let wickets = 0;
     let ballCount = 0;
 
-    // Starting point
-    points.push({ ball: 0, score: 0, wickets: 0 });
-
-    if (!history || history.length === 0) {
-      return { points, wicketPoints };
-    }
-
-    history.forEach((ball) => {
-      ballCount++;
-
-      // Add runs (including extras, penalties, etc.)
-      if (ball.runs) {
-        cumulativeScore += ball.runs;
+    (history || []).forEach((e) => {
+      if (e.event === "WD" || e.event === "NB") {
+        score += 1;
+      } else {
+        score += e.runs || 0;
       }
 
-      // Track wickets
-      if (ball.event === "WICKET") {
-        cumulativeWickets++;
-        wicketPoints.push({
-          ball: ballCount,
-          score: cumulativeScore,
-          wicketNum: cumulativeWickets
-        });
+      const isExtra = e.event === "WD" || e.event === "NB";
+      if (!isExtra) ballCount++;
+
+      const isWicket =
+        e.event === "WICKET" || e.event === "HW" ||
+        e.event === "RUNOUT" || e.isWicket;
+
+      if (isWicket) {
+        wickets++;
+        wicketPoints.push({ ball: ballCount, score, wickets });
       }
 
-      // Add point after every ball
-      points.push({
-        ball: ballCount,
-        score: cumulativeScore,
-        wickets: cumulativeWickets
-      });
+      if (["RUN","WD","NB","BYE","LB","WICKET","HW","RUNOUT"].includes(e.event)) {
+        points.push({ ball: ballCount, score, wickets });
+      }
     });
 
-    return { points, wicketPoints };
+    return { points, wicketPoints, finalScore: score, finalWickets: wickets };
   };
 
-  const drawGraph = () => {
+  const drawRef = useRef(null);
+
+  const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const wrapper = wrapperRef.current;
+    if (!canvas || !wrapper) return;
 
-    const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
+    const displayW = wrapper.clientWidth || 320;
+    const displayH = Math.min(Math.max(Math.round(displayW * 0.58), 240), 460);
 
-    const displayWidth = 1000;
-    const displayHeight = 500;
+    canvas.width = displayW * dpr;
+    canvas.height = displayH * dpr;
+    canvas.style.width = `${displayW}px`;
+    canvas.style.height = `${displayH}px`;
 
-    canvas.width = displayWidth * dpr;
-    canvas.height = displayHeight * dpr;
+    const ctx = canvas.getContext("2d");
     ctx.scale(dpr, dpr);
+    const W = displayW;
+    const H = displayH;
 
-    canvas.style.width = `${displayWidth}px`;
-    canvas.style.height = `${displayHeight}px`;
+    ctx.fillStyle = "#0a0e1a";
+    ctx.fillRect(0, 0, W, H);
 
-    // Clear canvas
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, 0, displayWidth, displayHeight);
+    // Replace the PAD line with:
+const isNarrow = W < 340;
+const PAD = { top: isNarrow ? 52 : 36, right: 24, bottom: 50, left: 52 };
+    const cW = W - PAD.left - PAD.right;
+    const cH = H - PAD.top - PAD.bottom;
 
-    const padding = { top: 50, right: 60, bottom: 60, left: 70 };
-    const graphWidth = displayWidth - padding.left - padding.right;
-    const graphHeight = displayHeight - padding.top - padding.bottom;
+    const s1 = buildSeries(in1Ref.current);
+    const s2 = buildSeries(in2Ref.current);
 
-    // ────────────────────────────────────────────────
-    // Use the passed history directly (should come from parent)
-    // team1History = innings 1 data (always available after innings 1 ends)
-    // team2History = innings 2 data (only during/after innings 2)
-    const team1History = innings1History || [];
-    const team2History = innings2History || [];
+    if (s1.points.length <= 1 && s2.points.length <= 1) {
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("No data yet", W / 2, H / 2);
+      return;
+    }
 
-    console.log("📊 Graph histories:", {
-      team1Length: team1History.length,
-      team2Length: team2History.length,
-      currentInnings,
-    });
+    const totalOvers = Number(matchData?.overs || 20);
+    const maxBalls = totalOvers * 6;
 
-    // Final scores – prefer provided score objects, fallback to calculation
-    const team1FinalScore =
-      innings1Score?.score ??
-      team1History.reduce((sum, b) => sum + (b.runs || 0), 0);
+    const t1Score = innings1Score?.score ?? s1.finalScore;
+    const t1Wickets = innings1Score?.wickets ?? s1.finalWickets;
+    const t2Score = innings2Score?.score ?? s2.finalScore;
+    const t2Wickets = innings2Score?.wickets ?? s2.finalWickets;
 
-    const team1FinalWickets =
-      innings1Score?.wickets ??
-      team1History.filter(b => b.event === "WICKET").length;
-
-    const team2FinalScore =
-      innings2Score?.score ??
-      team2History.reduce((sum, b) => sum + (b.runs || 0), 0);
-
-    const team2FinalWickets =
-      innings2Score?.wickets ??
-      team2History.filter(b => b.event === "WICKET").length;
-
-    const { points: team1Points, wicketPoints: team1Wickets } =
-      buildProgressionData(team1History);
-
-    const { points: team2Points, wicketPoints: team2Wickets } =
-      buildProgressionData(team2History);
-
-    // Calculate scales
-    const maxOvers = Number(matchData?.overs || 20);
-    const maxBalls = maxOvers * 6;
-    const maxScore = Math.max(
-      team1FinalScore,
-      team2FinalScore,
-      ...team1Points.map(p => p.score),
-      ...team2Points.map(p => p.score),
-      50 // minimum reasonable scale
+    const maxRuns = Math.max(
+      ...s1.points.map((p) => p.score),
+      ...s2.points.map((p) => p.score),
+      t1Score, t2Score, 20
     );
 
-    const scaleX = graphWidth / maxBalls;
-    const scaleY = graphHeight / maxScore;
+    const toX = (ball) => PAD.left + (ball / maxBalls) * cW;
+    const toY = (runs) => PAD.top + cH - (runs / maxRuns) * cH;
 
-    // ────────────────────────────────────────────────
-    // Draw grid
-    ctx.strokeStyle = 'rgba(34, 197, 94, 0.1)';
+    // Store for hover use
+    drawRef.current = { PAD, cW, cH, toX, toY, maxBalls, maxRuns, s1, s2, t1Score, t1Wickets, t2Score, t2Wickets, totalOvers, W, H };
+
+    // Grid
+    ctx.strokeStyle = "#1e293b";
     ctx.lineWidth = 1;
-
-    // Vertical grid (overs)
-    for (let over = 0; over <= maxOvers; over++) {
-      const ball = over * 6;
-      const x = padding.left + (ball * scaleX);
+    ctx.setLineDash([3, 4]);
+    const ySteps = 5;
+    for (let i = 0; i <= ySteps; i++) {
+      const runs = Math.round((i / ySteps) * maxRuns);
+      const y = toY(runs);
       ctx.beginPath();
-      ctx.moveTo(x, padding.top);
-      ctx.lineTo(x, displayHeight - padding.bottom);
+      ctx.moveTo(PAD.left, y);
+      ctx.lineTo(PAD.left + cW, y);
       ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#64748b";
+      ctx.font = "11px sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText(runs, PAD.left - 8, y + 4);
+      ctx.setLineDash([3, 4]);
     }
-
-    // Horizontal grid (runs)
-    const runStep = Math.ceil(maxScore / 10 / 10) * 10;
-    for (let runs = 0; runs <= maxScore; runs += runStep) {
-      const y = displayHeight - padding.bottom - (runs * scaleY);
+    const labelEvery = Math.max(1, Math.ceil(totalOvers / 8));
+    for (let ov = 0; ov <= totalOvers; ov += labelEvery) {
+      const x = toX(ov * 6);
       ctx.beginPath();
-      ctx.moveTo(padding.left, y);
-      ctx.lineTo(displayWidth - padding.right, y);
+      ctx.moveTo(x, PAD.top);
+      ctx.lineTo(x, PAD.top + cH);
       ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#64748b";
+      ctx.font = "11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(ov, x, PAD.top + cH + 16);
+      ctx.setLineDash([3, 4]);
     }
+    ctx.setLineDash([]);
 
     // Axes
-    ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(padding.left, padding.top);
-    ctx.lineTo(padding.left, displayHeight - padding.bottom);
-    ctx.lineTo(displayWidth - padding.right, displayHeight - padding.bottom);
+    ctx.moveTo(PAD.left, PAD.top);
+    ctx.lineTo(PAD.left, PAD.top + cH);
+    ctx.lineTo(PAD.left + cW, PAD.top + cH);
     ctx.stroke();
 
-    // X-axis labels (overs)
-    ctx.fillStyle = '#22c55e';
-    ctx.font = 'bold 13px Inter, system-ui';
-    ctx.textAlign = 'center';
+    ctx.fillStyle = "#475569";
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Overs →", PAD.left + cW / 2, H - 6);
 
-    for (let over = 0; over <= maxOvers; over += 2) {
-      const ball = over * 6;
-      const x = padding.left + (ball * scaleX);
-      ctx.fillText(over.toString(), x, displayHeight - padding.bottom + 25);
-    }
-
-    // Y-axis labels (runs)
-    ctx.textAlign = 'right';
-    for (let runs = 0; runs <= maxScore; runs += runStep) {
-      const y = displayHeight - padding.bottom - (runs * scaleY);
-      ctx.fillText(runs.toString(), padding.left - 15, y + 5);
-    }
-
-    // Axis titles
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 15px Inter, system-ui';
-    ctx.fillStyle = '#22c55e';
-    ctx.fillText('OVERS', displayWidth / 2, displayHeight - 15);
-
-    ctx.save();
-    ctx.translate(20, displayHeight / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText('RUNS', 0, 0);
-    ctx.restore();
-
-    // ────────────────────────────────────────────────
-    // Draw scoring lines
-    const drawLine = (points, color, lineWidth = 4) => {
+    const drawLine = (points, color, dashed = false) => {
       if (points.length < 2) return;
-
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lineWidth;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-
       ctx.beginPath();
-      points.forEach((point, idx) => {
-        const x = padding.left + (point.ball * scaleX);
-        const y = displayHeight - padding.bottom - (point.score * scaleY);
-
-        if (idx === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
+      points.forEach((p, i) => {
+        i === 0 ? ctx.moveTo(toX(p.ball), toY(p.score)) : ctx.lineTo(toX(p.ball), toY(p.score));
+      });
+      ctx.lineTo(toX(points[points.length - 1].ball), toY(0));
+      ctx.lineTo(toX(0), toY(0));
+      ctx.closePath();
+      ctx.fillStyle = color + "20";
+      ctx.fill();
+      if (dashed) ctx.setLineDash([7, 4]);
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      points.forEach((p, i) => {
+        i === 0 ? ctx.moveTo(toX(p.ball), toY(p.score)) : ctx.lineTo(toX(p.ball), toY(p.score));
       });
       ctx.stroke();
+      ctx.setLineDash([]);
     };
 
-    // Always draw team 1 if it has data
-    if (team1Points.length > 1) {
-      drawLine(team1Points, '#ff6b35'); // orange
-    }
-
-    // Draw team 2 only if it has data
-    if (team2Points.length > 1) {
-      drawLine(team2Points, '#ff1a8c'); // magenta/pink
-    }
-
-    // ────────────────────────────────────────────────
-    // Draw wicket markers
-    const drawWickets = (wicketPoints, color = '#dc2626') => {
-      wicketPoints.forEach(w => {
-        const x = padding.left + (w.ball * scaleX);
-        const y = displayHeight - padding.bottom - (w.score * scaleY);
-
-        // Outer red circle
-        ctx.fillStyle = color;
+    const drawWickets = (wicketPoints, color) => {
+      wicketPoints.forEach((w) => {
+        const x = toX(w.ball);
+        const y = toY(w.score);
+        ctx.fillStyle = "#dc2626";
         ctx.beginPath();
-        ctx.arc(x, y, 9, 0, Math.PI * 2);
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
         ctx.fill();
-
-        // Inner white circle
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = "#fff";
         ctx.beginPath();
-        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
         ctx.fill();
-
-        // 'W' text
-        ctx.fillStyle = '#000';
-        ctx.font = 'bold 10px Inter, system-ui';
-        ctx.textAlign = 'center';
-        ctx.fillText('W', x, y + 3.5);
+        ctx.fillStyle = "#000";
+        ctx.font = "bold 8px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("W", x, y + 3);
       });
     };
 
-    drawWickets(team1Wickets);
-    drawWickets(team2Wickets);
+    drawLine(s2.points, "#ec4899", true);
+    drawLine(s1.points, "#f97316");
+    drawWickets(s2.wicketPoints, "#ec4899");
+    drawWickets(s1.wicketPoints, "#f97316");
 
-    // ────────────────────────────────────────────────
+    // ── Hover crosshair + tooltip ──────────────────────────────────
+    const hover = hoverRef.current;
+    if (hover) {
+      const { x: hx } = hover;
+      // Clamp to chart area
+      const cx = Math.max(PAD.left, Math.min(PAD.left + cW, hx));
+      const hoverBall = ((cx - PAD.left) / cW) * maxBalls;
+      const hoverOver = hoverBall / 6;
+
+      // Find nearest point in each series
+      const nearest = (points) => {
+        let best = points[0];
+        let bestDist = Infinity;
+        points.forEach((p) => {
+          const d = Math.abs(p.ball - hoverBall);
+          if (d < bestDist) { bestDist = d; best = p; }
+        });
+        return best;
+      };
+
+      const p1 = nearest(s1.points);
+      const p2 = nearest(s2.points);
+
+      // Vertical dashed line
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(cx, PAD.top);
+      ctx.lineTo(cx, PAD.top + cH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Dots on lines
+      [{ p: p1, color: "#f97316" }, { p: p2, color: "#ec4899" }].forEach(({ p, color }) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(toX(p.ball), toY(p.score), 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+
+      // Tooltip box
+      const overLabel = `${Math.floor(hoverOver)}.${Math.floor((hoverOver % 1) * 6)} ov`;
+      const lines = [
+        { color: "#f97316", text: `${team1Name.slice(0, 10)}: ${p1.score}/${p1.wickets}` },
+        { color: "#ec4899", text: `${team2Name.slice(0, 10)}: ${p2.score}/${p2.wickets}` },
+      ];
+
+      const ttW = 160;
+      const ttH = 58;
+      const ttPad = 8;
+      let ttX = cx + 10;
+      let ttY = PAD.top + 10;
+      if (ttX + ttW > W - 8) ttX = cx - ttW - 10;
+
+      ctx.fillStyle = "rgba(10,14,26,0.92)";
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(ttX, ttY, ttW, ttH, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(overLabel, ttX + ttPad, ttY + ttPad + 9);
+
+      lines.forEach(({ color, text }, i) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(ttX + ttPad + 5, ttY + ttPad + 22 + i * 16, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#e2e8f0";
+        ctx.font = "11px sans-serif";
+        ctx.fillText(text, ttX + ttPad + 14, ttY + ttPad + 26 + i * 16);
+      });
+    }
+
     // Legend
-    const legendY = 25;
-    ctx.font = 'bold 14px Inter, system-ui';
-    ctx.textAlign = 'left';
+    // Legend
+const legendItems = [
+  { color: "#f97316", label: `${team1Name.length > 10 ? team1Name.slice(0, 9) + "…" : team1Name}: ${t1Score}/${t1Wickets}`, dashed: false },
+  { color: "#ec4899", label: `${team2Name.length > 10 ? team2Name.slice(0, 9) + "…" : team2Name}: ${t2Score}/${t2Wickets}`, dashed: true },
+];
 
-    // Team 1 (always show if has data)
-    if (team1Points.length > 1) {
-      ctx.fillStyle = '#ff6b35';
-      ctx.fillRect(padding.left, legendY - 8, 25, 16);
-      ctx.fillStyle = '#fff';
-      ctx.fillText(
-        `${team1Name}: ${team1FinalScore}/${team1FinalWickets}`,
-        padding.left + 35,
-        legendY + 5
-      );
-    }
+legendItems.forEach(({ color, label, dashed }, i) => {
+  const lx = isNarrow ? PAD.left : PAD.left + i * Math.min(140, cW / 2);
+  const ly = isNarrow ? 14 + i * 16 : 18;
+  if (dashed) ctx.setLineDash([5, 3]);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(lx, ly);
+  ctx.lineTo(lx + 16, ly);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#e2e8f0";
+  ctx.font = "10px sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(label, lx + 20, ly + 4);
+});
 
-    // Team 2 (show when it has data)
-    if (team2Points.length > 1) {
-      const team2X = padding.left + 320;
-      ctx.fillStyle = '#ff1a8c';
-      ctx.fillRect(team2X, legendY - 8, 25, 16);
-      ctx.fillStyle = '#fff';
-      ctx.fillText(
-        `${team2Name}: ${team2FinalScore}/${team2FinalWickets}`,
-        team2X + 35,
-        legendY + 5
-      );
-    }
+// Wicket legend — push down if narrow to avoid overlap
+const wx = isNarrow ? PAD.left + cW - 60 : PAD.left + Math.min(290, cW - 60);
+const wy = isNarrow ? 14 : 18;
+ctx.fillStyle = "#dc2626";
+ctx.beginPath();
+ctx.arc(wx, wy, 6, 0, Math.PI * 2);
+ctx.fill();
+ctx.fillStyle = "#fff";
+ctx.beginPath();
+ctx.arc(wx, wy, 4, 0, Math.PI * 2);
+ctx.fill();
+ctx.fillStyle = "#000";
+ctx.font = "bold 7px sans-serif";
+ctx.textAlign = "center";
+ctx.fillText("W", wx, wy + 3);
+ctx.fillStyle = "#94a3b8";
+ctx.font = "10px sans-serif";
+ctx.textAlign = "left";
+ctx.fillText("= Wicket", wx + 10, wy + 4);
 
-    // Wicket legend
-    const wicketX = padding.left + 620;
-    ctx.fillStyle = '#dc2626';
-    ctx.beginPath();
-    ctx.arc(wicketX, legendY, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.fillText('= Wicket', wicketX + 15, legendY + 5);
+  }, [team1Name, team2Name, matchData, innings1Score, innings2Score]);
+
+  // Mouse / touch handlers
+  const getCanvasX = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    return clientX - rect.left;
   };
 
+  const handleMove = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    e.preventDefault();
+    hoverRef.current = { x: getCanvasX(e, canvas) };
+    draw();
+  }, [draw]);
+
+  const handleLeave = useCallback(() => {
+    hoverRef.current = null;
+    draw();
+  }, [draw]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.addEventListener("mousemove", handleMove);
+    canvas.addEventListener("mouseleave", handleLeave);
+    canvas.addEventListener("touchmove", handleMove, { passive: false });
+    canvas.addEventListener("touchend", handleLeave);
+    return () => {
+      canvas.removeEventListener("mousemove", handleMove);
+      canvas.removeEventListener("mouseleave", handleLeave);
+      canvas.removeEventListener("touchmove", handleMove);
+      canvas.removeEventListener("touchend", handleLeave);
+    };
+  }, [handleMove, handleLeave]);
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    const ro = new ResizeObserver(() => draw());
+    ro.observe(wrapper);
+    draw();
+    return () => ro.disconnect();
+  }, [draw]);
+
+  useEffect(() => {
+    in1Ref.current = innings1History;
+    in2Ref.current = innings2History;
+    draw();
+  }, [innings1History, innings2History, draw]);
+
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <h2 className={styles.title}>📈 MATCH PROGRESSION</h2>
-        <p className={styles.subtitle}>
-          {team1Name} vs {team2Name}
-        </p>
-
-        <div className={styles.canvasContainer}>
-          <canvas ref={canvasRef} className={styles.canvas} />
-        </div>
-
-        <button className={styles.closeBtn} onClick={onClose}>
-          Close
-        </button>
-      </div>
+    <div ref={wrapperRef} style={{ width: "100%", padding: "0 4px", boxSizing: "border-box" }}>
+      <canvas
+        ref={canvasRef}
+        style={{ display: "block", width: "100%", borderRadius: "8px", cursor: "crosshair" }}
+      />
     </div>
   );
 }
-
-export default ComparisonGraph;

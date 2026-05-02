@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getMatches } from "../api/matchApi";
 import s from "./MatchHistory.module.css";
-import { generateScorecardPDF } from "../utils/generateScorecardPDF";
+import { generateScorecardPDF, generateHistoryMatchPDF } from "../utils/generateScorecardPDF";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtOvers(balls) {
@@ -68,7 +68,7 @@ function MatchCard({ match, onClick }) {
         className={s.pdfBtn}
         onClick={(e) => {
           e.stopPropagation();
-          generateScorecardPDF(match);
+          generateHistoryMatchPDF(match);
         }}
       >
         ⬇ PDF
@@ -317,7 +317,7 @@ function MatchDetail({ match, onBack }) {
       <div className={s.resultBanner}>{result}</div>
       <button
         className={s.pdfBtnDetail}
-        onClick={() => generateScorecardPDF(match)}
+        onClick={() => generateHistoryMatchPDF(match)}
       >
         📄 Download Scorecard PDF
       </button>

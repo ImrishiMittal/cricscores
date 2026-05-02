@@ -209,6 +209,126 @@
   color: #ffae00;
 }
 
+.overBallsWrapper {
+  width: 100%;
+  overflow: hidden;
+}
+
+.overBallsScroll {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;          /* ← never wrap; scroll instead */
+  overflow-x: auto;
+  gap: 6px;
+  padding: 8px 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.overBallsScroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.overBallsScroll::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 2px;
+}
+
+.overBallsEmpty {
+  font-size: 13px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.ball {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;             /* ← never shrink */
+  border: 2px solid transparent;
+}
+
+.ballDefault  { background: #1f2937; color: #e5e7eb; border-color: #374151; }
+.ballWide     { background: #7c3aed; color: #fff;    border-color: #a78bfa; }
+.ballNoBall   { background: #b45309; color: #fff;    border-color: #fbbf24; }
+.ballWicket   { background: #dc2626; color: #fff;    border-color: #f87171; }
+.ballBye      { background: #0891b2; color: #fff;    border-color: #67e8f9; }
+.ballFour     { background: #15803d; color: #fff;    border-color: #4ade80; }
+.ballSix      { background: #d97706; color: #fff;    border-color: #fde68a; }
+
+/* ── ExtraRunPicker modal (Wide / No-ball run picker) ────────────────────────*/
+.extraPickerOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+}
+
+.extraPickerBox {
+  background: #1a1a2e;
+  border: 1px solid #374151;
+  border-radius: 14px;
+  padding: 28px 24px;
+  width: min(340px, 90vw);
+  text-align: center;
+}
+
+.extraPickerTitle {
+  color: #f9fafb;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.extraPickerSub {
+  color: #9ca3af;
+  font-size: 14px;
+  margin: 0 0 18px;
+}
+
+.extraPickerGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.extraPickerBtn {
+  background: #1f2937;
+  color: #e5e7eb;
+  border: 2px solid #374151;
+  border-radius: 10px;
+  padding: 12px 0;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.extraPickerBtn:hover {
+  background: #374151;
+  border-color: #6b7280;
+}
+
+.extraPickerCancel {
+  background: transparent;
+  color: #6b7280;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+  margin-top: 4px;
+}
+
+
 /* ================= BATSMEN ROW - FIXED LAYOUT ================= */
 .batsmenRow {
   display: flex;
