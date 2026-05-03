@@ -162,8 +162,14 @@ function ModalManager({
 
       {modalStates.showInningsHistory && (
         <TabbedInningsHistory
-          innings1History={innings1History}
-          innings2History={innings2History}
+          innings1History={
+            innings === 1
+              ? completeHistory
+              : innings1History?.length > 0
+              ? innings1History
+              : innings1HistoryRef?.current || []
+          }
+          innings2History={innings === 2 ? completeHistory : []}
           currentInnings={innings}
           onClose={() => modalStates.setShowInningsHistory(false)}
         />
@@ -188,71 +194,87 @@ function ModalManager({
         />
       )}
 
-{modalStates.showComparisonGraph && (
-  <div
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.80)",
-      backdropFilter: "blur(4px)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 9500,
-      padding: "16px",
-    }}
-    onClick={(e) => { if (e.target === e.currentTarget) modalStates.setShowComparisonGraph(false); }}
-  >
-    <div
-      style={{
-        background: "#0a0e1a",
-        border: "1px solid #1e293b",
-        borderRadius: "14px",
-        padding: "20px 16px 16px",
-        width: "min(700px, 96vw)",
-        maxHeight: "90vh",
-        overflowY: "auto",
-        position: "relative",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-        <span style={{ color: "#e2e8f0", fontWeight: 700, fontSize: "15px" }}>
-          📊 Run Rate Comparison
-        </span>
-        <button
-          onClick={() => modalStates.setShowComparisonGraph(false)}
+      {modalStates.showComparisonGraph && (
+        <div
           style={{
-            background: "transparent",
-            border: "1px solid #374151",
-            borderRadius: "6px",
-            color: "#9ca3af",
-            fontSize: "16px",
-            cursor: "pointer",
-            padding: "2px 8px",
-            lineHeight: 1,
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.80)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9500,
+            padding: "16px",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget)
+              modalStates.setShowComparisonGraph(false);
           }}
         >
-          ✕
-        </button>
-      </div>
-      <ComparisonGraph
-        team1Name={firstBattingTeam}
-        team2Name={secondBattingTeam}
-        innings1Score={innings1Score || (innings === 1 ? { score, wickets } : null)}
-        innings2Score={innings2Score || (innings === 2 ? { score, wickets } : null)}
-        innings1History={
-          innings === 1
-            ? completeHistory
-            : innings1HistoryRef.current || innings1Data?.history || []
-        }
-        innings2History={innings === 2 ? completeHistory : []}
-        matchData={updatedMatchData}
-        currentInnings={innings}
-        onClose={() => modalStates.setShowComparisonGraph(false)}
-      />
-    </div>
-  </div>
-)}
+          <div
+            style={{
+              background: "#0a0e1a",
+              border: "1px solid #1e293b",
+              borderRadius: "14px",
+              padding: "20px 16px 16px",
+              width: "min(700px, 96vw)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "14px",
+              }}
+            >
+              <span
+                style={{ color: "#e2e8f0", fontWeight: 700, fontSize: "15px" }}
+              >
+                📊 Run Rate Comparison
+              </span>
+              <button
+                onClick={() => modalStates.setShowComparisonGraph(false)}
+                style={{
+                  background: "transparent",
+                  border: "1px solid #374151",
+                  borderRadius: "6px",
+                  color: "#9ca3af",
+                  fontSize: "16px",
+                  cursor: "pointer",
+                  padding: "2px 8px",
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <ComparisonGraph
+              team1Name={firstBattingTeam}
+              team2Name={secondBattingTeam}
+              innings1Score={
+                innings1Score || (innings === 1 ? { score, wickets } : null)
+              }
+              innings2Score={
+                innings2Score || (innings === 2 ? { score, wickets } : null)
+              }
+              innings1History={
+                innings === 1
+                  ? completeHistory
+                  : innings1HistoryRef.current || innings1Data?.history || []
+              }
+              innings2History={innings === 2 ? completeHistory : []}
+              matchData={updatedMatchData}
+              currentInnings={innings}
+              onClose={() => modalStates.setShowComparisonGraph(false)}
+            />
+          </div>
+        </div>
+      )}
 
       {modalStates.showRetiredHurtModal && players.length >= 2 && (
         <RetiredHurtModal
