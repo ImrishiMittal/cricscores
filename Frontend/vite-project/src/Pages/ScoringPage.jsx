@@ -1270,10 +1270,8 @@ const captainStatsSavedRef = useRef(false);
                         playerDBHook.updatePlayerStats(bowler.playerId, { bowlingInnings: 1 });
                     }
                   
-                    if (striker?.playerId) {
-                      playerDBHook.updatePlayerStats(striker.playerId, { balls: 1 });
-                    }
-                    playersHook.addBallToStriker?.();
+                    // ✅ NO ball stats for striker — NB is an illegal delivery
+                    // (removed: addBallToStriker and updatePlayerStats balls:1)
                   
                     const totalRuns = 1 + (extraRuns || 0);
                     if (bowler?.playerId)
@@ -1285,13 +1283,10 @@ const captainStatsSavedRef = useRef(false);
                     playersHook.addRunsToBowler(totalRuns);
                     partnershipsHook.addExtraToPartnership(totalRuns);
                   
-                    // engine.handleNoBall adds the +1 penalty run to score internally
-                    engine.handleNoBall(bowler?.displayName || "");
+                    engine.handleNoBall(bowler?.displayName || "", extraRuns || 0);
                     engine.addToCurrentOverRuns(totalRuns);
                   
-                    // bat runs off the no-ball: add to engine score + striker display
                     if (extraRuns > 0) {
-                      engine.addScore(extraRuns);          // ✅ ADD THIS — bat runs into engine score
                       playersHook.addRunsToStriker(extraRuns);
                       if (striker?.playerId) {
                         const stats = { runs: extraRuns };

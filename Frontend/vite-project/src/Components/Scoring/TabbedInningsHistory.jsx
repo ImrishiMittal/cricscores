@@ -42,12 +42,13 @@ function getLabel(ball) {
   if (ball.event === "RUN_WICKET") return `${ball.runs}W`;
   if (ball.event === "RUN") return ball.runs;
   if (ball.event === "WD") return "WD";
-  if (ball.event === "NB") return "NB";
+  // ✅ FIX: read runs from ball entry
+  if (ball.event === "NB") return ball.runs > 0 ? `${ball.runs}NB` : "NB";
   if (ball.event === "WICKET") return "W";
   if (ball.event === "FREE_HIT") return "FH";
   if (ball.event === "BYE") return `B${ball.runs}`;
-  if (ball.event === "LB") return `LB${ball.runs}`;    // ✅ NEW
-  if (ball.event === "HW") return "HW";                // ✅ NEW: hit wicket
+  if (ball.event === "LB") return `LB${ball.runs}`;
+  if (ball.event === "HW") return "HW";
   return "•";
 }
 

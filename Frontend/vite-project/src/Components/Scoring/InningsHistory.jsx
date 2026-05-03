@@ -47,13 +47,16 @@ function combineBalls(balls) {
 }
 
 function getLabel(ball) {
-  if (ball.event === "RUN_WICKET") return `${ball.runs} + W`;// ✅ Combined display
+  if (ball.event === "RUN_WICKET") return `${ball.runs}W`;
   if (ball.event === "RUN") return ball.runs;
   if (ball.event === "WD") return "WD";
-  if (ball.event === "NB") return "NB";
+  // ✅ FIX: read runs from the ball entry, same as OverBalls.jsx
+  if (ball.event === "NB") return ball.runs > 0 ? `${ball.runs}NB` : "NB";
   if (ball.event === "WICKET") return "W";
+  if (ball.event === "HW") return "W";
   if (ball.event === "FREE_HIT") return "FH";
   if (ball.event === "BYE") return `B${ball.runs}`;
+  if (ball.event === "LB") return `LB${ball.runs}`;
   return "•";
 }
 
