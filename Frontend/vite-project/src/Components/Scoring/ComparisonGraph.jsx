@@ -62,7 +62,10 @@ export default function ComparisonGraph({
 
     const dpr = window.devicePixelRatio || 1;
     const displayW = wrapper.clientWidth || 320;
-    const displayH = Math.min(Math.max(Math.round(displayW * 0.58), 240), 460);
+    const wrapperH = wrapper.clientHeight || 0;
+const displayH = wrapperH > 100
+  ? wrapperH - 16
+  : Math.min(Math.max(Math.round(displayW * 0.58), 240), 460);
 
     canvas.width = displayW * dpr;
     canvas.height = displayH * dpr;
@@ -390,7 +393,7 @@ ctx.fillText("= Wicket", wx + 10, wy + 4);
   }, [innings1History, innings2History, draw]);
 
   return (
-    <div ref={wrapperRef} style={{ width: "100%", padding: "0 4px", boxSizing: "border-box" }}>
+    <div ref={wrapperRef} style={{ width: "100%", height: "100%", padding: "0 4px", boxSizing: "border-box" }}>
       <canvas
         ref={canvasRef}
         style={{ display: "block", width: "100%", borderRadius: "8px", cursor: "crosshair" }}
