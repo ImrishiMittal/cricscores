@@ -112,8 +112,8 @@ if (tab === "innings2" && currentInnings === 2) {
   // - Live innings data (raw player objects) uses .displayName
   const getPlayerName = (player) =>
     data.isCompleted ? player.name : player.displayName;
-  const getBowlerName = (bowler) =>
-    data.isCompleted ? bowler.name : bowler.displayName;
+    const getBowlerName = (bowler) =>
+    bowler.playerName || bowler.displayName || bowler.name || "";
 
   return (
     <div className={styles.overlay} onClick={onClose}>

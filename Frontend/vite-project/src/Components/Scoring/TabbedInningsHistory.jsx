@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import styles from './TabbedInningsHistory.module.css';
+import { useState } from "react";
+import styles from "./TabbedInningsHistory.module.css";
 
 function groupByOvers(history) {
   const overs = {};
@@ -60,8 +60,8 @@ function getBallType(ball) {
   if (ball.event === "WICKET") return "W";
   if (ball.event === "FREE_HIT") return "FH";
   if (ball.event === "BYE") return "BYE";
-  if (ball.event === "LB") return "BYE";               // ✅ same styling as bye
-  if (ball.event === "HW") return "W";                 // ✅ same styling as wicket
+  if (ball.event === "LB") return "BYE"; // ✅ same styling as bye
+  if (ball.event === "HW") return "W"; // ✅ same styling as wicket
   return "DOT";
 }
 
@@ -69,13 +69,15 @@ function TabbedInningsHistory({
   innings1History,
   innings2History,
   currentInnings,
-  onClose
+  onClose,
 }) {
-  const [activeTab, setActiveTab] = useState(currentInnings === 2 ? 'innings2' : 'innings1');
+  const [activeTab, setActiveTab] = useState(
+    currentInnings === 2 ? "innings2" : "innings1"
+  );
 
   const getHistory = (tab) => {
-    if (tab === 'innings1') return innings1History || [];
-    if (tab === 'innings2') return innings2History || [];
+    if (tab === "innings1") return innings1History || [];
+    if (tab === "innings2") return innings2History || [];
     return [];
   };
 
@@ -95,14 +97,18 @@ function TabbedInningsHistory({
         {currentInnings === 2 && innings1History && innings2History && (
           <div className={styles.tabContainer}>
             <button
-              className={`${styles.tab} ${activeTab === 'innings1' ? styles.activeTab : ''}`}
-              onClick={() => setActiveTab('innings1')}
+              className={`${styles.tab} ${
+                activeTab === "innings1" ? styles.activeTab : ""
+              }`}
+              onClick={() => setActiveTab("innings1")}
             >
               Innings 1
             </button>
             <button
-              className={`${styles.tab} ${activeTab === 'innings2' ? styles.activeTab : ''}`}
-              onClick={() => setActiveTab('innings2')}
+              className={`${styles.tab} ${
+                activeTab === "innings2" ? styles.activeTab : ""
+              }`}
+              onClick={() => setActiveTab("innings2")}
             >
               Innings 2
             </button>
@@ -115,14 +121,20 @@ function TabbedInningsHistory({
           {Object.entries(overs).map(([overNo, balls]) => {
             const runs = balls.reduce((t, b) => t + (b.runs || 0), 0);
             const wickets = balls.filter(
-              (b) => b.event === "WICKET" || b.event === "HW"  // ✅ count HW as wicket
+              (b) => b.event === "WICKET" || b.event === "HW"
             ).length;
             const combinedBalls = combineBalls(balls);
+
+            // Get bowler name from first ball of this over
+            const bowlerName = balls[0]?.bowler || balls[0]?.bowlerName || "";
 
             return (
               <div key={overNo} className={styles.overBlock}>
                 <div className={styles.overHeader}>
-                  <span>Over {overNo}</span>
+                  <span>
+                    Over {overNo}
+                    {bowlerName ? ` — ${bowlerName}` : ""}
+                  </span>
                   <span>
                     {runs} Runs {wickets > 0 && `• ${wickets} Wkt`}
                   </span>
