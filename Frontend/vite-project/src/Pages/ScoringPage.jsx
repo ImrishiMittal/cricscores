@@ -378,6 +378,12 @@ const captainStatsSavedRef = useRef(false);
       allTimeBowlersRef.current.forEach((pid) => {
         allParticipantIds.add(pid);
       });
+      if (captainA?.jersey) {
+        allParticipantIds.add(String(captainA.jersey));
+      }
+      if (captainB?.jersey) {
+        allParticipantIds.add(String(captainB.jersey));
+      }
       allParticipantIds.forEach((pid) => {
         playerDBHook.updatePlayerStats(pid, { matches: 1 });
       });
