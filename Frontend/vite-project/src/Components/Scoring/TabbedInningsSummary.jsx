@@ -39,33 +39,37 @@ function TabbedInningsSummary({
       };
     }
 
-    if (tab === "innings1" && currentInnings === 1) {
-      const battedPlayers = [...(allPlayers || []), ...players];
-      return {
-        score,
-        wickets,
-        overs,
-        balls,
-        extras: liveExtras || null, // ✅ NEW
-        battedPlayers: battedPlayers.filter((p) => p.balls > 0 || p.dismissal),
-        bowlers,
-        isCompleted: false,
-      };
-    }
+    // Replace both live battedPlayers builds (innings1 live and innings2 live):
 
-    if (tab === "innings2" && currentInnings === 2) {
-      const battedPlayers = [...(allPlayers || []), ...players];
-      return {
-        score,
-        wickets,
-        overs,
-        balls,
-        extras: liveExtras || null, // ✅ NEW
-        battedPlayers: battedPlayers.filter((p) => p.balls > 0 || p.dismissal),
-        bowlers,
-        isCompleted: false,
-      };
-    }
+if (tab === "innings1" && currentInnings === 1) {
+  const raw = [...players, ...(allPlayers || [])];  // active first for dedup
+  const seen = new Set();
+  const battedPlayers = raw
+    .filter((p) => { 
+      const k = p.playerId || p.displayName; 
+      if (seen.has(k)) return false; 
+      seen.add(k); 
+      return true; 
+    })
+    .filter((p) => p.balls > 0 || p.dismissal)
+    .sort((a, b) => (a.battingOrder ?? 999) - (b.battingOrder ?? 999));  // ✅ sort
+  return { score, wickets, overs, balls, extras: liveExtras || null, battedPlayers, bowlers, isCompleted: false };
+}
+
+if (tab === "innings2" && currentInnings === 2) {
+  const raw = [...players, ...(allPlayers || [])];
+  const seen = new Set();
+  const battedPlayers = raw
+    .filter((p) => { 
+      const k = p.playerId || p.displayName; 
+      if (seen.has(k)) return false; 
+      seen.add(k); 
+      return true; 
+    })
+    .filter((p) => p.balls > 0 || p.dismissal)
+    .sort((a, b) => (a.battingOrder ?? 999) - (b.battingOrder ?? 999));  // ✅ sort
+  return { score, wickets, overs, balls, extras: liveExtras || null, battedPlayers, bowlers, isCompleted: false };
+}
 
     if (tab === "innings2" && innings2Data) {
       return {

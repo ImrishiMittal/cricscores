@@ -214,7 +214,7 @@ function useInningsData(
     extrasData
   ) => {
     // Merge dismissed (allPlayers) + active (players), deduplicate by playerId
-    const merged = [...(allPlayersData || []), ...(playersData || [])];
+    const merged = [...(playersData || []), ...(allPlayersData || [])];
     const seenP = new Set();
     const dedupedPlayers = merged.filter((p) => {
       const key = p.playerId || p.displayName;
@@ -222,6 +222,7 @@ function useInningsData(
       seenP.add(key);
       return true;
     });
+    dedupedPlayers.sort((a, b) => (a.battingOrder ?? 999) - (b.battingOrder ?? 999));
 
     // ✅ PRIMARY: Compute bowling stats from history (always accurate)
     // FALLBACK: Use merged live+snapshot bowlers if history is empty

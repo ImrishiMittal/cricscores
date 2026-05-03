@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
-
+ let _battingOrderCounter = 0;
 export default function usePlayersAndBowlers(matchData, playerDB) {
   /* ================= PLAYERS ================= */
   const [players, setPlayers] = useState([]);
@@ -23,15 +23,18 @@ export default function usePlayersAndBowlers(matchData, playerDB) {
   const dismissedBowlersRef = useRef([]);
 
   /* ================= HELPERS ================= */
-  const makeBatsman = (displayName, jersey = null) => ({
-    playerId: jersey ? String(jersey) : uuidv4(),
-    displayName,
-    runs: 0,
-    balls: 0,
-    fours: 0,
-    sixes: 0,
-    dismissal: null,
-  });
+
+
+const makeBatsman = (displayName, jersey = null, orderIndex = null) => ({
+  playerId: jersey ? String(jersey) : uuidv4(),
+  displayName,
+  runs: 0,
+  balls: 0,
+  fours: 0,
+  sixes: 0,
+  dismissal: null,
+  battingOrder: orderIndex !== null ? orderIndex : _battingOrderCounter++,
+});
 
   const makeBowler = (displayName, jersey = null) => ({
     playerId: jersey ? String(jersey) : uuidv4(),
@@ -54,14 +57,14 @@ export default function usePlayersAndBowlers(matchData, playerDB) {
 
   /* ================= START INNINGS ================= */
   const startInnings = (strikerData, nonStrikerData, bowlerData) => {
-    // ✅ FIX BUG 1: Save all three to DB on innings start
+    _battingOrderCounter = 0;  // reset
     savePlayerToDB(strikerData.name, strikerData.jersey);
     savePlayerToDB(nonStrikerData.name, nonStrikerData.jersey);
     savePlayerToDB(bowlerData.name, bowlerData.jersey);
-
+  
     setPlayers([
-      makeBatsman(strikerData.name, strikerData.jersey),
-      makeBatsman(nonStrikerData.name, nonStrikerData.jersey),
+      makeBatsman(strikerData.name, strikerData.jersey),   // ✅ no explicit index — counter goes 0→1
+      makeBatsman(nonStrikerData.name, nonStrikerData.jersey), // counter goes 1→2
     ]);
 
     setAllPlayers([]);
@@ -204,18 +207,9 @@ export default function usePlayersAndBowlers(matchData, playerDB) {
     });
   };
 
-  // ✅ FIX BUG 1 + BUG 3: Save to DB on replace, validate jersey not already in use
   const replaceBatsman = (index, batsmanData) => {
-
-    const name =
-      typeof batsmanData === "string"
-        ? batsmanData
-        : batsmanData.name;
-  
-    const jersey =
-      typeof batsmanData === "object"
-        ? batsmanData.jersey
-        : null;
+    const name = typeof batsmanData === "string" ? batsmanData : batsmanData.name;
+    const jersey = typeof batsmanData === "object" ? batsmanData.jersey : null;
   
     savePlayerToDB(name, jersey);
   
@@ -223,25 +217,20 @@ export default function usePlayersAndBowlers(matchData, playerDB) {
       const updated = [...prev];
   
       if (index !== null && index !== undefined && updated[index]) {
-  
         const dismissedPlayer = { ...updated[index] };
   
         if (dismissedPlayer.balls > 0 || dismissedPlayer.dismissal) {
           setAllPlayers((all) => {
-            const exists = all.some(
-              (p) => p.playerId === dismissedPlayer.playerId
-            );
+            const exists = all.some((p) => p.playerId === dismissedPlayer.playerId);
             if (!exists) return [...all, dismissedPlayer];
             return all;
           });
         }
-  
-        updated[index] = makeBatsman(name, jersey);  // ✅ FIX
+        updated[index] = makeBatsman(name, jersey, _battingOrderCounter++);
       }
   
       return updated;
     });
-  
   };
 
   /* ================= RETIRED HURT ================= */
@@ -281,7 +270,7 @@ export default function usePlayersAndBowlers(matchData, playerDB) {
       ];
       setRetiredPlayers([...retiredPlayersRef.current]);
 
-      updated[strikerIndex] = makeBatsman(newBatsmanName, jersey);
+      updated[strikerIndex] = makeBatsman(newBatsmanName, jersey, _battingOrderCounter++);
       return updated;
     });
   };
@@ -350,7 +339,7 @@ export default function usePlayersAndBowlers(matchData, playerDB) {
   
       if (outBatsman === null) return prev;
   
-      updated[outBatsman] = makeBatsman(name, jersey);
+      updated[outBatsman] = makeBatsman(name, jersey, _battingOrderCounter++);
   
       return updated;
     });
@@ -568,6 +557,7 @@ export default function usePlayersAndBowlers(matchData, playerDB) {
     list.find((p) => p.playerId === playerId)?.displayName ?? playerId;
 
   const resetForNewInnings = () => {
+    _battingOrderCounter = 0;
     setPlayers([]);
     setAllPlayers([]);
     setBowlers([]);
