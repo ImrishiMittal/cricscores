@@ -34,14 +34,15 @@ const getBallStyle = (entry) => {
 
 const getBallLabel = (entry) => {
   if (!entry) return "";
-  const ev = entry.type; // ← was entry.event
+  const ev = entry.type;
   if (ev === "WD")   return "Wd";
-  if (ev === "NB")   return "Nb";
+  // Use stored label for NB (e.g. "4NB") if present, else "Nb"
+  if (ev === "NB")   return entry.label || (entry.runs > 0 ? `${entry.runs}NB` : "Nb");
   if (ev === "W" || ev === "WICKET") return "W";
   if (ev === "HW")   return "W";
   if (ev === "BYE")  return `${entry.runs}b`;
   if (ev === "LB")   return `${entry.runs}lb`;
-  if (entry.isWicket) return `${entry.runs}W`; // runout with runs
+  if (entry.isWicket) return `${entry.runs}W`;
   return String(entry.runs ?? "");
 };
 

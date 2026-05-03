@@ -524,27 +524,33 @@ export default function useMatchEngine(matchData, swapStrike) {
   };
 
   /* ================= NO BALL ================= */
-  // ✅ Added bowlerName parameter
-  const handleNoBall = (bowlerName = "") => {
-    if (matchOver) return;
-    setScore((prev) => prev + 1);
-    checkMatchStatus(score + 1, wickets, balls, overs);
-    setIsFreeHit(true);
-    setExtras((prev) => ({
-      ...prev,
-      noBalls: prev.noBalls + 1,
-      total: prev.total + 1,
-    }));
-    setCurrentOver((prev) => [...prev, { type: "NB" }]);
-    const nbEntry = {
-      event: "NB",
-      over: overs,
-      ball: balls,
-      bowler: bowlerName,
-    };
-    completeHistoryRef.current = [...completeHistoryRef.current, nbEntry];
-    setCompleteHistory((prev) => [...prev, nbEntry]);
+// In useMatchEngine.js, replace handleNoBall:
+const handleNoBall = (bowlerName = "", extraRuns = 0) => {
+  if (matchOver) return;
+  const totalExtra = 1 + extraRuns; // 1 penalty + bat runs
+  setScore((prev) => prev + totalExtra);
+  checkMatchStatus(score + totalExtra, wickets, balls, overs);
+  setIsFreeHit(true);
+  setExtras((prev) => ({
+    ...prev,
+    noBalls: prev.noBalls + 1,
+    total: prev.total + totalExtra,
+  }));
+
+  // Push ONE combined entry instead of bare "NB"
+  const label = extraRuns > 0 ? `${extraRuns}NB` : "NB";
+  setCurrentOver((prev) => [...prev, { type: "NB", runs: extraRuns, label }]);
+
+  const nbEntry = {
+    event: "NB",
+    runs: extraRuns,
+    over: overs,
+    ball: balls,
+    bowler: bowlerName,
   };
+  completeHistoryRef.current = [...completeHistoryRef.current, nbEntry];
+  setCompleteHistory((prev) => [...prev, nbEntry]);
+};
 
   /* ================= BYE ================= */
   // ✅ Added bowlerName parameter
