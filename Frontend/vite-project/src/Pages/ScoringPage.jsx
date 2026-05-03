@@ -393,12 +393,6 @@ const captainStatsSavedRef = useRef(false);
         const pid = String(p.playerId);
         const inningsRuns = inningsScoreTrackerRef.current[pid] ?? (p.runs || 0);
         const hasBatted = (p.balls || 0) > 0 || inningsRuns > 0;
-        if (inningsRuns > 0) {
-          const existing = playerDBHook.getPlayer(pid);
-          if (existing && inningsRuns > (existing.highestScore || 0)) {
-            playerDBHook.setHighestScore(pid, inningsRuns);
-          }
-        }
         if (hasBatted && !allTimeDismissedRef.current.has(pid)) {
           playerDBHook.updatePlayerStats(pid, { notOuts: 1 });
         }

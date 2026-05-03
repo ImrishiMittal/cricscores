@@ -6,6 +6,7 @@ let _cache = {};
 let _cacheLoaded = false;
 
 function usePlayerDatabase() {
+  const preMatchHighScoresRef = useRef({});
   const [, forceUpdate] = useState(0);
   const refresh = useCallback(() => forceUpdate((v) => v + 1), []);
 
@@ -49,8 +50,17 @@ function usePlayerDatabase() {
 
   // ── currentMatchId ────────────────────────────────────────────────────────
   const setCurrentMatchId = useCallback((matchId) => {
-    if (matchId === null) localStorage.removeItem("current_match_id");
-    else localStorage.setItem("current_match_id", String(matchId));
+    if (matchId === null) {
+      localStorage.removeItem("current_match_id");
+      preMatchHighScoresRef.current = {}; // clear on match end
+    } else {
+      localStorage.setItem("current_match_id", String(matchId));
+      // Snapshot current highest scores from cache
+      preMatchHighScoresRef.current = {};
+      Object.entries(_cache).forEach(([key, p]) => {
+        preMatchHighScoresRef.current[key] = p.highestScore || 0;
+      });
+    }
   }, []);
 
   const getCurrentMatchId = useCallback(() => {
@@ -258,9 +268,6 @@ function usePlayerDatabase() {
     const key = String(jersey);
     const buf = pendingStatsRef.current[key];
     if (buf && runs > buf.highestScore) buf.highestScore = runs;
-    if (_cache[key] && runs > (_cache[key].highestScore || 0)) {
-      _cache[key].highestScore = runs;
-    }
   }, []);
 
   const setBestBowling = useCallback((jersey, wickets, runs) => {
