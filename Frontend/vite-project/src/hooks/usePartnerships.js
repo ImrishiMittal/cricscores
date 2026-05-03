@@ -1,89 +1,114 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export default function usePartnerships() {
   const [partnershipRuns, setPartnershipRuns] = useState(0);
   const [partnershipBalls, setPartnershipBalls] = useState(0);
-
   const [striker1Contribution, setStriker1Contribution] = useState(0);
   const [striker2Contribution, setStriker2Contribution] = useState(0);
-
-  // ✅ Now stores { playerId, displayName } objects instead of plain name strings
   const [currentPartnershipBatsmen, setCurrentPartnershipBatsmen] = useState([]);
-
   const [partnershipHistory, setPartnershipHistory] = useState([]);
   const [showPartnershipHistory, setShowPartnershipHistory] = useState(false);
 
-  /* ================= START NEW PARTNERSHIP ================= */
-  // ✅ b1 and b2 are now { playerId, displayName } objects
+  // ✅ Ref mirrors the state — always has the latest value in closures
+  const currentBatsmenRef = useRef([]);
+  const striker1Ref = useRef(0);
+  const striker2Ref = useRef(0);
+  const runsRef = useRef(0);
+  const ballsRef = useRef(0);
+
   const startPartnership = (b1, b2) => {
+    currentBatsmenRef.current = [b1, b2];
     setCurrentPartnershipBatsmen([b1, b2]);
+    runsRef.current = 0;
+    ballsRef.current = 0;
+    striker1Ref.current = 0;
+    striker2Ref.current = 0;
     setPartnershipRuns(0);
     setPartnershipBalls(0);
     setStriker1Contribution(0);
     setStriker2Contribution(0);
   };
 
-  /* ================= ADD RUN ================= */
-  // ✅ Compare by playerId — rename-safe
   const addRunsToPartnership = (runs, strikerId) => {
+    runsRef.current += runs;
+    ballsRef.current += 1;
     setPartnershipRuns((p) => p + runs);
     setPartnershipBalls((p) => p + 1);
 
-    if (strikerId === currentPartnershipBatsmen[0]?.playerId) {
+    if (strikerId === currentBatsmenRef.current[0]?.playerId) {
+      striker1Ref.current += runs;
       setStriker1Contribution((prev) => prev + runs);
     } else {
+      striker2Ref.current += runs;
       setStriker2Contribution((prev) => prev + runs);
     }
   };
 
-  /* ================= ADD EXTRA (no batsman run) ================= */
   const addExtraToPartnership = (runs = 1) => {
+    runsRef.current += runs;
     setPartnershipRuns((p) => p + runs);
   };
 
-  /* ================= ADD BALL (bye/legbye/dot) ================= */
   const addBallToPartnership = () => {
+    ballsRef.current += 1;
     setPartnershipBalls((p) => p + 1);
   };
 
-  /* ================= SAVE PARTNERSHIP ================= */
-  const savePartnership = (score, wicketNumber) => {
-    const data = {
-      // ✅ Store both playerId (stable) and displayName (for rendering)
-      batsman1: currentPartnershipBatsmen[0]?.displayName ?? "",
-      batsman1Id: currentPartnershipBatsmen[0]?.playerId ?? "",
-      batsman1Runs: striker1Contribution,
-      batsman2: currentPartnershipBatsmen[1]?.displayName ?? "",
-      batsman2Id: currentPartnershipBatsmen[1]?.playerId ?? "",
-      batsman2Runs: striker2Contribution,
-      totalRuns: partnershipRuns,
-      totalBalls: partnershipBalls,
-      scoreWhenBroke: score,
-      wicketNumber,
+  // ✅ Reads from refs — always fresh, no stale closure issue
+  const savePartnership = (currentScore, currentWickets) => {
+    const name1 = currentBatsmenRef.current[0]?.displayName
+      || currentBatsmenRef.current[0]?.name
+      || "";
+    const name2 = currentBatsmenRef.current[1]?.displayName
+      || currentBatsmenRef.current[1]?.name
+      || "";
+
+    const entry = {
+      batsman1: name1,
+      batsman2: name2,
+      batsman1Runs: striker1Ref.current,
+      batsman2Runs: striker2Ref.current,
+      totalRuns: runsRef.current,
+      totalBalls: ballsRef.current,
+      scoreWhenBroke: currentScore,
+      wicketNumber: currentWickets,
     };
 
-    setPartnershipHistory((prev) => [...prev, data]);
+    setPartnershipHistory(prev => [...prev, entry]);
   };
 
-  /* ================= RESET AFTER WICKET ================= */
   const resetPartnership = () => {
+    runsRef.current = 0;
+    ballsRef.current = 0;
+    striker1Ref.current = 0;
+    striker2Ref.current = 0;
     setPartnershipRuns(0);
     setPartnershipBalls(0);
     setStriker1Contribution(0);
     setStriker2Contribution(0);
   };
 
-  /* ================= RESTORE (FOR UNDO) ================= */
   const restorePartnershipState = (snap) => {
-    setPartnershipRuns(snap.partnershipRuns);
-    setPartnershipBalls(snap.partnershipBalls);
-    setStriker1Contribution(snap.striker1Contribution);
-    setStriker2Contribution(snap.striker2Contribution);
+    const batsmen = snap.currentPartnershipBatsmen || [];
+    currentBatsmenRef.current = batsmen;
+    setCurrentPartnershipBatsmen(batsmen);
+    runsRef.current = snap.partnershipRuns || 0;
+    ballsRef.current = snap.partnershipBalls || 0;
+    striker1Ref.current = snap.striker1Contribution || 0;
+    striker2Ref.current = snap.striker2Contribution || 0;
+    setPartnershipRuns(snap.partnershipRuns || 0);
+    setPartnershipBalls(snap.partnershipBalls || 0);
+    setStriker1Contribution(snap.striker1Contribution || 0);
+    setStriker2Contribution(snap.striker2Contribution || 0);
     setPartnershipHistory(JSON.parse(JSON.stringify(snap.partnershipHistory || [])));
   };
 
-
   const resetAll = () => {
+    currentBatsmenRef.current = [];
+    runsRef.current = 0;
+    ballsRef.current = 0;
+    striker1Ref.current = 0;
+    striker2Ref.current = 0;
     setPartnershipRuns(0);
     setPartnershipBalls(0);
     setStriker1Contribution(0);
@@ -91,6 +116,7 @@ export default function usePartnerships() {
     setPartnershipHistory([]);
     setCurrentPartnershipBatsmen([]);
   };
+
   return {
     partnershipRuns,
     partnershipBalls,
