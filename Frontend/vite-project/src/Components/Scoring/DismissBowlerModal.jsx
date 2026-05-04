@@ -13,6 +13,7 @@ function DismissBowlerModal({
   const [jersey, setJersey] = useState("");
   const [error, setError] = useState("");
   const [existingPlayer, setExistingPlayer] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
 
   const handleJerseyChange = (val) => {
     setJersey(val);
@@ -23,8 +24,28 @@ function DismissBowlerModal({
       if (found) {
         setExistingPlayer(found);
         setNewName(found.name);
+        setSuggestions([]);
       }
     }
+  };
+
+  const handleNameChange = (val) => {
+    setNewName(val);
+    setError("");
+    setExistingPlayer(null);
+    if (val.trim().length >= 1 && playerDB) {
+      const results = playerDB.searchPlayersByName(val.trim());
+      setSuggestions(results);
+    } else {
+      setSuggestions([]);
+    }
+  };
+
+  const handleSuggestionSelect = (player) => {
+    setExistingPlayer(player);
+    setNewName(player.name);
+    setJersey(String(player.jersey || ""));
+    setSuggestions([]);
   };
 
   const handleConfirm = () => {
@@ -48,8 +69,8 @@ function DismissBowlerModal({
     (b) => b.displayName.toLowerCase() === newName.trim().toLowerCase()
   );
   const isBatsmanAlready =
-  jersey.trim() &&
-  activeBatters.some((p) => String(p.playerId) === String(jersey.trim()));
+    jersey.trim() &&
+    activeBatters.some((p) => String(p.playerId) === String(jersey.trim()));
 
   return (
     <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -97,14 +118,51 @@ function DismissBowlerModal({
           </div>
         )}
 
-        <div className={styles.inputContainer}>
+        {/* Name field with suggestions */}
+        <div className={styles.inputContainer} style={{ position: "relative" }}>
           <input
             className={`${styles.input} ${error ? styles.errorInput : ""}`}
             placeholder="Replacement bowler name"
             value={newName}
-            onChange={(e) => { setNewName(e.target.value); setError(""); }}
+            onChange={(e) => handleNameChange(e.target.value)}
             onKeyPress={handleKeyPress}
           />
+          {suggestions.length > 0 && (
+            <div style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              right: 0,
+              background: "#0f1a0f", 
+              border: "1px solid #22c55e",
+              borderRadius: "8px",
+              zIndex: 100,
+              overflow: "hidden",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.6)",
+            }}>
+              {suggestions.map((p, i) => (
+                <div
+                  key={i}
+                  onClick={() => handleSuggestionSelect(p)}
+                  style={{
+                    padding: "10px 14px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    color: "#e5e7eb",
+                    borderBottom: i < suggestions.length - 1 ? "1px solid rgba(34,197,94,0.2)" : "none",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(34,197,94,0.15)"}
+onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                >
+                  <span>{p.name}</span>
+                  <span style={{ color: "#9ca3af", fontSize: "12px" }}>#{p.jersey}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {error && <p className={styles.errorText}>{error}</p>}
         </div>
 
