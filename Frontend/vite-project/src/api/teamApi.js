@@ -1,46 +1,59 @@
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+// src/api/teamApi.js
 
-function headers() {
-  const token = localStorage.getItem("cricket_token"); // ← was "token"
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+function getHeaders() {
+  const token = localStorage.getItem("cricket_token");
   return {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    Authorization: `Bearer ${token}`,
   };
 }
 
-// Remove the extra /api from all fetch calls:
-
+// ─── GET all teams ────────────────────────────────────────────────────────────
 export async function getTeams() {
-  console.log("🌐 hitting:", `${BASE}/teams`);
-  const res = await fetch(`${BASE}/teams`, { headers: headers() });
-  if (!res.ok) {
-    const body = await res.text();
-    console.error("❌ getTeams status:", res.status, "body:", body);
-    throw new Error("Failed to fetch teams");
-  }
+  const res = await fetch(`${API_BASE}/teams`, { headers: getHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch teams");
   return res.json();
 }
 
+// ─── POST — ensure team exists (upsert by name) ───────────────────────────────
 export async function ensureTeam(name) {
-  const res = await fetch(`${BASE}/teams`, {
+  const res = await fetch(`${API_BASE}/teams`, {
     method: "POST",
-    headers: headers(),
+    headers: getHeaders(),
     body: JSON.stringify({ name }),
   });
   if (!res.ok) {
-    const errBody = await res.text();
-    console.error("ensureTeam failed:", res.status, errBody);
-    throw new Error("Failed to create team");
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to ensure team");
   }
   return res.json();
 }
 
+// ─── PATCH /:id — increment team stats ───────────────────────────────────────
 export async function updateTeamStats(teamId, stats) {
-  const res = await fetch(`${BASE}/teams/${teamId}`, {
+  const res = await fetch(`${API_BASE}/teams/${teamId}`, {
     method: "PATCH",
-    headers: headers(),
+    headers: getHeaders(),
     body: JSON.stringify(stats),
   });
-  if (!res.ok) throw new Error("Failed to update team stats");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to update team stats");
+  }
+  return res.json();
+}
+
+// ─── DELETE /:id — permanently remove a team ─────────────────────────────────
+export async function deleteTeam(teamId) {
+  const res = await fetch(`${API_BASE}/teams/${teamId}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to delete team");
+  }
   return res.json();
 }

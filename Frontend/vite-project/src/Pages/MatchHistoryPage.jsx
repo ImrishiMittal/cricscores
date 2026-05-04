@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { getMatches } from "../api/matchApi";
+import { getMatches, deleteMatch } from "../api/matchApi";
 import s from "./MatchHistory.module.css";
-import { generateScorecardPDF, generateHistoryMatchPDF } from "../utils/generateScorecardPDF";
+import {
+  generateScorecardPDF,
+  generateHistoryMatchPDF,
+} from "../utils/generateScorecardPDF";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtOvers(balls) {
@@ -31,8 +34,90 @@ function calcSR(runs, balls) {
   return ((runs / balls) * 100).toFixed(0);
 }
 
+// ── Delete confirmation modal ─────────────────────────────────────────────────
+function DeleteConfirmModal({ matchLabel, onConfirm, onCancel, loading }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.78)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+      }}
+    >
+      <div
+        style={{
+          background: "#1a1a1a",
+          border: "1px solid #ef4444",
+          borderRadius: "14px",
+          padding: "28px 24px",
+          maxWidth: "340px",
+          width: "90%",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: "32px", marginBottom: "12px" }}>🗑️</div>
+        <h3 style={{ color: "#e5e7eb", marginBottom: "8px", fontSize: "17px" }}>
+          Delete Match?
+        </h3>
+        <p
+          style={{
+            color: "#9ca3af",
+            fontSize: "14px",
+            marginBottom: "22px",
+            lineHeight: 1.5,
+          }}
+        >
+          <strong style={{ color: "#e5e7eb" }}>{matchLabel}</strong>
+          <br />
+          This will permanently remove the match record. This cannot be undone.
+        </p>
+        <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            style={{
+              background: "#374151",
+              color: "#e5e7eb",
+              padding: "10px 22px",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "600",
+              fontSize: "14px",
+              cursor: "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            style={{
+              background: "#ef4444",
+              color: "#fff",
+              padding: "10px 22px",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "600",
+              fontSize: "14px",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? "Deleting…" : "Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Match card ────────────────────────────────────────────────────────────────
-function MatchCard({ match, onClick }) {
+function MatchCard({ match, onClick, onDeleteRequest }) {
   const t1 = match.team1Name || match.team1 || "Team A";
   const t2 = match.team2Name || match.team2 || "Team B";
   const s1 = `${match.team1Score ?? "-"}/${match.team1Wickets ?? "-"}`;
@@ -44,26 +129,66 @@ function MatchCard({ match, onClick }) {
   const result = match.resultText || match.result || "Result pending";
 
   return (
-    <div className={s.matchCard} onClick={onClick}>
-      <div className={s.teamRow}>
-        <span className={s.teamName}>{t1}</span>
-        <span className={s.teamScore}>
-          {s1} <span className={s.teamOvers}>{ov1}</span>
-        </span>
-      </div>
-      <div className={s.teamRow}>
-        <span className={s.teamName}>{t2}</span>
-        <span className={s.teamScore}>
-          {s2} <span className={s.teamOvers}>{ov2}</span>
-        </span>
-      </div>
-      <hr className={s.cardDivider} />
-      <div className={s.cardFooter}>
-        <span className={s.resultText}>{result}</span>
-        <span className={s.dateText}>{fmtDate(match.createdAt)}</span>
+    <div className={s.matchCard} style={{ position: "relative" }}>
+      {/* Delete button — top-right corner */}
+      <button
+        title="Delete match"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDeleteRequest(match);
+        }}
+        style={{
+          position: "absolute",
+          top: "12px",
+          right: "12px",
+          background: "transparent",
+          border: "none",
+          color: "#3d4a5a",
+          cursor: "pointer",
+          padding: "4px",
+          borderRadius: "5px",
+          lineHeight: 1,
+          transition: "color 0.15s, background 0.15s",
+          display: "flex",
+          alignItems: "center",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = "#ef4444";
+          e.currentTarget.style.background = "rgba(239,68,68,0.08)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = "#3d4a5a";
+          e.currentTarget.style.background = "transparent";
+        }}
+      >
+        <TrashIcon />
+      </button>
+
+      {/* Clickable body */}
+      <div
+        onClick={onClick}
+        style={{ cursor: "pointer", paddingRight: "28px" }}
+      >
+        <div className={s.teamRow}>
+          <span className={s.teamName}>{t1}</span>
+          <span className={s.teamScore}>
+            {s1} <span className={s.teamOvers}>{ov1}</span>
+          </span>
+        </div>
+        <div className={s.teamRow}>
+          <span className={s.teamName}>{t2}</span>
+          <span className={s.teamScore}>
+            {s2} <span className={s.teamOvers}>{ov2}</span>
+          </span>
+        </div>
+        <hr className={s.cardDivider} />
+        <div className={s.cardFooter}>
+          <span className={s.resultText}>{result}</span>
+          <span className={s.dateText}>{fmtDate(match.createdAt)}</span>
+        </div>
       </div>
 
-      {/* ── PDF download button ── */}
+      {/* PDF download button */}
       <button
         className={s.pdfBtn}
         onClick={(e) => {
@@ -130,7 +255,6 @@ function BattingTable({ batting, hasBlob }) {
                   p.fielderName ? ` (${p.fielderName})` : ""
                 }`
               : null;
-
             return (
               <tr key={i}>
                 <td>{p.playerName || p.displayName || p.name}</td>
@@ -240,10 +364,8 @@ function ScorecardTab({ match, t1, t2 }) {
           </button>
         ))}
       </div>
-
       <p className={s.sectionHeader}>{battingTeam} — Batting</p>
       <BattingTable batting={batting} hasBlob={hasBlob} />
-
       <p className={s.sectionHeader}>{bowlingTeam} — Bowling</p>
       <BowlingTable bowling={bowling} />
     </div>
@@ -267,7 +389,6 @@ function InfoTab({ match, t1, t2, result }) {
     ["Man of Match", match.manOfTheMatch || "-"],
     ["Date", fmtDate(match.createdAt)],
   ];
-
   return (
     <div className={s.infoTable}>
       {rows.map(([label, value], i) => (
@@ -281,8 +402,7 @@ function InfoTab({ match, t1, t2, result }) {
 }
 
 // ── Match detail ──────────────────────────────────────────────────────────────
-// ✅ FIXED: removed broken useEffect, handleRefresh, and misplaced header JSX
-function MatchDetail({ match, onBack }) {
+function MatchDetail({ match, onBack, onDeleteRequest }) {
   const [tab, setTab] = useState("scorecard");
   const t1 = match.team1Name || match.team1 || "Team A";
   const t2 = match.team2Name || match.team2 || "Team B";
@@ -290,9 +410,47 @@ function MatchDetail({ match, onBack }) {
 
   return (
     <div className={s.detail}>
-      <button className={s.detailBackBtn} onClick={onBack}>
-        ← Back to list
-      </button>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "4px",
+        }}
+      >
+        <button className={s.detailBackBtn} onClick={onBack}>
+          ← Back to list
+        </button>
+        {/* Delete button in detail view */}
+        <button
+          onClick={() => onDeleteRequest(match)}
+          style={{
+            background: "transparent",
+            border: "1px solid rgba(239,68,68,0.35)",
+            color: "#ef4444",
+            padding: "6px 12px",
+            borderRadius: "8px",
+            fontSize: "12px",
+            fontWeight: "600",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            transition: "background 0.15s, border-color 0.15s",
+            letterSpacing: "0.5px",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(239,68,68,0.08)";
+            e.currentTarget.style.borderColor = "#ef4444";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "rgba(239,68,68,0.35)";
+          }}
+        >
+          <TrashIcon /> Delete
+        </button>
+      </div>
 
       <h2 className={s.matchTitle}>
         {t1} vs {t2}
@@ -322,7 +480,6 @@ function MatchDetail({ match, onBack }) {
         📄 Download Scorecard PDF
       </button>
 
-      {/* Tab switcher */}
       <div className={s.tabs}>
         {[
           { id: "scorecard", label: "Scorecard" },
@@ -347,7 +504,6 @@ function MatchDetail({ match, onBack }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-// ✅ FIXED: added location, fetchMatches, [location.pathname] dep, refresh button
 function MatchHistoryPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -355,6 +511,10 @@ function MatchHistoryPage() {
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Delete modal state
+  const [deleteTarget, setDeleteTarget] = useState(null); // match object to delete
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchMatches = () => {
     setLoading(true);
@@ -375,8 +535,50 @@ function MatchHistoryPage() {
     fetchMatches();
   }, [location.key]);
 
+  const handleDeleteRequest = (match) => {
+    setDeleteTarget(match);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await deleteMatch(deleteTarget._id);
+
+      // Remove from local state
+      setMatches((prev) => prev.filter((m) => m._id !== deleteTarget._id));
+
+      // If we were viewing this match in detail, go back to list
+      if (selected && selected._id === deleteTarget._id) {
+        setSelected(null);
+      }
+
+      setDeleteTarget(null);
+    } catch (err) {
+      alert(`❌ Failed to delete match: ${err.message}`);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const matchLabel = deleteTarget
+    ? `${deleteTarget.team1Name || deleteTarget.team1 || "Team A"} vs ${
+        deleteTarget.team2Name || deleteTarget.team2 || "Team B"
+      } — ${fmtDate(deleteTarget.createdAt)}`
+    : "";
+
   return (
     <div className={s.page}>
+      {/* ── Delete confirmation modal ───────────────────────────────── */}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          matchLabel={matchLabel}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => !deleteLoading && setDeleteTarget(null)}
+          loading={deleteLoading}
+        />
+      )}
+
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className={s.header}>
         <button
@@ -403,14 +605,23 @@ function MatchHistoryPage() {
             <p className={s.stateMsg}>No matches recorded yet. Play one!</p>
           ) : (
             matches.map((m) => (
-              <MatchCard key={m._id} match={m} onClick={() => setSelected(m)} />
+              <MatchCard
+                key={m._id}
+                match={m}
+                onClick={() => setSelected(m)}
+                onDeleteRequest={handleDeleteRequest}
+              />
             ))
           )}
         </div>
       )}
 
       {!loading && !error && selected && (
-        <MatchDetail match={selected} onBack={() => setSelected(null)} />
+        <MatchDetail
+          match={selected}
+          onBack={() => setSelected(null)}
+          onDeleteRequest={handleDeleteRequest}
+        />
       )}
     </div>
   );

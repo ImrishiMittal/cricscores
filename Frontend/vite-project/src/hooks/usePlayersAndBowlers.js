@@ -156,11 +156,11 @@ const makeBatsman = (displayName, jersey = null, orderIndex = null) => ({
   };
 
   /* ================= WICKET FLOW ================= */
-  const registerWicket = () => {
-    setOutBatsman(strikerIndex);
+  const registerWicket = (outIndex) => {
+    const idx = outIndex ?? strikerIndex;
+    setOutBatsman(idx);
     setIsWicketPending(true);
   };
-
   const setDismissal = (wicketType, fielder, bowlerDisplayName, outBatsmanIndex) => {
     setPlayers((prev) => {
       const updated = [...prev];

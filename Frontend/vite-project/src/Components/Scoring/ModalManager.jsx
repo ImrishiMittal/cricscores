@@ -108,24 +108,81 @@ function ModalManager({
       )}
 
       <WicketModals
-        wicketFlow={wicketFlow}
-        players={players}
-        retiredPlayers={retiredPlayers}
-        strikerIndex={strikerIndex}
-        nonStrikerIndex={nonStrikerIndex}
-        isWicketPending={isWicketPending}
-        onWicketTypeSelect={onWicketTypeSelect}
-        onFielderConfirm={onFielderConfirm}
-        onFielderCancel={onFielderCancel}
-        onConfirmNewBatsman={onConfirmNewBatsman}
-        onReturnRetiredConfirm={onReturnRetiredConfirm}
-        playerDB={playerDB}
-        activePlayers={activePlayers}
-        dismissedPlayers={dismissedPlayers}
-        bowlerJerseys={bowlerJerseys}
-        batterJerseys={batterJerseys}
-        currentBowlerJersey={currentBowlerJersey}
-      />
+  wicketFlow={wicketFlow}
+  players={players}
+  retiredPlayers={retiredPlayers}
+  strikerIndex={strikerIndex}
+  nonStrikerIndex={nonStrikerIndex}
+  isWicketPending={isWicketPending}
+  onWicketTypeSelect={onWicketTypeSelect}
+  onFielderConfirm={onFielderConfirm}
+  onFielderCancel={onFielderCancel}
+  onConfirmNewBatsman={onConfirmNewBatsman}
+  onReturnRetiredConfirm={onReturnRetiredConfirm}
+  playerDB={playerDB}
+  activePlayers={activePlayers}
+  dismissedPlayers={dismissedPlayers}
+  bowlerJerseys={bowlerJerseys}
+  batterJerseys={batterJerseys}
+  currentBowlerJersey={currentBowlerJersey}
+/>
+
+{wicketFlow.showRunoutChoiceModal && (
+  <div style={{
+    position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)",
+    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
+  }}>
+    <div style={{
+      background: "#0d1117", border: "1px solid #3b82f6",
+      borderRadius: "14px", padding: "28px 24px",
+      maxWidth: "340px", width: "90%", textAlign: "center",
+    }}>
+      <div style={{ fontSize: "24px", marginBottom: "10px" }}>🏃</div>
+      <h3 style={{ color: "#e5e7eb", marginBottom: "16px", fontSize: "16px" }}>
+        Who got Run Out?
+      </h3>
+      <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+        <button
+          onClick={() => {
+            wicketFlow.setRunoutBatsmanChoice("striker");
+            wicketFlow.setShowRunoutChoiceModal(false);
+            wicketFlow.setShowFielderInputModal(true);
+          }}
+          style={{
+            background: "#1e3a5f", color: "#60a5fa", padding: "10px 18px",
+            borderRadius: "8px", border: "1px solid #3b82f6",
+            fontWeight: "600", fontSize: "14px", cursor: "pointer",
+          }}
+        >
+          {players[strikerIndex]?.displayName || "Striker"} *
+        </button>
+        <button
+          onClick={() => {
+            wicketFlow.setRunoutBatsmanChoice("nonStriker");
+            wicketFlow.setShowRunoutChoiceModal(false);
+            wicketFlow.setShowFielderInputModal(true);
+          }}
+          style={{
+            background: "#1e3a5f", color: "#60a5fa", padding: "10px 18px",
+            borderRadius: "8px", border: "1px solid #3b82f6",
+            fontWeight: "600", fontSize: "14px", cursor: "pointer",
+          }}
+        >
+          {players[nonStrikerIndex]?.displayName || "Non-Striker"}
+        </button>
+      </div>
+      <button
+        onClick={wicketFlow.cancelWicketFlow}
+        style={{
+          marginTop: "14px", background: "transparent", border: "none",
+          color: "#6b7280", fontSize: "13px", cursor: "pointer",
+        }}
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
 
       {isNewBowlerPending && (
         <NewBowlerModal

@@ -768,7 +768,6 @@ function ScoringPage() {
 
       engine.addToCurrentOverRuns(r);
       engine.handleRunout(r, striker?.playerId, bowler?.displayName || "");
-      playersHook.registerWicket();
       return;
     }
 
@@ -925,14 +924,21 @@ function ScoringPage() {
     const bowlerName =
       playersHook.bowlers[playersHook.currentBowlerIndex]?.displayName ||
       "Unknown";
-    const currentOutBatsman = playersHook.strikerIndex;
+    const currentOutBatsman =
+      wicketFlow.selectedWicketType === "runout" &&
+      wicketFlow.runoutBatsmanChoice === "nonStriker"
+        ? playersHook.nonStrikerIndex
+        : playersHook.strikerIndex;
     const currentBattingTeamKey =
       currentInningsRef.current === 1 ? "teamAPlayers" : "teamBPlayers";
     const currentTeamSize = engine.isSuperOver
       ? 3
       : Number(matchData[currentBattingTeamKey] || 11);
     const currentMaxWickets = engine.isSuperOver ? 2 : currentTeamSize - 1;
-    const nextWickets = engine.wickets + 1;
+    const nextWickets =
+      wicketFlow.selectedWicketType === "runout"
+        ? engine.wickets
+        : engine.wickets + 1;
 
     if (fielderJersey) addBowlerJersey(fielderJersey);
 
@@ -984,8 +990,15 @@ function ScoringPage() {
       }
     }
 
-    partnershipsHook.addBallToPartnership();
-    partnershipsHook.savePartnership(engine.score, nextWickets);
+    if (wicketFlow.selectedWicketType !== "runout") {
+      partnershipsHook.addBallToPartnership();
+    }
+    partnershipsHook.savePartnership(
+      engine.score,
+      nextWickets,
+      playersHook.players[0]?.displayName,
+      playersHook.players[1]?.displayName
+    );
     partnershipsHook.resetPartnership();
 
     if (wicketFlow.selectedWicketType !== "runout") {
