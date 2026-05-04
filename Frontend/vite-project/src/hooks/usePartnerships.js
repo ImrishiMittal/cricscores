@@ -55,13 +55,13 @@ export default function usePartnerships() {
   };
 
   // ✅ Reads from refs — always fresh, no stale closure issue
-  const savePartnership = (currentScore, currentWickets) => {
-    const name1 = currentBatsmenRef.current[0]?.displayName
-      || currentBatsmenRef.current[0]?.name
-      || "";
-    const name2 = currentBatsmenRef.current[1]?.displayName
-      || currentBatsmenRef.current[1]?.name
-      || "";
+  const savePartnership = (currentScore, currentWickets, nameOverride1, nameOverride2) => {
+    const name1 = nameOverride1
+      || currentBatsmenRef.current[0]?.displayName
+      || currentBatsmenRef.current[0]?.name || "";
+    const name2 = nameOverride2
+      || currentBatsmenRef.current[1]?.displayName
+      || currentBatsmenRef.current[1]?.name || "";
 
     const entry = {
       batsman1: name1,

@@ -1,68 +1,95 @@
 // src/api/playerApi.js
-import axios from "axios";
+// All requests include JWT token — mirrors the pattern in matchApi.js
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-const authHeader = () => ({
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem("cricket_token")}`,
-  },
-});
+function getHeaders() {
+  const token = localStorage.getItem("cricket_token");
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+}
 
-// ── Get all players ───────────────────────────────────────────────────────────
-export const getAllPlayers = async () => {
-  const res = await axios.get(`${BASE_URL}/players`, authHeader());
-  return res.data;
-};
+// ─── GET all players ──────────────────────────────────────────────────────────
+export async function getAllPlayers() {
+  const res = await fetch(`${API_BASE}/players`, { headers: getHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch players");
+  return res.json();
+}
 
-// ── Get single player ─────────────────────────────────────────────────────────
-export const getPlayer = async (id) => {
-  const res = await axios.get(`${BASE_URL}/players/${id}`, authHeader());
-  return res.data;
-};
+// ─── GET single player by MongoDB _id ─────────────────────────────────────────
+export async function getPlayer(id) {
+  const res = await fetch(`${API_BASE}/players/${id}`, { headers: getHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch player");
+  return res.json();
+}
 
-// ── Add a player ──────────────────────────────────────────────────────────────
-export const addPlayer = async (playerData) => {
-  const res = await axios.post(`${BASE_URL}/players`, playerData, authHeader());
-  return res.data;
-};
-
-// ── Update player profile (name, jersey, country, role) ───────────────────────
-export const updatePlayer = async (id, updates) => {
-  const res = await axios.put(`${BASE_URL}/players/${id}`, updates, authHeader());
-  return res.data;
-};
-
-// ── Flush accumulated match stats to MongoDB ──────────────────────────────────
-// Called once at end of match by updateMatchMilestones().
-// buf contains all the incremental stats accumulated during the match.
-export const flushStats = async (id, buf) => {
-  const res = await axios.patch(`${BASE_URL}/players/${id}/stats`, buf, authHeader());
-  return res.data;
-};
-
-// ── Delete a player ───────────────────────────────────────────────────────────
-export const deletePlayer = async (id) => {
-  const res = await axios.delete(`${BASE_URL}/players/${id}`, authHeader());
-  return res.data;
-};
-
-// ── Find by jersey or create ──────────────────────────────────────────────────
-export async function createOrFindByJersey(jersey, name) {
-  try {
-    const res = await axios.get(
-      `${BASE_URL}/players/jersey/${String(jersey)}`,
-      authHeader()
-    );
-    return res.data;
-  } catch (err) {
-    if (err.response?.status === 404) {
-      return await addPlayer({
-        jersey: String(jersey),
-        name: name || `Player ${jersey}`,
-      });
-    }
-    console.error("createOrFindByJersey failed:", err);
-    return null;
+// ─── POST — create a new player ───────────────────────────────────────────────
+export async function addPlayer(data) {
+  const res = await fetch(`${API_BASE}/players`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to create player");
   }
+  return res.json();
+}
+
+// ─── POST /find-or-create — get by jersey, create if missing ─────────────────
+export async function createOrFindByJersey(jersey, name) {
+  const res = await fetch(`${API_BASE}/players/find-or-create`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify({ jersey: String(jersey), name }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to find or create player");
+  }
+  return res.json();
+}
+
+// ─── PATCH /:id — update name, jersey, role, etc. ────────────────────────────
+export async function updatePlayer(id, data) {
+  const res = await fetch(`${API_BASE}/players/${id}`, {
+    method: "PATCH",
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to update player");
+  }
+  return res.json();
+}
+
+// ─── PATCH /:id/stats — flush accumulated match stats ────────────────────────
+export async function flushStats(id, stats) {
+  const res = await fetch(`${API_BASE}/players/${id}/stats`, {
+    method: "PATCH",
+    headers: getHeaders(),
+    body: JSON.stringify(stats),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to flush player stats");
+  }
+  return res.json();
+}
+
+// ─── DELETE /:id — permanently remove a player ────────────────────────────────
+export async function deletePlayer(id) {
+  const res = await fetch(`${API_BASE}/players/${id}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to delete player");
+  }
+  return res.json(); // { success: true, deletedId, name }
 }

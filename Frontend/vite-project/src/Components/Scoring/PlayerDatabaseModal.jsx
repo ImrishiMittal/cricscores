@@ -3,7 +3,7 @@ import styles from "./PlayerDatabaseModal.module.css";
 
 function PlayerDatabaseModal({ playerDB, onClose }) {
   const [search, setSearch] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null); // jersey number
 
   const allPlayers = playerDB.getAllPlayers();
 
@@ -80,7 +80,7 @@ function PlayerDatabaseModal({ playerDB, onClose }) {
                   <span>Matches: {player.matches || 0}</span>
                 </div>
 
-                {/* ✅ Fielding stats */}
+                {/* Fielding stats */}
                 <div className={styles.playerStats}>
                   <span>🤲 {player.catches || 0} ct</span>
                   <span>🏃 {player.runouts || 0} ro</span>
@@ -90,6 +90,7 @@ function PlayerDatabaseModal({ playerDB, onClose }) {
 
               <button
                 className={styles.deleteBtn}
+                title={`Delete ${player.name}`}
                 onClick={() => setConfirmDelete(player.jersey)}
               >
                 🗑️
@@ -99,11 +100,17 @@ function PlayerDatabaseModal({ playerDB, onClose }) {
           ))}
         </div>
 
-        {confirmDelete && (
+        {/* ── Confirm delete overlay ── */}
+        {confirmDelete !== null && (
           <div className={styles.confirmOverlay}>
             <div className={styles.confirmBox}>
+              <div style={{ fontSize: "28px", marginBottom: "8px" }}>🗑️</div>
               <p className={styles.confirmText}>
-                Delete player <strong>#{confirmDelete} — {playerDB.getPlayer(confirmDelete)?.name}</strong>?
+                Delete player{" "}
+                <strong>
+                  #{confirmDelete} — {playerDB.getPlayer(confirmDelete)?.name}
+                </strong>
+                ?
                 <br />
                 <span style={{ color: "#888", fontSize: "13px" }}>
                   This frees jersey #{confirmDelete} for reuse. Career stats will be lost.
