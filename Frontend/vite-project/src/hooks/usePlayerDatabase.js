@@ -146,13 +146,16 @@ function usePlayerDatabase() {
     const currentMatchId = localStorage.getItem("current_match_id");
 
     if (!pendingStatsRef.current[key]) {
+      // Seed highestScore from cache so we don't overwrite with a lower value
+      const cachedHS = _cache[key]?.highestScore || 0;
+      
       pendingStatsRef.current[key] = {
         jersey: key, name: stats.name, matchId: currentMatchId,
         runs: 0, balls: 0, wickets: 0, runsGiven: 0, ballsBowled: 0,
         fours: 0, sixes: 0, innings: 0, bowlingInnings: 0,
         dotBalls: 0, dotBallsBowled: 0, ducks: 0, ones: 0, twos: 0, threes: 0,
         thirties: 0, fifties: 0, hundreds: 0, wides: 0, noBalls: 0, maidens: 0,
-        threeWickets: 0, fiveWickets: 0, tenWickets: 0, highestScore: 0,
+        threeWickets: 0, fiveWickets: 0, tenWickets: 0, highestScore: cachedHS, // ← seed from cache
         dismissals: 0, notOuts: 0, matches: 0,
         captainMatches: 0, captainWins: 0, captainLosses: 0, captainTies: 0, captainNR: 0,
         catches: 0, runouts: 0, stumpings: 0,
@@ -267,7 +270,17 @@ function usePlayerDatabase() {
   const setHighestScore = useCallback((jersey, runs) => {
     const key = String(jersey);
     const buf = pendingStatsRef.current[key];
-    if (buf && runs > buf.highestScore) buf.highestScore = runs;
+    if (!buf) return;
+    
+    // Compare against both the buffer AND the pre-match DB value
+    const preMatchHS = preMatchHighScoresRef.current[key] || 0;
+    const trueCurrentHS = Math.max(buf.highestScore, preMatchHS);
+    
+    if (runs > trueCurrentHS) {
+      buf.highestScore = runs;
+      // Also keep cache in sync
+      if (_cache[key]) _cache[key].highestScore = runs;
+    }
   }, []);
 
   const setBestBowling = useCallback((jersey, wickets, runs) => {
