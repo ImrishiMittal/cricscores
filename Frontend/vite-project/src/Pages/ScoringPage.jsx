@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
 import {
   generateScorecardPDF,
   buildScoringPagePayload,
@@ -28,13 +26,32 @@ import useHatTrick from "../hooks/useHatTrick";
 import usePlayerDatabase from "../hooks/usePlayerDatabase";
 import * as matchApi from "../api/matchApi";
 import { calculateManOfTheMatch } from "../utils/momCalculator";
+import {
+  useNavigate,
+  useLocation,
+  useBlocker,
+} from "react-router-dom";
 
 function ScoringPage() {
   const location = useLocation();
   const matchSaveInProgressRef = useRef(false);
   const matchData = location.state || {};
   const navigate = useNavigate();
-  const [updatedMatchData, setUpdatedMatchData] = useState(matchData);
+  useEffect(() => {
+    if (matchData && Object.keys(matchData).length > 0) {
+      localStorage.setItem("activeMatchData", JSON.stringify(matchData));
+    }
+  }, []);
+  
+  const savedMatchData = (() => {
+    try { return JSON.parse(localStorage.getItem("activeMatchData") || "{}"); }
+    catch { return {}; }
+  })();
+  
+  const resolvedMatchData = (matchData && Object.keys(matchData).length > 0)
+    ? matchData
+    : savedMatchData;
+    const [updatedMatchData, setUpdatedMatchData] = useState(resolvedMatchData);
   const [matchSaved, setMatchSaved] = useState(false);
 
   const innings2SnapshotCountRef = useRef(0);
@@ -164,6 +181,23 @@ function ScoringPage() {
     () => [...dismissedPlayersRef.current],
     () => [...allTimeDismissedRef.current]
   );
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+const pendingBlockerRef = useRef(null);
+
+const blocker = useBlocker(
+  ({ currentLocation, nextLocation }) =>
+    !matchSaved &&
+    !engine.matchOver &&
+    currentLocation.pathname !== nextLocation.pathname
+);
+
+useEffect(() => {
+  if (blocker.state === "blocked") {
+    historySnapshotHook.triggerSnapshot();
+    pendingBlockerRef.current = blocker;
+    setShowExitConfirm(true);
+  }
+}, [blocker.state]);
 
   console.log("tossWinner from state:", matchData.tossWinner);
 
@@ -619,6 +653,7 @@ function ScoringPage() {
         });
         console.log("✅ saveMatch completed");
         historySnapshotHook.clearSavedMatch();
+        localStorage.removeItem("activeMatchData");
         setMatchSaved(true);
         setTimeout(() => {
           playerDBHook.setCurrentMatchId(null);
@@ -1740,6 +1775,95 @@ function ScoringPage() {
         inningsDataHook={inningsDataHook}
         engine={engine}
       />
+      {showExitConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.78)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+          }}
+        >
+          <div
+            style={{
+              background: "#1a1a1a",
+              border: "1px solid #f59e0b",
+              borderRadius: "14px",
+              padding: "28px 24px",
+              maxWidth: "360px",
+              width: "90%",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: "32px", marginBottom: "12px" }}>🏏</div>
+            <h3
+              style={{
+                color: "#e5e7eb",
+                marginBottom: "8px",
+                fontSize: "18px",
+              }}
+            >
+              Match in Progress
+            </h3>
+            <p
+              style={{
+                color: "#9ca3af",
+                fontSize: "14px",
+                marginBottom: "20px",
+                lineHeight: 1.5,
+              }}
+            >
+              Your progress has been saved. You can resume this match later. Are
+              you sure you want to leave?
+            </p>
+            <div
+              style={{ display: "flex", gap: "12px", justifyContent: "center" }}
+            >
+              <button
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  pendingBlockerRef.current?.proceed();
+                  pendingBlockerRef.current = null;
+                }}
+                style={{
+                  background: "#ef4444",
+                  color: "#fff",
+                  padding: "10px 22px",
+                  borderRadius: "8px",
+                  border: "none",
+                  fontWeight: "600",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                }}
+              >
+                Leave
+              </button>
+              <button
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  pendingBlockerRef.current?.reset();
+                  pendingBlockerRef.current = null;
+                }}
+                style={{
+                  background: "#22c55e",
+                  color: "#000",
+                  padding: "10px 22px",
+                  borderRadius: "8px",
+                  border: "none",
+                  fontWeight: "600",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                }}
+              >
+                Keep Playing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
