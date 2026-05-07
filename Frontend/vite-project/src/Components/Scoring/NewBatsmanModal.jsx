@@ -3,6 +3,7 @@ import styles from "./NewBatsmanModal.module.css";
 
 function NewBatsmanModal({
   onConfirm,
+  onCancel,
   retiredPlayers = [],
   onReturnRetired,
   playerDB,
@@ -298,6 +299,24 @@ function NewBatsmanModal({
             {existingPlayer ? "Use Existing Player" : "Add New Player"}
           </button>
         </div>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            style={{
+              marginTop: "8px",
+              background: "transparent",
+              border: "1px solid #374151",
+              color: "#6b7280",
+              padding: "8px 20px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              width: "100%",
+              fontSize: "13px",
+            }}
+          >
+            Cancel
+          </button>
+        )}
 
         <p className={styles.hint}>Type name for suggestions • Jersey is permanent ID</p>
       </div>

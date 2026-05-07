@@ -1,6 +1,5 @@
 import WicketTypeModal from "./WicketTypeModal";
 import FielderInputModal from "./FielderInputModal";
-import RunoutChoiceModal from "./RunoutChoiceModal";
 import NewBatsmanModal from "./NewBatsmanModal";
 
 function WicketModals({
@@ -14,13 +13,14 @@ function WicketModals({
   onFielderConfirm,
   onFielderCancel,
   onConfirmNewBatsman,
+  onCancelNewBatsman,      // ← ADD THIS
   onReturnRetiredConfirm,
   playerDB,
   activePlayers,
   dismissedPlayers,
-  bowlerJerseys,     // ✅ Bowlers this innings
-  batterJerseys,      // ✅ Batters this innings
-  currentBowlerJersey, // ✅ Current bowler's jersey
+  bowlerJerseys,
+  batterJerseys,
+  currentBowlerJersey,
 }) {
   return (
     <>
@@ -37,8 +37,8 @@ function WicketModals({
           onConfirm={onFielderConfirm}
           onCancel={onFielderCancel}
           playerDB={playerDB}
-          batterJerseys={batterJerseys}           // ✅ Pass batters
-          currentBowlerJersey={currentBowlerJersey} // ✅ Pass current bowler
+          batterJerseys={batterJerseys}
+          currentBowlerJersey={currentBowlerJersey}
         />
       )}
 
@@ -47,27 +47,19 @@ function WicketModals({
         !wicketFlow.waitingForRunoutRun && (
           <NewBatsmanModal
             onConfirm={onConfirmNewBatsman}
+            onCancel={onCancelNewBatsman}     // ← NOW WIRED UP
             retiredPlayers={retiredPlayers || []}
             onReturnRetired={onReturnRetiredConfirm}
             playerDB={playerDB}
             activePlayers={activePlayers}
-            bowlerJerseys={bowlerJerseys}      // ✅ Pass bowlers
+            bowlerJerseys={bowlerJerseys}
             dismissedPlayers={dismissedPlayers}
+            currentBowlerJersey={currentBowlerJersey}
           />
         )}
 
-      {wicketFlow.showRunoutChoiceModal && (
-        <RunoutChoiceModal
-          striker={players[strikerIndex]?.displayName}
-          nonStriker={players[nonStrikerIndex]?.displayName}
-          onSelect={(who) => {
-            wicketFlow.setRunoutBatsmanChoice(who);
-            wicketFlow.setShowRunoutChoiceModal(false);
-            wicketFlow.setShowFielderInputModal(true);
-          }}
-          onClose={() => wicketFlow.setShowRunoutChoiceModal(false)}
-        />
-      )}
+      {/* RunoutChoiceModal is intentionally NOT rendered here —        */}
+      {/* ModalManager handles it directly so onCommitRunoutRun works. */}
     </>
   );
 }
