@@ -11,6 +11,7 @@ function FullScorecard({
   // ← Phase 3 additions (undefined / false in limited-overs — no effect)
   isTestMatch,
   followOnEnforced,
+  winner,
 }) {
   const [activePhase, setActivePhase] = useState("main");
 
@@ -81,10 +82,7 @@ function FullScorecard({
           <h3>
             {phaseLabel} — Innings {inningsNumber}
             {teamName && (
-              <span className={styles.teamLabel}>
-                {" "}
-                ({teamName})
-              </span>
+              <span className={styles.teamLabel}> ({teamName})</span>
             )}
             {isFollowOn && (
               <span
@@ -106,9 +104,7 @@ function FullScorecard({
           </h3>
 
           <div className={styles.scoreDisplay}>
-            <span className={styles.score}>
-              {inningsData.score ?? "—"}
-            </span>
+            <span className={styles.score}>{inningsData.score ?? "—"}</span>
             <span className={styles.wickets}>
               /{inningsData.wickets ?? "—"}
             </span>
@@ -119,33 +115,33 @@ function FullScorecard({
 
           {/* Target banner — only shown for Test innings 4 chase */}
           {chaseTarget != null && (
-            <div style={{ marginTop: "4px", fontSize: "13px", color: "#86efac", fontWeight: "600" }}>
+            <div
+              style={{
+                marginTop: "4px",
+                fontSize: "13px",
+                color: "#86efac",
+                fontWeight: "600",
+              }}
+            >
               Target: {chaseTarget} runs
             </div>
           )}
 
-          {inningsData.extras &&
-            inningsData.extras.total > 0 && (
-              <div className={styles.extras}>
-                {formatExtras(inningsData.extras)}
-              </div>
-            )}
+          {inningsData.extras && inningsData.extras.total > 0 && (
+            <div className={styles.extras}>
+              {formatExtras(inningsData.extras)}
+            </div>
+          )}
         </div>
 
         {/* ================= BATTING ================= */}
 
         <div className={styles.section}>
-          <h4 className={styles.sectionTitle}>
-            🏏 BATTING
-          </h4>
+          <h4 className={styles.sectionTitle}>🏏 BATTING</h4>
 
           <div className={styles.table}>
-            <div
-              className={`${styles.tableRow} ${styles.tableHeader}`}
-            >
-              <div className={styles.playerCol}>
-                BATSMAN
-              </div>
+            <div className={`${styles.tableRow} ${styles.tableHeader}`}>
+              <div className={styles.playerCol}>BATSMAN</div>
               <div className={styles.statCol}>R</div>
               <div className={styles.statCol}>B</div>
               <div className={styles.statCol}>SR</div>
@@ -154,80 +150,38 @@ function FullScorecard({
             </div>
 
             {battedPlayers.length === 0 && (
-              <div className={styles.noData}>
-                No batting data
-              </div>
+              <div className={styles.noData}>No batting data</div>
             )}
 
             {battedPlayers.map((player, idx) => {
               const sr =
                 player.balls > 0
-                  ? (
-                      (player.runs /
-                        player.balls) *
-                      100
-                    ).toFixed(1)
+                  ? ((player.runs / player.balls) * 100).toFixed(1)
                   : "0.0";
 
-              const name =
-                player.displayName ||
-                player.name ||
-                "—";
+              const name = player.displayName || player.name || "—";
 
               return (
-                <div
-                  key={idx}
-                  className={styles.tableRow}
-                >
-                  <div
-                    className={styles.playerCol}
-                  >
-                    <div
-                      className={
-                        styles.playerName
-                      }
-                    >
-                      {name}
-                    </div>
+                <div key={idx} className={styles.tableRow}>
+                  <div className={styles.playerCol}>
+                    <div className={styles.playerName}>{name}</div>
 
                     {player.dismissal ? (
-                      <div
-                        className={
-                          styles.dismissal
-                        }
-                      >
-                        {player.dismissal}
-                      </div>
+                      <div className={styles.dismissal}>{player.dismissal}</div>
                     ) : player.balls > 0 ? (
-                      <div
-                        className={
-                          styles.notOut
-                        }
-                      >
-                        not out
-                      </div>
+                      <div className={styles.notOut}>not out</div>
                     ) : null}
                   </div>
 
-                  <div className={styles.statCol}>
-                    {player.runs}
-                  </div>
+                  <div className={styles.statCol}>{player.runs}</div>
 
-                  <div className={styles.statCol}>
-                    {player.balls}
-                  </div>
+                  <div className={styles.statCol}>{player.balls}</div>
 
-                  <div className={styles.statCol}>
-                    {sr}
-                  </div>
+                  <div className={styles.statCol}>{sr}</div>
 
-                  <div className={styles.statCol}>
-                    {player.fours || 0}
-                  </div>
+                  <div className={styles.statCol}>{player.fours || 0}</div>
 
-                  <div className={styles.statCol}>
-                    {player.sixes || 0}
-                  </div>
+                  <div className={styles.statCol}>{player.sixes || 0}</div>
                 </div>
               );
             })}
@@ -237,54 +191,42 @@ function FullScorecard({
         {/* ================= BOWLING ================= */}
 
         <div className={styles.section}>
-          <h4 className={styles.sectionTitle}>
-            ⚡ BOWLING
-          </h4>
+          <h4 className={styles.sectionTitle}>⚡ BOWLING</h4>
 
           <div className={styles.table}>
-            <div
-              className={`${styles.tableRow} ${styles.tableHeader}`}
-            >
-              <div className={styles.playerCol}>
-                BOWLER
-              </div>
-              <div className={styles.statCol}>
-                O
-              </div>
-              <div className={styles.statCol}>
-                R
-              </div>
-              <div className={styles.statCol}>
-                W
-              </div>
-              <div className={styles.statCol}>
-                ECO
-              </div>
+            <div className={`${styles.tableRow} ${styles.tableHeader}`}>
+              <div className={styles.playerCol}>BOWLER</div>
+              <div className={styles.statCol}>O</div>
+              <div className={styles.statCol}>R</div>
+              <div className={styles.statCol}>W</div>
+              <div className={styles.statCol}>ECO</div>
             </div>
 
             {bowlers.map((bowler, idx) => {
-  const ballsBowled = bowler.ballsBowled || bowler.balls || 0;
-  const runsGiven = bowler.runsGiven || bowler.runs || 0;
-  const fullOvers = Math.floor(ballsBowled / 6);
-  const remBalls = ballsBowled % 6;
-  const oversToShow = bowler.oversDisplay ||
-    (remBalls > 0 ? `${fullOvers}.${remBalls}` : `${fullOvers}.0`);
-  const eco = ballsBowled > 0
-    ? ((runsGiven / ballsBowled) * 6).toFixed(2)
-    : "0.00";
+              const ballsBowled = bowler.ballsBowled || bowler.balls || 0;
+              const runsGiven = bowler.runsGiven || bowler.runs || 0;
+              const fullOvers = Math.floor(ballsBowled / 6);
+              const remBalls = ballsBowled % 6;
+              const oversToShow =
+                bowler.oversDisplay ||
+                (remBalls > 0 ? `${fullOvers}.${remBalls}` : `${fullOvers}.0`);
+              const eco =
+                ballsBowled > 0
+                  ? ((runsGiven / ballsBowled) * 6).toFixed(2)
+                  : "0.00";
 
-  return (
-    <div key={idx} className={styles.tableRow}>
-      <div className={styles.playerCol}>
-        {bowler.displayName || bowler.playerName || bowler.name}
-      </div>
-      <div className={styles.statCol}>{oversToShow}</div>
-      <div className={styles.statCol}>{runsGiven}</div>
-      <div className={styles.statCol}>{bowler.wickets}</div>
-      <div className={styles.statCol}>{eco}</div>
-    </div>
-  );
-})}
+              return (
+                <div key={idx} className={styles.tableRow}>
+                  <div className={styles.playerCol}>
+                    {bowler.displayName || bowler.playerName || bowler.name}
+                  </div>
+                  <div className={styles.statCol}>{oversToShow}</div>
+                  <div className={styles.statCol}>{runsGiven}</div>
+                  <div className={styles.statCol}>{bowler.wickets}</div>
+                  <div className={styles.statCol}>{eco}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -296,8 +238,7 @@ function FullScorecard({
     if (activePhase === "main") {
       const inn1 = mainMatchData?.innings1Data || null;
       const inn2 = mainMatchData?.innings2Data || null;
-
-      // ── LIMITED OVERS: exactly the original two-innings render ────────────────
+  
       if (!isTestMatch) {
         return (
           <div className={styles.phaseContent}>
@@ -306,162 +247,98 @@ function FullScorecard({
           </div>
         );
       }
-
-      // ── TEST MATCH: render all 4 innings ──────────────────────────────────────
+  
       const inn3 = mainMatchData?.innings3Data || null;
       const inn4 = mainMatchData?.innings4Data || null;
       const inn4Target = mainMatchData?.testTarget ?? null;
-
+  
       return (
         <div className={styles.phaseContent}>
+          {/* Draw banner — Test match only */}
+          {winner === "DRAW" && (
+            <div style={{
+              background: "#1e3a5f",
+              border: "1px solid #2563eb",
+              borderRadius: "10px",
+              padding: "12px 16px",
+              marginBottom: "16px",
+              textAlign: "center",
+              color: "#93c5fd",
+              fontWeight: "600",
+              fontSize: "15px",
+            }}>
+              🤝 Match Drawn
+            </div>
+          )}
           {renderInningsCard(inn1, 1, "1st Innings", testInningsTeam(1))}
           {renderInningsCard(inn2, 2, "2nd Innings", testInningsTeam(2))}
           {renderInningsCard(
             inn3, 3, "3rd Innings", testInningsTeam(3),
-            !!followOnEnforced   // isFollowOn badge
+            !!followOnEnforced
           )}
           {renderInningsCard(
             inn4, 4, "4th Innings", testInningsTeam(4),
-            false,               // isFollowOn
-            inn4Target           // chaseTarget
+            false,
+            inn4Target
           )}
         </div>
       );
     }
-
-    // ── Super over tab — completely unchanged ─────────────────────────────────
-    const soNumber =
-      parseInt(
-        activePhase.replace(
-          "so",
-          ""
-        ),
-        10
-      );
-
-    const soData =
-      superOverData?.find(
-        (so) =>
-          so.number ===
-          soNumber
-      );
-
+  
+    // ── Super over tab ────────────────────────────────────────────────────────
+    const soNumber = parseInt(activePhase.replace("so", ""), 10);
+    const soData = superOverData?.find((so) => so.number === soNumber);
+  
     if (!soData)
-      return (
-        <p
-          className={
-            styles.noData
-          }
-        >
-          No data
-        </p>
-      );
-
+      return <p className={styles.noData}>No data</p>;
+  
     return (
-      <div
-        className={
-          styles.phaseContent
-        }
-      >
-        {renderInningsCard(
-          soData.innings1Data,
-          1,
-          `Super Over ${soNumber}`
-        )}
-
-        {renderInningsCard(
-          soData.innings2Data,
-          2,
-          `Super Over ${soNumber}`
-        )}
+      <div className={styles.phaseContent}>
+        {renderInningsCard(soData.innings1Data, 1, `Super Over ${soNumber}`)}
+        {renderInningsCard(soData.innings2Data, 2, `Super Over ${soNumber}`)}
       </div>
     );
   };
 
-  const tabs = [
-    { id: "main", label: "Main Match" },
-  ];
+  const tabs = [{ id: "main", label: "Main Match" }];
 
   if (superOverData) {
-    superOverData.forEach(
-      (so) => {
-        tabs.push({
-          id: `so${so.number}`,
-          label: `Super Over ${so.number}`,
-        });
-      }
-    );
+    superOverData.forEach((so) => {
+      tabs.push({
+        id: `so${so.number}`,
+        label: `Super Over ${so.number}`,
+      });
+    });
   }
 
   return (
-    <div
-      className={styles.overlay}
-      onClick={onClose}
-    >
-      <div
-        className={styles.modal}
-        onClick={(e) =>
-          e.stopPropagation()
-        }
-      >
+    <div className={styles.overlay} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <h2
-            className={
-              styles.title
-            }
-          >
-            📊 Full Scorecard
-          </h2>
+          <h2 className={styles.title}>📊 Full Scorecard</h2>
 
-          <button
-            className={
-              styles.closeIcon
-            }
-            onClick={onClose}
-          >
+          <button className={styles.closeIcon} onClick={onClose}>
             ✕
           </button>
         </div>
 
-        <div
-          className={
-            styles.tabContainer
-          }
-        >
+        <div className={styles.tabContainer}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
               className={`${styles.tab} ${
-                activePhase ===
-                tab.id
-                  ? styles.activeTab
-                  : ""
+                activePhase === tab.id ? styles.activeTab : ""
               }`}
-              onClick={() =>
-                setActivePhase(
-                  tab.id
-                )
-              }
+              onClick={() => setActivePhase(tab.id)}
             >
               {tab.label}
             </button>
           ))}
         </div>
 
-        <div
-          className={
-            styles.scrollContent
-          }
-        >
-          {renderPhaseContent()}
-        </div>
+        <div className={styles.scrollContent}>{renderPhaseContent()}</div>
 
-        <button
-          className={
-            styles.closeBtn
-          }
-          onClick={onClose}
-        >
+        <button className={styles.closeBtn} onClick={onClose}>
           Close
         </button>
       </div>

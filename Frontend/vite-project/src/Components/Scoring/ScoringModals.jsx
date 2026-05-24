@@ -50,6 +50,7 @@ function ScoringModals({
           // ← Phase 3 additions
           isTestMatch={!!matchData.isTestMatch}
           followOnEnforced={!!followOnEnforced}
+          winner={engine.winner}
         />
       )}
     </>
