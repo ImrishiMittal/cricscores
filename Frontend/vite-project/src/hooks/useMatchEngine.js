@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 
 export default function useMatchEngine(matchData, swapStrike) {
   const rules = matchData.rules || {};
@@ -826,6 +826,11 @@ export default function useMatchEngine(matchData, swapStrike) {
     endInnings(score);
   };
 
+  const handleDraw = useCallback(() => {
+    setWinner("DRAW");
+    setMatchOver(true);
+  }, []);
+
   // Follow-on decision: called from ScoringPage after FollowOnModal
   const resolveFollowOn = (enforce) => {
     setFollowOnPending(false);
@@ -868,6 +873,7 @@ export default function useMatchEngine(matchData, swapStrike) {
     handleNoBall,
     handleBye,
     handleLegBye,
+    handleDraw,
     wicketEvent,
     setWicketEvent,
     restoreState,

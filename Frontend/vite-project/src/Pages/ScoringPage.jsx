@@ -26,11 +26,7 @@ import useHatTrick from "../hooks/useHatTrick";
 import usePlayerDatabase from "../hooks/usePlayerDatabase";
 import * as matchApi from "../api/matchApi";
 import { calculateManOfTheMatch } from "../utils/momCalculator";
-import {
-  useNavigate,
-  useLocation,
-  useBlocker,
-} from "react-router-dom";
+import { useNavigate, useLocation, useBlocker } from "react-router-dom";
 
 function ScoringPage() {
   const location = useLocation();
@@ -42,16 +38,18 @@ function ScoringPage() {
       localStorage.setItem("activeMatchData", JSON.stringify(matchData));
     }
   }, []);
-  
+
   const savedMatchData = (() => {
-    try { return JSON.parse(localStorage.getItem("activeMatchData") || "{}"); }
-    catch { return {}; }
+    try {
+      return JSON.parse(localStorage.getItem("activeMatchData") || "{}");
+    } catch {
+      return {};
+    }
   })();
-  
-  const resolvedMatchData = (matchData && Object.keys(matchData).length > 0)
-    ? matchData
-    : savedMatchData;
-    const [updatedMatchData, setUpdatedMatchData] = useState(resolvedMatchData);
+
+  const resolvedMatchData =
+    matchData && Object.keys(matchData).length > 0 ? matchData : savedMatchData;
+  const [updatedMatchData, setUpdatedMatchData] = useState(resolvedMatchData);
   const [matchSaved, setMatchSaved] = useState(false);
 
   const innings2SnapshotCountRef = useRef(0);
@@ -89,8 +87,8 @@ function ScoringPage() {
   const [savedSnapshot, setSavedSnapshot] = useState(null);
 
   const [showFollowOnModal, setShowFollowOnModal] = useState(false);
-const [followOnLead, setFollowOnLead] = useState(0);
-const followOnEnforcedRef = useRef(false);
+  const [followOnLead, setFollowOnLead] = useState(0);
+  const followOnEnforcedRef = useRef(false);
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -156,7 +154,7 @@ const followOnEnforcedRef = useRef(false);
     innings1BowlersSnapshotRef,
     engine.innings1HistoryRef,
     engine.innings2History,
-engine.innings3History
+    engine.innings3History
   );
 
   const historySnapshotHook = useHistorySnapshot(
@@ -188,22 +186,22 @@ engine.innings3History
     () => [...allTimeDismissedRef.current]
   );
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-const pendingBlockerRef = useRef(null);
+  const pendingBlockerRef = useRef(null);
 
-const blocker = useBlocker(
-  ({ currentLocation, nextLocation }) =>
-    !matchSaved &&
-    !engine.matchOver &&
-    currentLocation.pathname !== nextLocation.pathname
-);
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !matchSaved &&
+      !engine.matchOver &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
 
-useEffect(() => {
-  if (blocker.state === "blocked") {
-    historySnapshotHook.triggerSnapshot();
-    pendingBlockerRef.current = blocker;
-    setShowExitConfirm(true);
-  }
-}, [blocker.state]);
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      historySnapshotHook.triggerSnapshot();
+      pendingBlockerRef.current = blocker;
+      setShowExitConfirm(true);
+    }
+  }, [blocker.state]);
 
   console.log("tossWinner from state:", matchData.tossWinner);
 
@@ -333,7 +331,7 @@ useEffect(() => {
       const captainB = matchData.teamBCaptain;
       const teamAName = matchData.teamA || "Team 1";
       const teamBName = matchData.teamB || "Team 2";
-      const isNR = engine.winner === "NO RESULT";
+      const isNR = ["NO RESULT", "DRAW"].includes(engine.winner);
 
       if (captainA?.jersey) {
         await playerDBHook.createOrGetPlayer(captainA.jersey, captainA.name);
@@ -636,11 +634,16 @@ useEffect(() => {
           team2Wickets: engine.wickets,
           team2Balls: engine.overs * 6 + engine.balls,
           winner: engine.winner || "",
-          resultText: engine.winner
-            ? ["TIE", "NO RESULT"].includes(engine.winner)
-              ? engine.winner
-              : `${engine.winner} won`
-            : "No Result",
+          resultText:
+            engine.winner === "DRAW"
+              ? "Match Drawn"
+              : engine.winner === "NO RESULT"
+              ? "NO RESULT"
+              : engine.winner === "TIE"
+              ? "TIE"
+              : engine.winner
+              ? `${engine.winner} won`
+              : "No Result",
           team1Captain:
             firstBattingTeam === matchData.teamA
               ? matchData.teamACaptain?.name || ""
@@ -680,8 +683,11 @@ useEffect(() => {
   }, [engine.tieDetected]);
   useEffect(() => {
     if (!engine.followOnPending) return;
-    setFollowOnLead(engine.innings2Score?.score ? 
-      (engine.innings1Score?.score ?? 0) - engine.innings2Score.score : 0);
+    setFollowOnLead(
+      engine.innings2Score?.score
+        ? (engine.innings1Score?.score ?? 0) - engine.innings2Score.score
+        : 0
+    );
     setShowFollowOnModal(true);
   }, [engine.followOnPending]);
 
@@ -690,12 +696,17 @@ useEffect(() => {
     matchData.battingFirst === matchData.teamA
       ? matchData.teamB
       : matchData.teamA;
-      const currentBattingTeam = engine.isSuperOver
-      ? engine.innings === 1 ? secondBattingTeam : firstBattingTeam
-      : engine.innings === 1 ? firstBattingTeam
-      : engine.innings === 2 ? secondBattingTeam
-      : engine.innings === 3 ? firstBattingTeam
-      : secondBattingTeam; // innings 4
+  const currentBattingTeam = engine.isSuperOver
+    ? engine.innings === 1
+      ? secondBattingTeam
+      : firstBattingTeam
+    : engine.innings === 1
+    ? firstBattingTeam
+    : engine.innings === 2
+    ? secondBattingTeam
+    : engine.innings === 3
+    ? firstBattingTeam
+    : secondBattingTeam; // innings 4
 
   const addBatterJersey = (jersey) => {
     if (!jersey) return;
@@ -757,13 +768,13 @@ useEffect(() => {
   const commitRunoutRun = (r) => {
     const bowler = playersHook.bowlers[playersHook.currentBowlerIndex];
     const striker = playersHook.players[playersHook.strikerIndex];
-  
+
     if (bowler && !bowler.hasBowled) {
       bowler.hasBowled = true;
       if (bowler.playerId)
         playerDBHook.updatePlayerStats(bowler.playerId, { bowlingInnings: 1 });
     }
-  
+
     if (bowler?.playerId) {
       playerDBHook.updatePlayerStats(bowler.playerId, {
         ballsBowled: 1,
@@ -772,7 +783,7 @@ useEffect(() => {
       });
     }
     playersHook.addRunsToBowler(r);
-  
+
     if (r > 0) {
       playersHook.addRunsToStriker(r);
       if (striker && !striker.hasBatted) {
@@ -797,7 +808,7 @@ useEffect(() => {
         playerDBHook.updatePlayerStats(striker.playerId, { dotBalls: 1 });
       partnershipsHook.addBallToPartnership();
     }
-  
+
     engine.addToCurrentOverRuns(r);
     engine.handleRunout(r, striker?.playerId, bowler?.displayName || "");
   };
@@ -1311,153 +1322,206 @@ useEffect(() => {
           )}
           {!engine.matchOver && (
             <>
-            <RunControls
-              onRun={handleRunClick}
-              onWide={(extraRuns) => {
-                lastKnownBowlersRef.current = [...playersHook.bowlers];
-                triggerSnapshotWithTracking();
-                const bowler =
-                  playersHook.bowlers[playersHook.currentBowlerIndex];
-                if (bowler && !bowler.hasBowled) {
-                  bowler.hasBowled = true;
-                  if (bowler.playerId)
-                    playerDBHook.updatePlayerStats(bowler.playerId, {
-                      bowlingInnings: 1,
-                    });
-                }
-                const totalRuns = 1 + (extraRuns || 0); // 1 wide penalty + any extra runs
-                if (bowler?.playerId)
-                  playerDBHook.updatePlayerStats(bowler.playerId, {
-                    wides: 1,
-                    runsGiven: totalRuns,
-                  });
-                playersHook.addRunsToBowler(totalRuns);
-                partnershipsHook.addExtraToPartnership(totalRuns);
-                engine.handleWide(bowler?.displayName || "");
-                engine.addToCurrentOverRuns(totalRuns);
-                if (extraRuns % 2 !== 0) playersHook.swapStrike();
-              }}
-              onNoBall={(extraRuns) => {
-                lastKnownBowlersRef.current = [...playersHook.bowlers];
-                triggerSnapshotWithTracking();
-                const bowler =
-                  playersHook.bowlers[playersHook.currentBowlerIndex];
-                const striker = playersHook.players[playersHook.strikerIndex];
-
-                if (bowler && !bowler.hasBowled) {
-                  bowler.hasBowled = true;
-                  if (bowler.playerId)
-                    playerDBHook.updatePlayerStats(bowler.playerId, {
-                      bowlingInnings: 1,
-                    });
-                }
-
-                // ✅ NO ball stats for striker — NB is an illegal delivery
-                // (removed: addBallToStriker and updatePlayerStats balls:1)
-
-                const totalRuns = 1 + (extraRuns || 0);
-                if (bowler?.playerId)
-                  playerDBHook.updatePlayerStats(bowler.playerId, {
-                    noBalls: 1,
-                    runsGiven: totalRuns,
-                  });
-
-                playersHook.addRunsToBowler(totalRuns);
-                partnershipsHook.addExtraToPartnership(totalRuns);
-
-                engine.handleNoBall(bowler?.displayName || "", extraRuns || 0);
-                engine.addToCurrentOverRuns(totalRuns);
-
-                if (extraRuns > 0) {
-                  playersHook.addRunsToStriker(extraRuns);
-                  if (striker?.playerId) {
-                    const stats = { runs: extraRuns };
-                    if (extraRuns === 4) stats.fours = 1;
-                    if (extraRuns === 6) stats.sixes = 1;
-                    playerDBHook.updatePlayerStats(striker.playerId, stats);
+              <RunControls
+                onRun={handleRunClick}
+                onWide={(extraRuns) => {
+                  lastKnownBowlersRef.current = [...playersHook.bowlers];
+                  triggerSnapshotWithTracking();
+                  const bowler =
+                    playersHook.bowlers[playersHook.currentBowlerIndex];
+                  if (bowler && !bowler.hasBowled) {
+                    bowler.hasBowled = true;
+                    if (bowler.playerId)
+                      playerDBHook.updatePlayerStats(bowler.playerId, {
+                        bowlingInnings: 1,
+                      });
                   }
+                  const totalRuns = 1 + (extraRuns || 0); // 1 wide penalty + any extra runs
+                  if (bowler?.playerId)
+                    playerDBHook.updatePlayerStats(bowler.playerId, {
+                      wides: 1,
+                      runsGiven: totalRuns,
+                    });
+                  playersHook.addRunsToBowler(totalRuns);
+                  partnershipsHook.addExtraToPartnership(totalRuns);
+                  engine.handleWide(bowler?.displayName || "");
+                  engine.addToCurrentOverRuns(totalRuns);
                   if (extraRuns % 2 !== 0) playersHook.swapStrike();
-                }
-              }}
-              onBye={(r) => {
-                lastKnownBowlersRef.current = [...playersHook.bowlers];
-                triggerSnapshotWithTracking();
-                const bowler =
-                  playersHook.bowlers[playersHook.currentBowlerIndex];
-                if (bowler && !bowler.hasBowled) {
-                  bowler.hasBowled = true;
-                  if (bowler.playerId)
-                    playerDBHook.updatePlayerStats(bowler.playerId, {
-                      bowlingInnings: 1,
-                    });
-                }
-                playersHook.addBallToBowler();
-                if (bowler?.playerId)
-                  playerDBHook.updatePlayerStats(bowler.playerId, {
-                    ballsBowled: 1,
-                  });
-                partnershipsHook.addExtraToPartnership(r);
-                partnershipsHook.addBallToPartnership();
-                engine.handleBye(r, bowler?.displayName || "");
-                engine.addToCurrentOverRuns(r);
-              }}
-              onLegBye={(r) => {
-                lastKnownBowlersRef.current = [...playersHook.bowlers];
-                triggerSnapshotWithTracking();
-                const bowler =
-                  playersHook.bowlers[playersHook.currentBowlerIndex];
-                if (bowler && !bowler.hasBowled) {
-                  bowler.hasBowled = true;
-                  if (bowler.playerId)
-                    playerDBHook.updatePlayerStats(bowler.playerId, {
-                      bowlingInnings: 1,
-                    });
-                }
-                playersHook.addBallToBowler();
-                if (bowler?.playerId)
-                  playerDBHook.updatePlayerStats(bowler.playerId, {
-                    ballsBowled: 1,
-                  });
-                partnershipsHook.addExtraToPartnership(r);
-                partnershipsHook.addBallToPartnership();
-                engine.handleLegBye(r, bowler?.displayName || "");
+                }}
+                onNoBall={(extraRuns) => {
+                  lastKnownBowlersRef.current = [...playersHook.bowlers];
+                  triggerSnapshotWithTracking();
+                  const bowler =
+                    playersHook.bowlers[playersHook.currentBowlerIndex];
+                  const striker = playersHook.players[playersHook.strikerIndex];
 
-                engine.addToCurrentOverRuns(r);
-              }}
-              onWicket={() => wicketFlow.startWicketFlow(engine.isFreeHit)}
-              onSwapStrike={playersHook.swapStrike}
-              onUndo={undoLastBall}
-              onRetiredHurt={handleRetiredHurt}
-              isWicketPending={playersHook.isWicketPending}
-              onDismissBowler={handleDismissBowler}
-              onNoResult={() => modalStates.setShowNoResultModal(true)}
-            />
-            {updatedMatchData.isTestMatch && engine.innings < 4 && (
-              <button
-                onClick={() => {
-                  if (window.confirm(`Declare innings ${engine.innings}? (${engine.score}/${engine.wickets})`)) {
-                    engine.handleDeclaration();
+                  if (bowler && !bowler.hasBowled) {
+                    bowler.hasBowled = true;
+                    if (bowler.playerId)
+                      playerDBHook.updatePlayerStats(bowler.playerId, {
+                        bowlingInnings: 1,
+                      });
+                  }
+
+                  // ✅ NO ball stats for striker — NB is an illegal delivery
+                  // (removed: addBallToStriker and updatePlayerStats balls:1)
+
+                  const totalRuns = 1 + (extraRuns || 0);
+                  if (bowler?.playerId)
+                    playerDBHook.updatePlayerStats(bowler.playerId, {
+                      noBalls: 1,
+                      runsGiven: totalRuns,
+                    });
+
+                  playersHook.addRunsToBowler(totalRuns);
+                  partnershipsHook.addExtraToPartnership(totalRuns);
+
+                  engine.handleNoBall(
+                    bowler?.displayName || "",
+                    extraRuns || 0
+                  );
+                  engine.addToCurrentOverRuns(totalRuns);
+
+                  if (extraRuns > 0) {
+                    playersHook.addRunsToStriker(extraRuns);
+                    if (striker?.playerId) {
+                      const stats = { runs: extraRuns };
+                      if (extraRuns === 4) stats.fours = 1;
+                      if (extraRuns === 6) stats.sixes = 1;
+                      playerDBHook.updatePlayerStats(striker.playerId, stats);
+                    }
+                    if (extraRuns % 2 !== 0) playersHook.swapStrike();
                   }
                 }}
-                style={{
-                  marginTop: "10px",
-                  width: "100%",
-                  background: "#7f1d1d",
-                  color: "white",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "1px solid #dc2626",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  cursor: "pointer",
+                onBye={(r) => {
+                  lastKnownBowlersRef.current = [...playersHook.bowlers];
+                  triggerSnapshotWithTracking();
+                  const bowler =
+                    playersHook.bowlers[playersHook.currentBowlerIndex];
+                  if (bowler && !bowler.hasBowled) {
+                    bowler.hasBowled = true;
+                    if (bowler.playerId)
+                      playerDBHook.updatePlayerStats(bowler.playerId, {
+                        bowlingInnings: 1,
+                      });
+                  }
+                  playersHook.addBallToBowler();
+                  if (bowler?.playerId)
+                    playerDBHook.updatePlayerStats(bowler.playerId, {
+                      ballsBowled: 1,
+                    });
+                  partnershipsHook.addExtraToPartnership(r);
+                  partnershipsHook.addBallToPartnership();
+                  engine.handleBye(r, bowler?.displayName || "");
+                  engine.addToCurrentOverRuns(r);
                 }}
-              >
-                📢 Declare Innings
-              </button>
-            )}
-          </>
-        )}
+                onLegBye={(r) => {
+                  lastKnownBowlersRef.current = [...playersHook.bowlers];
+                  triggerSnapshotWithTracking();
+                  const bowler =
+                    playersHook.bowlers[playersHook.currentBowlerIndex];
+                  if (bowler && !bowler.hasBowled) {
+                    bowler.hasBowled = true;
+                    if (bowler.playerId)
+                      playerDBHook.updatePlayerStats(bowler.playerId, {
+                        bowlingInnings: 1,
+                      });
+                  }
+                  playersHook.addBallToBowler();
+                  if (bowler?.playerId)
+                    playerDBHook.updatePlayerStats(bowler.playerId, {
+                      ballsBowled: 1,
+                    });
+                  partnershipsHook.addExtraToPartnership(r);
+                  partnershipsHook.addBallToPartnership();
+                  engine.handleLegBye(r, bowler?.displayName || "");
+
+                  engine.addToCurrentOverRuns(r);
+                }}
+                onWicket={() => wicketFlow.startWicketFlow(engine.isFreeHit)}
+                onSwapStrike={playersHook.swapStrike}
+                onUndo={undoLastBall}
+                onRetiredHurt={handleRetiredHurt}
+                isWicketPending={playersHook.isWicketPending}
+                onDismissBowler={handleDismissBowler}
+                onNoResult={() => modalStates.setShowNoResultModal(true)}
+              />
+              {updatedMatchData.isTestMatch && engine.innings < 4 && (
+                <button
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Declare innings ${engine.innings}? (${engine.score}/${engine.wickets})`
+                      )
+                    ) {
+                      engine.handleDeclaration();
+                    }
+                  }}
+                  style={{
+                    marginTop: "10px",
+                    width: "100%",
+                    background: "#7f1d1d",
+                    color: "white",
+                    padding: "10px",
+                    borderRadius: "8px",
+                    border: "1px solid #dc2626",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  📢 Declare Innings
+                </button>
+              )}
+              {updatedMatchData.isTestMatch && (
+                <button
+                  onClick={() => {
+                    if (window.confirm("End this match as a Draw?")) {
+                      engine.handleDraw();
+                      setTimeout(() => {
+                        inningsDataHook.setInnings2Data(captureCurrentData());
+                        inningsDataHook.setMatchCompleted(true);
+                        modalStates.setShowSummary(true);
+                      }, 150);
+                    }
+                  }}
+                  style={{
+                    marginTop: "10px",
+                    width: "100%",
+                    background: "#1e3a5f",
+                    color: "white",
+                    padding: "10px",
+                    borderRadius: "8px",
+                    border: "1px solid #2563eb",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  🤝 End as Draw
+                </button>
+              )}
+            </>
+          )}
           {engine.matchOver && isNoResult && <NoResultBanner />}
+          {engine.matchOver && engine.winner === "DRAW" && (
+            <div
+              style={{
+                background: "#1e3a5f",
+                border: "1px solid #2563eb",
+                borderRadius: "10px",
+                padding: "14px",
+                marginTop: "12px",
+                textAlign: "center",
+                color: "#93c5fd",
+                fontWeight: "700",
+                fontSize: "16px",
+                letterSpacing: "0.5px",
+              }}
+            >
+              🤝 MATCH DRAWN
+            </div>
+          )}
         </>
       )}
       <UtilityBar
@@ -1740,7 +1804,8 @@ useEffect(() => {
         onCancelNewBatsman={() => {
           playersHook.setIsWicketPending(false);
           wicketFlow.cancelWicketFlow();
-          undoLastBall();}}
+          undoLastBall();
+        }}
         onConfirmNewBowler={(bowlerData) => {
           if (bowlerData?.jersey) addBowlerJersey(bowlerData.jersey);
           const result = playersHook.confirmNewBowler(bowlerData);
@@ -1810,7 +1875,7 @@ useEffect(() => {
         realMatchInnings2DataRef={realMatchInnings2DataRef}
         inningsDataHook={inningsDataHook}
         engine={engine}
-        followOnEnforced={followOnEnforcedRef.current} 
+        followOnEnforced={followOnEnforcedRef.current}
       />
       {showExitConfirm && (
         <div
@@ -1902,43 +1967,105 @@ useEffect(() => {
         </div>
       )}
       {showFollowOnModal && (
-  <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.8)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }}>
-    <div style={{ background:"#1a1a1a", border:"1px solid #22c55e", borderRadius:"14px", padding:"28px 24px", maxWidth:"360px", width:"90%", textAlign:"center" }}>
-      <div style={{ fontSize:"32px", marginBottom:"12px" }}>🏏</div>
-      <h3 style={{ color:"#e5e7eb", marginBottom:"8px", fontSize:"18px" }}>Follow-on?</h3>
-      <p style={{ color:"#9ca3af", fontSize:"14px", marginBottom:"8px", lineHeight:1.5 }}>
-        {firstBattingTeam} leads by <strong style={{color:"#22c55e"}}>{followOnLead} runs</strong>
-      </p>
-      <p style={{ color:"#9ca3af", fontSize:"13px", marginBottom:"20px" }}>
-        Enforce follow-on? ({secondBattingTeam} bats again immediately)
-      </p>
-      <div style={{ display:"flex", gap:"12px", justifyContent:"center" }}>
-        <button
-          onClick={() => {
-            followOnEnforcedRef.current = true;
-            setShowFollowOnModal(false);
-            engine.resolveFollowOn(true);
-            setTimeout(() => modalStates.setShowStartModal(true), 100);
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
           }}
-          style={{ background:"#dc2626", color:"#fff", padding:"10px 22px", borderRadius:"8px", border:"none", fontWeight:"600", fontSize:"15px", cursor:"pointer" }}
         >
-          Enforce
-        </button>
-        <button
-          onClick={() => {
-            followOnEnforcedRef.current = false;
-            setShowFollowOnModal(false);
-            engine.resolveFollowOn(false);
-            setTimeout(() => modalStates.setShowStartModal(true), 100);
-          }}
-          style={{ background:"#374151", color:"#e5e7eb", padding:"10px 22px", borderRadius:"8px", border:"none", fontWeight:"600", fontSize:"15px", cursor:"pointer" }}
-        >
-          Decline
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+          <div
+            style={{
+              background: "#1a1a1a",
+              border: "1px solid #22c55e",
+              borderRadius: "14px",
+              padding: "28px 24px",
+              maxWidth: "360px",
+              width: "90%",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: "32px", marginBottom: "12px" }}>🏏</div>
+            <h3
+              style={{
+                color: "#e5e7eb",
+                marginBottom: "8px",
+                fontSize: "18px",
+              }}
+            >
+              Follow-on?
+            </h3>
+            <p
+              style={{
+                color: "#9ca3af",
+                fontSize: "14px",
+                marginBottom: "8px",
+                lineHeight: 1.5,
+              }}
+            >
+              {firstBattingTeam} leads by{" "}
+              <strong style={{ color: "#22c55e" }}>{followOnLead} runs</strong>
+            </p>
+            <p
+              style={{
+                color: "#9ca3af",
+                fontSize: "13px",
+                marginBottom: "20px",
+              }}
+            >
+              Enforce follow-on? ({secondBattingTeam} bats again immediately)
+            </p>
+            <div
+              style={{ display: "flex", gap: "12px", justifyContent: "center" }}
+            >
+              <button
+                onClick={() => {
+                  followOnEnforcedRef.current = true;
+                  setShowFollowOnModal(false);
+                  engine.resolveFollowOn(true);
+                  setTimeout(() => modalStates.setShowStartModal(true), 100);
+                }}
+                style={{
+                  background: "#dc2626",
+                  color: "#fff",
+                  padding: "10px 22px",
+                  borderRadius: "8px",
+                  border: "none",
+                  fontWeight: "600",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                }}
+              >
+                Enforce
+              </button>
+              <button
+                onClick={() => {
+                  followOnEnforcedRef.current = false;
+                  setShowFollowOnModal(false);
+                  engine.resolveFollowOn(false);
+                  setTimeout(() => modalStates.setShowStartModal(true), 100);
+                }}
+                style={{
+                  background: "#374151",
+                  color: "#e5e7eb",
+                  padding: "10px 22px",
+                  borderRadius: "8px",
+                  border: "none",
+                  fontWeight: "600",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                }}
+              >
+                Decline
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
