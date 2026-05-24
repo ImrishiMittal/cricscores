@@ -87,6 +87,10 @@ function ScoringPage() {
 
   const [resumePrompt, setResumePrompt] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState(null);
+
+  const [showFollowOnModal, setShowFollowOnModal] = useState(false);
+const [followOnLead, setFollowOnLead] = useState(0);
+const followOnEnforcedRef = useRef(false);
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -150,7 +154,9 @@ function ScoringPage() {
     engine.extras,
     engine.innings1Extras,
     innings1BowlersSnapshotRef,
-    engine.innings1HistoryRef
+    engine.innings1HistoryRef,
+    engine.innings2History,
+engine.innings3History
   );
 
   const historySnapshotHook = useHistorySnapshot(
@@ -672,19 +678,24 @@ useEffect(() => {
     );
     engine.setTieDetected(false);
   }, [engine.tieDetected]);
+  useEffect(() => {
+    if (!engine.followOnPending) return;
+    setFollowOnLead(engine.innings2Score?.score ? 
+      (engine.innings1Score?.score ?? 0) - engine.innings2Score.score : 0);
+    setShowFollowOnModal(true);
+  }, [engine.followOnPending]);
 
   const firstBattingTeam = matchData.battingFirst;
   const secondBattingTeam =
     matchData.battingFirst === matchData.teamA
       ? matchData.teamB
       : matchData.teamA;
-  const currentBattingTeam = engine.isSuperOver
-    ? engine.innings === 1
-      ? secondBattingTeam
-      : firstBattingTeam
-    : engine.innings === 1
-    ? firstBattingTeam
-    : secondBattingTeam;
+      const currentBattingTeam = engine.isSuperOver
+      ? engine.innings === 1 ? secondBattingTeam : firstBattingTeam
+      : engine.innings === 1 ? firstBattingTeam
+      : engine.innings === 2 ? secondBattingTeam
+      : engine.innings === 3 ? firstBattingTeam
+      : secondBattingTeam; // innings 4
 
   const addBatterJersey = (jersey) => {
     if (!jersey) return;
@@ -1299,6 +1310,7 @@ useEffect(() => {
             />
           )}
           {!engine.matchOver && (
+            <>
             <RunControls
               onRun={handleRunClick}
               onWide={(extraRuns) => {
@@ -1420,7 +1432,31 @@ useEffect(() => {
               onDismissBowler={handleDismissBowler}
               onNoResult={() => modalStates.setShowNoResultModal(true)}
             />
-          )}
+            {updatedMatchData.isTestMatch && engine.innings < 4 && (
+              <button
+                onClick={() => {
+                  if (window.confirm(`Declare innings ${engine.innings}? (${engine.score}/${engine.wickets})`)) {
+                    engine.handleDeclaration();
+                  }
+                }}
+                style={{
+                  marginTop: "10px",
+                  width: "100%",
+                  background: "#7f1d1d",
+                  color: "white",
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "1px solid #dc2626",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
+                📢 Declare Innings
+              </button>
+            )}
+          </>
+        )}
           {engine.matchOver && isNoResult && <NoResultBanner />}
         </>
       )}
@@ -1864,6 +1900,44 @@ useEffect(() => {
           </div>
         </div>
       )}
+      {showFollowOnModal && (
+  <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.8)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }}>
+    <div style={{ background:"#1a1a1a", border:"1px solid #22c55e", borderRadius:"14px", padding:"28px 24px", maxWidth:"360px", width:"90%", textAlign:"center" }}>
+      <div style={{ fontSize:"32px", marginBottom:"12px" }}>🏏</div>
+      <h3 style={{ color:"#e5e7eb", marginBottom:"8px", fontSize:"18px" }}>Follow-on?</h3>
+      <p style={{ color:"#9ca3af", fontSize:"14px", marginBottom:"8px", lineHeight:1.5 }}>
+        {firstBattingTeam} leads by <strong style={{color:"#22c55e"}}>{followOnLead} runs</strong>
+      </p>
+      <p style={{ color:"#9ca3af", fontSize:"13px", marginBottom:"20px" }}>
+        Enforce follow-on? ({secondBattingTeam} bats again immediately)
+      </p>
+      <div style={{ display:"flex", gap:"12px", justifyContent:"center" }}>
+        <button
+          onClick={() => {
+            followOnEnforcedRef.current = true;
+            setShowFollowOnModal(false);
+            engine.resolveFollowOn(true);
+            setTimeout(() => modalStates.setShowStartModal(true), 100);
+          }}
+          style={{ background:"#dc2626", color:"#fff", padding:"10px 22px", borderRadius:"8px", border:"none", fontWeight:"600", fontSize:"15px", cursor:"pointer" }}
+        >
+          Enforce
+        </button>
+        <button
+          onClick={() => {
+            followOnEnforcedRef.current = false;
+            setShowFollowOnModal(false);
+            engine.resolveFollowOn(false);
+            setTimeout(() => modalStates.setShowStartModal(true), 100);
+          }}
+          style={{ background:"#374151", color:"#e5e7eb", padding:"10px 22px", borderRadius:"8px", border:"none", fontWeight:"600", fontSize:"15px", cursor:"pointer" }}
+        >
+          Decline
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
