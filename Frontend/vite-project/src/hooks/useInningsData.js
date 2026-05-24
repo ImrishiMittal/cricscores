@@ -43,10 +43,16 @@ function useInningsData(
   extras,
   innings1Extras,
   overCompleteBowlerSnapshotRef,
-  matchEngineInnings1HistoryRef
+  matchEngineInnings1HistoryRef,
+  innings2History,
+  innings3History
 ) {
   const [innings1Data, setInnings1Data] = useState(null);
   const [innings2Data, setInnings2Data] = useState(null);
+  const [innings3Data, setInnings3Data] = useState(null);
+  const [innings4Data, setInnings4Data] = useState(null);
+  const innings3DataRef = useRef(null);
+  const innings4DataRef = useRef(null);
   const [matchCompleted, setMatchCompleted] = useState(false);
 
   const innings1DataRef = useRef(null);
@@ -76,6 +82,8 @@ function useInningsData(
     innings1History,
     extras,
     innings1Extras,
+    innings2History,
+    innings3History: innings3History || [],
   };
 
   // ─── Merge live bowlers with over-complete snapshot ──────────────────────────
@@ -120,87 +128,114 @@ function useInningsData(
 
   // ─── Recompute bowling stats from ball-by-ball history (ground truth) ─────────
 
-    // REPLACE the entire function (from that line until its closing `};`) WITH:
-      const computeBowlingFromHistory = (historyData) => {
-        const statsMap = new Map();
-    
-        for (const ball of historyData || []) {
-          if (ball.event === "FREE_HIT") continue;
-    
-          const bowlerName =
-            ball.bowler || ball.bowlerName || ball.bowlerDisplayName ||
-            ball.currentBowler || ball.bowlerId || "";
-    
-          if (!bowlerName || bowlerName === "Unknown") {
-            if (!bowlerName) console.warn("⚠️ Missing bowler in ball:", ball);
-            continue;
-          }
-    
-          if (!statsMap.has(bowlerName)) {
-            statsMap.set(bowlerName, {
-              playerName: bowlerName, playerId: "",
-              ballsBowled: 0, runsGiven: 0, wickets: 0,
-              wides: 0, noBalls: 0, dotBallsBowled: 0, maidens: 0,
-            });
-          }
-    
-          const s = statsMap.get(bowlerName);
-          const runs = ball.runs ?? ball.r ?? ball.runsScored ?? 0;
-    
-          const isWide = ball.event === "WD" || ball.type === "wide" ||
-                         ball.wide === true || ball.extraType === "wide";
-          if (isWide) {
-            s.wides += 1;
-            s.runsGiven += 1 + (runs > 0 ? runs : 0);
-            continue;
-          }
-    
-          const isNoBall = ball.event === "NB" || ball.type === "noBall" ||
-                           ball.noBall === true || ball.extraType === "noBall";
-          if (isNoBall) {
-            s.noBalls += 1;
-            s.runsGiven += 1 + (runs > 0 ? runs : 0);
-            continue;
-          }
-    
-          // Legal delivery — always counts
-          s.ballsBowled += 1;
-    
-          const isBye = ball.event === "BYE" || ball.type === "bye" ||
-                        ball.bye === true || ball.extraType === "bye";
-          const isLegBye = ball.event === "LB" || ball.type === "legBye" ||
-                           ball.legBye === true || ball.extraType === "legBye";
-    
-          if (isBye || isLegBye) {
-            if (runs === 0) s.dotBallsBowled += 1;
-          } else {
-            s.runsGiven += runs;
-            if (runs === 0) s.dotBallsBowled += 1;
-          }
-    
-          const isWicket =
-            ball.event === "WICKET" || ball.event === "HW" ||
-            ball.wicket === true || ball.isWicket === true ||
-            ball.w === true || String(ball.result) === "W" ||
-            (ball.dismissal != null && ball.dismissal !== "");
-    
-          const isRunout =
-            ball.event === "RUNOUT" ||
-            ball.dismissalType === "runout" || ball.wicketType === "runout" ||
-            ball.runout === true ||
-            (typeof ball.dismissal === "string" &&
-             ball.dismissal.toLowerCase().includes("run out")) ||
-            (typeof ball.dismissal === "object" && ball.dismissal?.type === "runout");
-    
-          if (isWicket && !isRunout) {
-            s.wickets += 1;
-          }
-        }
-    
-        return Array.from(statsMap.values()).filter(
-          (b) => b.ballsBowled > 0 || b.wides > 0 || b.wickets > 0
-        );
-      };
+  // REPLACE the entire function (from that line until its closing `};`) WITH:
+  const computeBowlingFromHistory = (historyData) => {
+    const statsMap = new Map();
+
+    for (const ball of historyData || []) {
+      if (ball.event === "FREE_HIT") continue;
+
+      const bowlerName =
+        ball.bowler ||
+        ball.bowlerName ||
+        ball.bowlerDisplayName ||
+        ball.currentBowler ||
+        ball.bowlerId ||
+        "";
+
+      if (!bowlerName || bowlerName === "Unknown") {
+        if (!bowlerName) console.warn("⚠️ Missing bowler in ball:", ball);
+        continue;
+      }
+
+      if (!statsMap.has(bowlerName)) {
+        statsMap.set(bowlerName, {
+          playerName: bowlerName,
+          playerId: "",
+          ballsBowled: 0,
+          runsGiven: 0,
+          wickets: 0,
+          wides: 0,
+          noBalls: 0,
+          dotBallsBowled: 0,
+          maidens: 0,
+        });
+      }
+
+      const s = statsMap.get(bowlerName);
+      const runs = ball.runs ?? ball.r ?? ball.runsScored ?? 0;
+
+      const isWide =
+        ball.event === "WD" ||
+        ball.type === "wide" ||
+        ball.wide === true ||
+        ball.extraType === "wide";
+      if (isWide) {
+        s.wides += 1;
+        s.runsGiven += 1 + (runs > 0 ? runs : 0);
+        continue;
+      }
+
+      const isNoBall =
+        ball.event === "NB" ||
+        ball.type === "noBall" ||
+        ball.noBall === true ||
+        ball.extraType === "noBall";
+      if (isNoBall) {
+        s.noBalls += 1;
+        s.runsGiven += 1 + (runs > 0 ? runs : 0);
+        continue;
+      }
+
+      // Legal delivery — always counts
+      s.ballsBowled += 1;
+
+      const isBye =
+        ball.event === "BYE" ||
+        ball.type === "bye" ||
+        ball.bye === true ||
+        ball.extraType === "bye";
+      const isLegBye =
+        ball.event === "LB" ||
+        ball.type === "legBye" ||
+        ball.legBye === true ||
+        ball.extraType === "legBye";
+
+      if (isBye || isLegBye) {
+        if (runs === 0) s.dotBallsBowled += 1;
+      } else {
+        s.runsGiven += runs;
+        if (runs === 0) s.dotBallsBowled += 1;
+      }
+
+      const isWicket =
+        ball.event === "WICKET" ||
+        ball.event === "HW" ||
+        ball.wicket === true ||
+        ball.isWicket === true ||
+        ball.w === true ||
+        String(ball.result) === "W" ||
+        (ball.dismissal != null && ball.dismissal !== "");
+
+      const isRunout =
+        ball.event === "RUNOUT" ||
+        ball.dismissalType === "runout" ||
+        ball.wicketType === "runout" ||
+        ball.runout === true ||
+        (typeof ball.dismissal === "string" &&
+          ball.dismissal.toLowerCase().includes("run out")) ||
+        (typeof ball.dismissal === "object" &&
+          ball.dismissal?.type === "runout");
+
+      if (isWicket && !isRunout) {
+        s.wickets += 1;
+      }
+    }
+
+    return Array.from(statsMap.values()).filter(
+      (b) => b.ballsBowled > 0 || b.wides > 0 || b.wickets > 0
+    );
+  };
 
   const captureCurrentInningsData = (
     playersData,
@@ -222,7 +257,9 @@ function useInningsData(
       seenP.add(key);
       return true;
     });
-    dedupedPlayers.sort((a, b) => (a.battingOrder ?? 999) - (b.battingOrder ?? 999));
+    dedupedPlayers.sort(
+      (a, b) => (a.battingOrder ?? 999) - (b.battingOrder ?? 999)
+    );
 
     // ✅ PRIMARY: Compute bowling stats from history (always accurate)
     // FALLBACK: Use merged live+snapshot bowlers if history is empty
@@ -241,7 +278,7 @@ function useInningsData(
     // ✅ 2. If history fails → use SNAPSHOT (NOT live state)
     if (bowlingStatsSource.length === 0) {
       console.warn("⚠️ Using snapshot fallback instead of live bowlers");
-    
+
       bowlingStatsSource =
         innings1BowlersSnapshotRef.current.length > 0
           ? innings1BowlersSnapshotRef.current
@@ -348,9 +385,97 @@ function useInningsData(
       return;
     }
 
+    // Test match: innings 3 ending
+    if (inningsChangeEvent.inningsNumber === 4) {
+      console.log("🔄 Innings 3 ending → innings 4 starting");
+      const inn3Data = captureCurrentInningsData(
+        c.players,
+        c.allPlayers,
+        c.bowlers,
+        c.completeHistory,
+        c.score,
+        c.wickets,
+        c.overs,
+        c.balls,
+        c.extras
+      );
+      innings3DataRef.current = inn3Data;
+      setInnings3Data(inn3Data);
+
+      setTimeout(() => {
+        c.restorePlayersState({
+          players: [],
+          allPlayers: [],
+          strikerIndex: 0,
+          nonStrikerIndex: 1,
+          isWicketPending: false,
+          outBatsman: null,
+        });
+        c.restoreBowlersState({ bowlers: [], currentBowlerIndex: 0 });
+        c.restorePartnershipState({
+          partnershipRuns: 0,
+          partnershipBalls: 0,
+          striker1Contribution: 0,
+          striker2Contribution: 0,
+          partnershipHistory: [],
+        });
+        c.setShowStartModal(true);
+        c.setInningsChangeEvent(null);
+      }, 50);
+      return;
+    }
+
+    // Test match: innings 2 ending → innings 3 starting (or follow-on check)
+    if (
+      inningsChangeEvent.inningsNumber === 3 ||
+      inningsChangeEvent.followOnCheck
+    ) {
+      console.log("🔄 Innings 2 ending → innings 3 starting");
+      const inn2Data = captureCurrentInningsData(
+        c.players,
+        c.allPlayers,
+        c.bowlers,
+        c.innings2History?.length > 0 ? c.innings2History : c.completeHistory,
+        c.score,
+        c.wickets,
+        c.overs,
+        c.balls,
+        c.extras
+      );
+      innings2DataRef.current = inn2Data;
+      setInnings2Data(inn2Data);
+
+      setTimeout(() => {
+        c.restorePlayersState({
+          players: [],
+          allPlayers: [],
+          strikerIndex: 0,
+          nonStrikerIndex: 1,
+          isWicketPending: false,
+          outBatsman: null,
+        });
+        c.restoreBowlersState({ bowlers: [], currentBowlerIndex: 0 });
+        c.restorePartnershipState({
+          partnershipRuns: 0,
+          partnershipBalls: 0,
+          striker1Contribution: 0,
+          striker2Contribution: 0,
+          partnershipHistory: [],
+        });
+        if (!inningsChangeEvent.followOnCheck) {
+          c.setShowStartModal(true);
+        }
+        // If followOnCheck=true, ScoringPage shows FollowOnModal instead
+        c.setInningsChangeEvent(null);
+      }, 50);
+      return;
+    }
+
     console.log("🔄 Innings 1 ending");
-    innings1HistoryRef.current = [...(callbacksRef.current.innings1History || [])];
-innings1BowlersSnapshotRef.current = [...(c.bowlers || [])];
+    innings1HistoryRef.current = [
+      ...(callbacksRef.current.innings1History || []),
+    ];
+    innings1BowlersSnapshotRef.current = [...(c.bowlers || [])];
     console.log(
       "📸 [useInningsData] Bowlers snapshot:",
       innings1BowlersSnapshotRef.current
@@ -366,11 +491,11 @@ innings1BowlersSnapshotRef.current = [...(c.bowlers || [])];
     const ballsToUse = c.innings1Score?.balls ?? c.balls;
 
     const historyToUse =
-      (matchEngineInnings1HistoryRef?.current?.length > 0)
+      matchEngineInnings1HistoryRef?.current?.length > 0
         ? matchEngineInnings1HistoryRef.current
-        : (c.innings1History && c.innings1History.length > 0)
-          ? c.innings1History
-          : c.completeHistory;
+        : c.innings1History && c.innings1History.length > 0
+        ? c.innings1History
+        : c.completeHistory;
     innings1HistoryRef.current = historyToUse;
 
     const inn1Data = captureCurrentInningsData(
@@ -455,6 +580,12 @@ innings1BowlersSnapshotRef.current = [...(c.bowlers || [])];
     setInnings2Data,
     setMatchCompleted,
     innings1BowlersSnapshotRef,
+    innings3Data,
+    innings4Data,
+    innings3DataRef,
+    innings4DataRef,
+    setInnings3Data,
+    setInnings4Data,
   };
 }
 

@@ -44,6 +44,17 @@ export default function useMatchEngine(matchData, swapStrike) {
 
   const [innings1History, setInnings1History] = useState([]);
   const innings1HistoryRef = useRef([]);
+  // ─── Test match: innings 3 & 4 ───────────────────────────────────────────────
+  const [innings3Score, setInnings3Score] = useState(null);
+  const [innings4Score, setInnings4Score] = useState(null);
+  const [innings3History, setInnings3History] = useState([]);
+  const innings3HistoryRef = useRef([]);
+  const [innings2History, setInnings2History] = useState([]);
+  const innings2HistoryRef = useRef([]);
+  const [testTarget, setTestTarget] = useState(null); // innings 4 chase target
+  const [followOnPending, setFollowOnPending] = useState(false);
+  const [team1TotalRuns, setTeam1TotalRuns] = useState(0); // Team A inn1+inn3
+  const [team2TotalRuns, setTeam2TotalRuns] = useState(0); // Team B inn2
 
   const [tieDetected, setTieDetected] = useState(false);
   const [isSuperOver, setIsSuperOver] = useState(false);
@@ -57,14 +68,18 @@ export default function useMatchEngine(matchData, swapStrike) {
   isSuperOverRef.current = isSuperOver;
 
   const isTestMatch = matchData.isTestMatch || false;
-const totalOvers = isSuperOver ? 1 : (isTestMatch ? Infinity : Number(matchData.overs) || 10);
-const totalBalls = isSuperOver ? 6 : (isTestMatch ? Infinity : totalOvers * 6);
+  const totalOvers = isSuperOver
+    ? 1
+    : isTestMatch
+    ? Infinity
+    : Number(matchData.overs) || 10;
+  const totalBalls = isSuperOver ? 6 : isTestMatch ? Infinity : totalOvers * 6;
 
   const maxWickets = useMemo(() => {
     if (isSuperOver) return 2;
     const teamACount = Number(matchData.teamAPlayers || 11);
     const teamBCount = Number(matchData.teamBPlayers || 11);
-    const count = innings === 1 ? teamACount - 1 : teamBCount - 1;
+    const count = (innings === 1 || innings === 3) ? teamACount - 1 : teamBCount - 1;
     console.log(
       `🎯 Max wickets recalculated for innings ${innings}: ${count} (A: ${teamACount}, B: ${teamBCount})`
     );
@@ -133,10 +148,10 @@ const totalBalls = isSuperOver ? 6 : (isTestMatch ? Infinity : totalOvers * 6);
   const [inningsChangeEvent, setInningsChangeEvent] = useState(null);
 
   const endInnings = (finalScore = score) => {
+    const capturedHistory = [...completeHistoryRef.current];
+
     if (innings === 1) {
       const newTarget = finalScore + 1;
-      const capturedHistory = [...completeHistoryRef.current];
-
       console.log(
         `📜 Capturing innings 1 history: ${capturedHistory.length} balls`
       );
@@ -153,13 +168,93 @@ const totalBalls = isSuperOver ? 6 : (isTestMatch ? Infinity : totalOvers * 6);
       setCompleteHistory([]);
       completeHistoryRef.current = [];
       setIsFreeHit(false);
-
       setInnings1Extras({ ...extras });
       setExtras({ wides: 0, noBalls: 0, byes: 0, legByes: 0, total: 0 });
-
       setInningsChangeEvent({
         target: newTarget,
         superOver: isSuperOverRef.current,
+      });
+    } else if (innings === 2) {
+      if (!isTestMatch) {
+        // Limited overs: innings 2 end = match over (handled by checkMatchStatus)
+        return;
+      }
+      // Test match: innings 2 ends → check follow-on, then move to innings 3
+      console.log(
+        `📜 Capturing innings 2 history: ${capturedHistory.length} balls`
+      );
+      setInnings2History(capturedHistory);
+      innings2HistoryRef.current = capturedHistory;
+
+      const inn1Runs = innings1Score?.score ?? 0;
+      const inn2Runs = finalScore;
+      const lead = inn1Runs - inn2Runs;
+      const followOnThreshold = 200; // standard Test follow-on gap
+
+      setTeam1TotalRuns(inn1Runs);
+      setTeam2TotalRuns(inn2Runs);
+
+      setInnings2Score({ score: finalScore, wickets, overs, balls });
+      setScore(0);
+      setWickets(0);
+      setBalls(0);
+      setOvers(0);
+      setCurrentOver([]);
+      setCompleteHistory([]);
+      completeHistoryRef.current = [];
+      setIsFreeHit(false);
+      setExtras({ wides: 0, noBalls: 0, byes: 0, legByes: 0, total: 0 });
+
+      if (lead >= followOnThreshold) {
+        // Ask if follow-on should be enforced
+        setFollowOnPending(true);
+        setInnings(3);
+        setInningsChangeEvent({
+          followOnCheck: true,
+          lead,
+          inn1Runs,
+          inn2Runs,
+          superOver: false,
+        });
+      } else {
+        // Normal: Team A bats innings 3
+        setInnings(3);
+        setInningsChangeEvent({
+          target: null,
+          inningsNumber: 3,
+          superOver: false,
+        });
+      }
+    } else if (innings === 3) {
+      console.log(
+        `📜 Capturing innings 3 history: ${capturedHistory.length} balls`
+      );
+      setInnings3History(capturedHistory);
+      innings3HistoryRef.current = capturedHistory;
+
+      setInnings3Score({ score: finalScore, wickets, overs, balls });
+
+      // Calculate innings 4 target
+      // Target = (team batting 1st total across their innings) - (team batting 2nd total so far) + 1
+      const updatedTeam1Total = team1TotalRuns + finalScore; // inn1 + inn3
+      const chaseTarget = updatedTeam1Total - team2TotalRuns + 1;
+      setTestTarget(chaseTarget);
+      setTeam1TotalRuns(updatedTeam1Total);
+
+      setInnings(4);
+      setScore(0);
+      setWickets(0);
+      setBalls(0);
+      setOvers(0);
+      setCurrentOver([]);
+      setCompleteHistory([]);
+      completeHistoryRef.current = [];
+      setIsFreeHit(false);
+      setExtras({ wides: 0, noBalls: 0, byes: 0, legByes: 0, total: 0 });
+      setInningsChangeEvent({
+        target: chaseTarget,
+        inningsNumber: 4,
+        superOver: false,
       });
     }
   };
@@ -208,12 +303,17 @@ const totalBalls = isSuperOver ? 6 : (isTestMatch ? Infinity : totalOvers * 6);
       totalBalls,
     });
 
-    if (innings === 2 && newScore > target) {
+    // Limited overs innings 2 win
+    if (innings === 2 && !isTestMatch && newScore > target) {
       endMatch(secondBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
       return "MATCH_OVER";
     }
-
-    if (innings === 2 && newScore === target && nextBalls > 0) {
+    if (innings === 2 && !isTestMatch && newScore === target && nextBalls > 0) {
+      endMatch(secondBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
+      return "MATCH_OVER";
+    }
+    // Test innings 4 win
+    if (innings === 4 && testTarget !== null && newScore >= testTarget) {
       endMatch(secondBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
       return "MATCH_OVER";
     }
@@ -223,20 +323,38 @@ const totalBalls = isSuperOver ? 6 : (isTestMatch ? Infinity : totalOvers * 6);
       : nextWickets >= maxWickets;
 
     if (shouldEndForWickets) {
-      if (innings === 2) {
+      if (innings === 4) {
+        // Test innings 4: all out before target = loss
+        if (newScore === testTarget - 1) {
+          return handleTieOrEnd(newScore, nextWickets, nextOvers, nextBalls);
+        }
+        endMatch(firstBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
+        return "MATCH_OVER";
+      }
+      if (innings === 2 && !isTestMatch) {
         if (newScore === target - 1) {
           return handleTieOrEnd(newScore, nextWickets, nextOvers, nextBalls);
         }
         endMatch(firstBattingTeam, newScore, nextWickets, nextOvers, nextBalls);
-      } else {
+        return "MATCH_OVER";
+      }
+      // innings 1, 2 (Test), or 3 — end innings and continue
+      if (innings === 1) {
         setInnings1Score({
           score: newScore,
           wickets: nextWickets,
           overs: nextOvers,
           balls: nextBalls,
         });
-        endInnings(newScore);
+      } else if (innings === 3) {
+        setInnings3Score({
+          score: newScore,
+          wickets: nextWickets,
+          overs: nextOvers,
+          balls: nextBalls,
+        });
       }
+      endInnings(newScore);
       return "MATCH_OVER";
     }
 
@@ -278,7 +396,11 @@ const totalBalls = isSuperOver ? 6 : (isTestMatch ? Infinity : totalOvers * 6);
       `🔍 Match Engine Check - Innings: ${innings}, Wickets: ${wickets}/${maxWickets}, Balls: ${ballsBowled}/${totalBalls}`
     );
 
-    if (innings === 2 && score >= target) {
+    if (innings === 2 && !isTestMatch && score >= target) {
+      endMatch(secondBattingTeam, score, wickets, overs, balls);
+      return;
+    }
+    if (innings === 4 && testTarget !== null && score >= testTarget) {
       endMatch(secondBattingTeam, score, wickets, overs, balls);
       return;
     }
@@ -288,13 +410,19 @@ const totalBalls = isSuperOver ? 6 : (isTestMatch ? Infinity : totalOvers * 6);
       : wickets >= maxWickets;
 
     if (shouldEndForWickets) {
-      if (innings === 2) {
+      if (innings === 4) {
+        if (score === testTarget - 1) return;
+        endMatch(firstBattingTeam, score, wickets, overs, balls);
+        return;
+      }
+      if (innings === 2 && !isTestMatch) {
         if (score === target - 1) return;
         endMatch(firstBattingTeam, score, wickets, overs, balls);
-      } else {
-        setInnings1Score({ score, wickets, overs, balls });
-        endInnings(score);
+        return;
       }
+      if (innings === 1) setInnings1Score({ score, wickets, overs, balls });
+      if (innings === 3) setInnings3Score({ score, wickets, overs, balls });
+      endInnings(score);
       return;
     }
 
@@ -525,51 +653,51 @@ const totalBalls = isSuperOver ? 6 : (isTestMatch ? Infinity : totalOvers * 6);
   };
 
   /* ================= NO BALL ================= */
-// In useMatchEngine.js, replace handleNoBall:
-const handleNoBall = (bowlerName = "", extraRuns = 0) => {
-  if (matchOver) return;
-  const totalExtra = 1 + extraRuns; // 1 penalty + bat runs
-  setScore((prev) => prev + totalExtra);
-  checkMatchStatus(score + totalExtra, wickets, balls, overs);
-  setIsFreeHit(true);
-  setExtras((prev) => ({
-    ...prev,
-    noBalls: prev.noBalls + 1,
-    total: prev.total + totalExtra,
-  }));
+  // In useMatchEngine.js, replace handleNoBall:
+  const handleNoBall = (bowlerName = "", extraRuns = 0) => {
+    if (matchOver) return;
+    const totalExtra = 1 + extraRuns; // 1 penalty + bat runs
+    setScore((prev) => prev + totalExtra);
+    checkMatchStatus(score + totalExtra, wickets, balls, overs);
+    setIsFreeHit(true);
+    setExtras((prev) => ({
+      ...prev,
+      noBalls: prev.noBalls + 1,
+      total: prev.total + totalExtra,
+    }));
 
-  // Push ONE combined entry instead of bare "NB"
-  const label = extraRuns > 0 ? `${extraRuns}NB` : "NB";
-  setCurrentOver((prev) => [...prev, { type: "NB", runs: extraRuns, label }]);
+    // Push ONE combined entry instead of bare "NB"
+    const label = extraRuns > 0 ? `${extraRuns}NB` : "NB";
+    setCurrentOver((prev) => [...prev, { type: "NB", runs: extraRuns, label }]);
 
-  const nbEntry = {
-    event: "NB",
-    runs: extraRuns,
-    over: overs,
-    ball: balls,
-    bowler: bowlerName,
+    const nbEntry = {
+      event: "NB",
+      runs: extraRuns,
+      over: overs,
+      ball: balls,
+      bowler: bowlerName,
+    };
+    completeHistoryRef.current = [...completeHistoryRef.current, nbEntry];
+    setCompleteHistory((prev) => [...prev, nbEntry]);
   };
-  completeHistoryRef.current = [...completeHistoryRef.current, nbEntry];
-  setCompleteHistory((prev) => [...prev, nbEntry]);
-};
 
   /* ================= BYE ================= */
   // ✅ Added bowlerName parameter
   const handleBye = (runs = 1, bowlerName = "") => {
     if (matchOver) return;
     const newScore = score + runs;
-    setScore(newScore);  // ✅ only this one
+    setScore(newScore); // ✅ only this one
     setExtras((prev) => ({
       ...prev,
       byes: prev.byes + runs,
       total: prev.total + runs,
     }));
-  
+
     let nextBalls = balls + 1;
     let nextOvers = overs;
-  
+
     if (runs % 2 === 1) swapStrike();
-  
+
     if (nextBalls === 6) {
       nextOvers++;
       nextBalls = 0;
@@ -580,31 +708,37 @@ const handleNoBall = (bowlerName = "", extraRuns = 0) => {
         setOverCompleteEvent({ overNumber: nextOvers });
       }
     }
-  
+
     setBalls(nextBalls);
     setOvers(nextOvers);
     setCurrentOver((prev) => [...prev, { type: "BYE", runs }]);
-    const byeEntry = { event: "BYE", runs, over: overs, ball: balls, bowler: bowlerName };
+    const byeEntry = {
+      event: "BYE",
+      runs,
+      over: overs,
+      ball: balls,
+      bowler: bowlerName,
+    };
     completeHistoryRef.current = [...completeHistoryRef.current, byeEntry];
     setCompleteHistory((prev) => [...prev, byeEntry]);
     checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
   };
-  
+
   const handleLegBye = (runs = 1, bowlerName = "") => {
     if (matchOver) return;
     const newScore = score + runs;
-    setScore(newScore);  // ✅ only this one
+    setScore(newScore); // ✅ only this one
     setExtras((prev) => ({
       ...prev,
       legByes: prev.legByes + runs,
       total: prev.total + runs,
     }));
-  
+
     let nextBalls = balls + 1;
     let nextOvers = overs;
-  
+
     if (runs % 2 === 1) swapStrike();
-  
+
     if (nextBalls === 6) {
       nextOvers++;
       nextBalls = 0;
@@ -615,11 +749,17 @@ const handleNoBall = (bowlerName = "", extraRuns = 0) => {
         setOverCompleteEvent({ overNumber: nextOvers });
       }
     }
-  
+
     setBalls(nextBalls);
     setOvers(nextOvers);
     setCurrentOver((prev) => [...prev, { type: "LB", runs }]);
-    const lbEntry = { event: "LB", runs, over: overs, ball: balls, bowler: bowlerName };
+    const lbEntry = {
+      event: "LB",
+      runs,
+      over: overs,
+      ball: balls,
+      bowler: bowlerName,
+    };
     completeHistoryRef.current = [...completeHistoryRef.current, lbEntry];
     setCompleteHistory((prev) => [...prev, lbEntry]);
     checkMatchStatus(newScore, wickets, nextBalls, nextOvers);
@@ -678,6 +818,35 @@ const handleNoBall = (bowlerName = "", extraRuns = 0) => {
   const addToCurrentOverRuns = (runs) => {
     setCurrentOverRuns((prev) => prev + runs);
   };
+  // Declaration: captain ends innings early (Test only)
+  const handleDeclaration = () => {
+    if (!isTestMatch) return;
+    if (innings === 1) setInnings1Score({ score, wickets, overs, balls });
+    if (innings === 3) setInnings3Score({ score, wickets, overs, balls });
+    endInnings(score);
+  };
+
+  // Follow-on decision: called from ScoringPage after FollowOnModal
+  const resolveFollowOn = (enforce) => {
+    setFollowOnPending(false);
+    if (enforce) {
+      // Team B bats again — innings 3 batting order stays secondBattingTeam
+      setInningsChangeEvent({
+        target: null,
+        inningsNumber: 3,
+        followOn: true,
+        superOver: false,
+      });
+    } else {
+      // Normal: Team A bats innings 3
+      setInningsChangeEvent({
+        target: null,
+        inningsNumber: 3,
+        followOn: false,
+        superOver: false,
+      });
+    }
+  };
 
   return {
     score,
@@ -726,5 +895,15 @@ const handleNoBall = (bowlerName = "", extraRuns = 0) => {
     superOverBattingFirst: superOverBattingFirstRef.current,
     addToCurrentOverRuns,
     handleRunout,
+    innings2History,
+    innings2HistoryRef,
+    innings3Score,
+    innings4Score,
+    innings3History,
+    innings3HistoryRef,
+    testTarget,
+    followOnPending,
+    handleDeclaration,
+    resolveFollowOn,
   };
 }
