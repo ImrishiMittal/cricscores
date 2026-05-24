@@ -183,7 +183,8 @@ function MatchSetupPage() {
     if (!teamB.trim()) errors.push("Team B Name");
     if (!teamAPlayers) errors.push("Team A Number of Players");
     if (!teamBPlayers) errors.push("Team B Number of Players");
-    if (!overs) errors.push("Number of Overs");
+    if (!isTestMatch && !overs) errors.push("Number of Overs");
+if (isTestMatch && !matchDays) errors.push("Number of Days (Test Match)");
 
     // Toss must be completed AND bat/bowl choice must be made
     if (!tossWinner) errors.push("Toss (flip the coin first)");
@@ -274,12 +275,14 @@ function MatchSetupPage() {
           onSelect={setTeamBCaptain}
         />
 
-        <input
-          className={styles.input}
-          placeholder="Number of Overs"
-          type="number"
-          onChange={(e) => setOvers(e.target.value)}
-        />
+{!isTestMatch && (
+  <input
+    className={styles.input}
+    placeholder="Number of Overs"
+    type="number"
+    onChange={(e) => setOvers(e.target.value)}
+  />
+)}
 
         {/* ================= ADDITIONAL SETUP ================= */}
         <div className={styles.additionalBox}>
@@ -327,27 +330,20 @@ function MatchSetupPage() {
               </div>
 
               {/* Test Match Toggle */}
-              <label
-                className={styles.additionalOption}
-                style={{ opacity: 0.5, cursor: "not-allowed" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={isTestMatch}
-                  onChange={() => {}}
-                  disabled
-                />
-                Test Match Setup{" "}
-                <span
-                  style={{
-                    fontSize: "11px",
-                    color: "#facc15",
-                    marginLeft: "6px",
-                  }}
-                >
-                  🚧 Coming Soon
-                </span>
-              </label>
+<label className={styles.additionalOption}>
+  <input
+    type="checkbox"
+    checked={isTestMatch}
+    onChange={(e) => {
+      setIsTestMatch(e.target.checked);
+      if (e.target.checked) {
+        setOvers(""); // clear overs when switching to Test
+        setEnableSuperOver(false); // no super over in Test
+      }
+    }}
+  />
+  Test Match (No Over Limit)
+</label>
 
               {/* Test Match Options */}
               {isTestMatch && (
@@ -537,13 +533,13 @@ function MatchSetupPage() {
 
         {(() => {
           const ready =
-            teamA.trim() &&
-            teamB.trim() &&
-            teamAPlayers &&
-            teamBPlayers &&
-            overs &&
-            tossWinner &&
-            batChoice;
+          teamA.trim() &&
+          teamB.trim() &&
+          teamAPlayers &&
+          teamBPlayers &&
+          (isTestMatch ? matchDays : overs) &&
+          tossWinner &&
+          batChoice;
 
           return (
             <button
