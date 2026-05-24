@@ -284,6 +284,7 @@ function PlayerDetailPage() {
               <StatRow label="Losses" value={player.captainLosses || 0} />
               <StatRow label="Ties" value={player.captainTies || 0} />
               <StatRow label="No Result" value={player.captainNR || 0} />
+              <StatRow label="Draws" value={player.captainDraws || 0} />
             </>
           )}
         </div>

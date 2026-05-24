@@ -155,9 +155,10 @@ function usePlayerDatabase() {
         fours: 0, sixes: 0, innings: 0, bowlingInnings: 0,
         dotBalls: 0, dotBallsBowled: 0, ducks: 0, ones: 0, twos: 0, threes: 0,
         thirties: 0, fifties: 0, hundreds: 0, wides: 0, noBalls: 0, maidens: 0,
-        threeWickets: 0, fiveWickets: 0, tenWickets: 0, highestScore: cachedHS, // ← seed from cache
+        threeWickets: 0, fiveWickets: 0, tenWickets: 0, highestScore: cachedHS,
         dismissals: 0, notOuts: 0, matches: 0,
-        captainMatches: 0, captainWins: 0, captainLosses: 0, captainTies: 0, captainNR: 0,
+        captainMatches: 0, captainWins: 0, captainLosses: 0, captainTies: 0,
+        captainNR: 0, captainDraws: 0,
         catches: 0, runouts: 0, stumpings: 0,
       };
     }
@@ -172,6 +173,7 @@ function usePlayerDatabase() {
       "dismissals", "notOuts", "wides", "noBalls", "maidens",
       "threeWickets", "fiveWickets", "tenWickets", "matches",
       "captainMatches", "captainWins", "captainLosses", "captainTies", "captainNR",
+      "captainDraws",
       "bowlingInnings",
     ];
     for (const field of addFields) {
