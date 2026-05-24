@@ -56,8 +56,9 @@ export default function useMatchEngine(matchData, swapStrike) {
   const isSuperOverRef = useRef(false);
   isSuperOverRef.current = isSuperOver;
 
-  const totalOvers = isSuperOver ? 1 : Number(matchData.overs) || 10;
-  const totalBalls = totalOvers * 6;
+  const isTestMatch = matchData.isTestMatch || false;
+const totalOvers = isSuperOver ? 1 : (isTestMatch ? Infinity : Number(matchData.overs) || 10);
+const totalBalls = isSuperOver ? 6 : (isTestMatch ? Infinity : totalOvers * 6);
 
   const maxWickets = useMemo(() => {
     if (isSuperOver) return 2;
@@ -239,7 +240,7 @@ export default function useMatchEngine(matchData, swapStrike) {
       return "MATCH_OVER";
     }
 
-    if (ballsBowled >= totalBalls) {
+    if (!isTestMatch && ballsBowled >= totalBalls) {
       if (innings === 2) {
         if (newScore === target - 1) {
           return handleTieOrEnd(newScore, nextWickets, nextOvers, nextBalls);
@@ -297,7 +298,7 @@ export default function useMatchEngine(matchData, swapStrike) {
       return;
     }
 
-    if (ballsBowled >= totalBalls && innings === 1) {
+    if (!isTestMatch && ballsBowled >= totalBalls && innings === 1) {
       setInnings1Score({ score, wickets, overs, balls });
       endInnings(score);
       return;
