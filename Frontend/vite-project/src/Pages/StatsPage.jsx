@@ -162,6 +162,7 @@ function StatsPage() {
           losses: safeNum(t.losses),
           ties: safeNum(t.ties),
           nr: safeNum(t.nr),
+          draws: safeNum(t.draws), // ← add this
         }))
         .sort((a, b) => b.matches - a.matches);
       setTeams(teamList);
@@ -463,6 +464,7 @@ function StatsPage() {
                   <th className={styles.th}>W</th>
                   <th className={styles.th}>L</th>
                   <th className={styles.th}>T</th>
+                  <th className={styles.th}>D</th>
                   <th className={styles.th}>NR</th>
                   <th className={styles.th}>Win%</th>
                 </tr>
@@ -486,6 +488,7 @@ function StatsPage() {
                     </td>
                     <td className={styles.tdNum}>{safeNum(p.captainLosses)}</td>
                     <td className={styles.tdNum}>{safeNum(p.captainTies)}</td>
+                    <td className={styles.tdNum}>{safeNum(p.captainDraws)}</td>
                     <td className={styles.tdNum}>{safeNum(p.captainNR)}</td>
                     <td className={styles.tdNum}>
                       <span className={styles.highlight}>
@@ -516,6 +519,7 @@ function StatsPage() {
                   <th className={styles.th}>W</th>
                   <th className={styles.th}>L</th>
                   <th className={styles.th}>T</th>
+                  <th className={styles.th}>D</th>
                   <th className={styles.th}>NR</th>
                   <th className={styles.th}>Win%</th>
                   <th className={styles.th}></th>
@@ -531,6 +535,7 @@ function StatsPage() {
                     </td>
                     <td className={styles.tdNum}>{team.losses}</td>
                     <td className={styles.tdNum}>{team.ties}</td>
+                    <td className={styles.tdNum}>{team.draws}</td>
                     <td className={styles.tdNum}>{team.nr}</td>
                     <td className={styles.tdNum}>
                       <span className={styles.highlight}>

@@ -331,15 +331,14 @@ function ScoringPage() {
       const captainB = matchData.teamBCaptain;
       const teamAName = matchData.teamA || "Team 1";
       const teamBName = matchData.teamB || "Team 2";
-      const isNR = ["NO RESULT", "DRAW"].includes(engine.winner);
-
+      const isNR = engine.winner === "NO RESULT";
+      const isDraw = engine.winner === "DRAW";
       if (captainA?.jersey) {
         await playerDBHook.createOrGetPlayer(captainA.jersey, captainA.name);
       }
       if (captainB?.jersey) {
         await playerDBHook.createOrGetPlayer(captainB.jersey, captainB.name);
       }
-
       if (isNR) {
         if (captainA?.jersey)
           playerDBHook.updatePlayerStats(captainA.jersey, {
@@ -350,6 +349,17 @@ function ScoringPage() {
           playerDBHook.updatePlayerStats(captainB.jersey, {
             captainMatches: 1,
             captainNR: 1,
+          });
+      } else if (isDraw) {
+        if (captainA?.jersey)
+          playerDBHook.updatePlayerStats(captainA.jersey, {
+            captainMatches: 1,
+            captainDraws: 1,
+          });
+        if (captainB?.jersey)
+          playerDBHook.updatePlayerStats(captainB.jersey, {
+            captainMatches: 1,
+            captainDraws: 1,
           });
       } else {
         const teamAWon = engine.winner === teamAName;
@@ -376,51 +386,6 @@ function ScoringPage() {
           });
         }
       }
-
-      if (isNR) {
-        await Promise.all([
-          playerDBHook.updateTeamStats(
-            teamAName,
-            { matches: 1, nr: 1 },
-            currentMatchId
-          ),
-          playerDBHook.updateTeamStats(
-            teamBName,
-            { matches: 1, nr: 1 },
-            currentMatchId
-          ),
-        ]);
-      } else {
-        const teamAWon = engine.winner === teamAName;
-        const teamBWon = engine.winner === teamBName;
-        await Promise.all([
-          playerDBHook.updateTeamStats(
-            teamAName,
-            {
-              matches: 1,
-              ...(teamAWon
-                ? { wins: 1 }
-                : teamBWon
-                ? { losses: 1 }
-                : { ties: 1 }),
-            },
-            currentMatchId
-          ),
-          playerDBHook.updateTeamStats(
-            teamBName,
-            {
-              matches: 1,
-              ...(teamBWon
-                ? { wins: 1 }
-                : teamAWon
-                ? { losses: 1 }
-                : { ties: 1 }),
-            },
-            currentMatchId
-          ),
-        ]);
-      }
-
       const allParticipantIds = new Set();
       [...playersHook.players, ...playersHook.allPlayers].forEach((p) => {
         if (p?.playerId) allParticipantIds.add(String(p.playerId));
