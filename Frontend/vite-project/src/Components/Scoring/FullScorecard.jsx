@@ -8,6 +8,9 @@ function FullScorecard({
   firstBattingTeam,
   secondBattingTeam,
   onClose,
+  // ← Phase 3 additions (undefined / false in limited-overs — no effect)
+  isTestMatch,
+  followOnEnforced,
 }) {
   const [activePhase, setActivePhase] = useState("main");
 
@@ -28,11 +31,33 @@ function FullScorecard({
     return `Extras: ${extras.total} (${parts.join(", ")})`;
   };
 
+  // ─── Which team bats each Test innings? ───────────────────────────────────────
+  // Normal:     inn1=A  inn2=B  inn3=A  inn4=B
+  // Follow-on:  inn1=A  inn2=B  inn3=B  inn4=A  (B bats again immediately)
+  const testInningsTeam = (n) => {
+    if (followOnEnforced) {
+      if (n === 1) return firstBattingTeam;
+      if (n === 2) return secondBattingTeam;
+      if (n === 3) return secondBattingTeam; // follow-on: same team bats again
+      if (n === 4) return firstBattingTeam;
+    } else {
+      if (n === 1) return firstBattingTeam;
+      if (n === 2) return secondBattingTeam;
+      if (n === 3) return firstBattingTeam;
+      if (n === 4) return secondBattingTeam;
+    }
+    return "";
+  };
+
+  // ─── Single innings card — identical to original for limited-overs ────────────
   const renderInningsCard = (
     inningsData,
     inningsNumber,
     phaseLabel,
-    teamName
+    teamName,
+    // Phase 3 optional extras — unused in limited-overs path
+    isFollowOn,
+    chaseTarget
   ) => {
     if (!inningsData) {
       return (
@@ -61,6 +86,23 @@ function FullScorecard({
                 ({teamName})
               </span>
             )}
+            {isFollowOn && (
+              <span
+                style={{
+                  marginLeft: "8px",
+                  background: "#7f1d1d",
+                  color: "#fca5a5",
+                  fontSize: "11px",
+                  fontWeight: "700",
+                  padding: "2px 7px",
+                  borderRadius: "4px",
+                  letterSpacing: "0.5px",
+                  verticalAlign: "middle",
+                }}
+              >
+                FOLLOW-ON
+              </span>
+            )}
           </h3>
 
           <div className={styles.scoreDisplay}>
@@ -71,12 +113,16 @@ function FullScorecard({
               /{inningsData.wickets ?? "—"}
             </span>
             <span className={styles.overs}>
-              ({formatOvers(
-                inningsData.overs,
-                inningsData.balls
-              )})
+              ({formatOvers(inningsData.overs, inningsData.balls)})
             </span>
           </div>
+
+          {/* Target banner — only shown for Test innings 4 chase */}
+          {chaseTarget != null && (
+            <div style={{ marginTop: "4px", fontSize: "13px", color: "#86efac", fontWeight: "600" }}>
+              Target: {chaseTarget} runs
+            </div>
+          )}
 
           {inningsData.extras &&
             inningsData.extras.total > 0 && (
@@ -245,37 +291,45 @@ function FullScorecard({
     );
   };
 
+  // ─── Main match content ───────────────────────────────────────────────────────
   const renderPhaseContent = () => {
     if (activePhase === "main") {
-      const inn1 =
-        mainMatchData?.innings1Data || null;
+      const inn1 = mainMatchData?.innings1Data || null;
+      const inn2 = mainMatchData?.innings2Data || null;
 
-      const inn2 =
-        mainMatchData?.innings2Data || null;
+      // ── LIMITED OVERS: exactly the original two-innings render ────────────────
+      if (!isTestMatch) {
+        return (
+          <div className={styles.phaseContent}>
+            {renderInningsCard(inn1, 1, "Main Match", firstBattingTeam)}
+            {renderInningsCard(inn2, 2, "Main Match", secondBattingTeam)}
+          </div>
+        );
+      }
+
+      // ── TEST MATCH: render all 4 innings ──────────────────────────────────────
+      const inn3 = mainMatchData?.innings3Data || null;
+      const inn4 = mainMatchData?.innings4Data || null;
+      const inn4Target = mainMatchData?.testTarget ?? null;
 
       return (
-        <div
-          className={
-            styles.phaseContent
-          }
-        >
+        <div className={styles.phaseContent}>
+          {renderInningsCard(inn1, 1, "1st Innings", testInningsTeam(1))}
+          {renderInningsCard(inn2, 2, "2nd Innings", testInningsTeam(2))}
           {renderInningsCard(
-            inn1,
-            1,
-            "Main Match",
-            firstBattingTeam
+            inn3, 3, "3rd Innings", testInningsTeam(3),
+            !!followOnEnforced   // isFollowOn badge
           )}
-
           {renderInningsCard(
-            inn2,
-            2,
-            "Main Match",
-            secondBattingTeam
+            inn4, 4, "4th Innings", testInningsTeam(4),
+            false,               // isFollowOn
+            inn4Target           // chaseTarget
           )}
         </div>
       );
     }
 
+    // ── Super over tab — completely unchanged ─────────────────────────────────
     const soNumber =
       parseInt(
         activePhase.replace(
