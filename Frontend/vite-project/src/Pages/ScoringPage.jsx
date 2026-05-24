@@ -1810,6 +1810,7 @@ useEffect(() => {
         realMatchInnings2DataRef={realMatchInnings2DataRef}
         inningsDataHook={inningsDataHook}
         engine={engine}
+        followOnEnforced={followOnEnforcedRef.current} 
       />
       {showExitConfirm && (
         <div
