@@ -23,11 +23,13 @@ function StatRow({ label, value, highlight, note }) {
 
 function PlayerDetailPage() {
   const { jersey } = useParams();
-  const { getPlayer, migratePlayer, getAllPlayers, createOrGetPlayer } = usePlayerDatabase(); // ✅ add getAllPlayers
+  const { getPlayer, migratePlayer, getAllPlayers, createOrGetPlayer } =
+    usePlayerDatabase(); // ✅ add getAllPlayers
   const [activeTab, setActiveTab] = useState(0);
   const [editingJersey, setEditingJersey] = useState(false);
   const [newJersey, setNewJersey] = useState("");
   const [jerseyError, setJerseyError] = useState("");
+  const [format, setFormat] = useState("all");
 
   useEffect(() => {
     migratePlayer(jersey);
@@ -37,7 +39,10 @@ function PlayerDetailPage() {
 
   const handleJerseyEdit = async () => {
     const trimmed = newJersey.trim();
-    if (!trimmed) { setJerseyError("Jersey number required"); return; }
+    if (!trimmed) {
+      setJerseyError("Jersey number required");
+      return;
+    }
 
     const all = getAllPlayers();
     const conflict = all.find(
@@ -64,16 +69,23 @@ function PlayerDetailPage() {
   if (!player) {
     return <div className={styles.empty}>No Player Found</div>;
   }
+  const s = (field) => {
+    if (format === "all") return player[field] || 0;
+    return player[format]?.[field] || 0;
+  };
 
-  const totalRuns = player.runs || 0;
-  const balls = player.balls || 0;
-  const innings = player.innings || 0;
+  const totalRuns = s("runs");
+  const balls = s("balls");
+  const innings = s("innings");
+  const dismissals = s("dismissals");
   const strikeRate =
     balls > 0 ? ((totalRuns / balls) * 100).toFixed(2) : "0.00";
-  const dismissals = player.dismissals || 0;
 
   const derivedNotOuts = Math.max(0, innings - dismissals);
-  const notOuts = Math.max(player.notOuts || 0, derivedNotOuts);
+  const notOuts =
+    format === "all"
+      ? Math.max(player.notOuts || 0, derivedNotOuts)
+      : s("notOuts");
 
   const avg =
     dismissals > 0
@@ -82,97 +94,136 @@ function PlayerDetailPage() {
       ? "N/O"
       : "0.00";
 
-  const highestScore = player.highestScore || 0;
-  const highestScoreDisplay =
-    highestScore > 0 ? highestScore : totalRuns > 0 ? "—" : 0;
-  const highestScoreIsStale = highestScore === 0 && totalRuns > 0;
+      const highestScore =
+      format === "all"
+        ? player.highestScore || 0
+        : player[format]?.highestScore || 0;
+    
+    const highestScoreDisplay =
+      highestScore > 0 ? highestScore : totalRuns > 0 ? "—" : 0;
+    const highestScoreIsStale = highestScore === 0 && totalRuns > 0;
 
-  const overs = player.ballsBowled
-    ? `${Math.floor(player.ballsBowled / 6)}.${player.ballsBowled % 6}`
+  const ballsBowled = s("ballsBowled");
+  const runsGiven = s("runsGiven");
+  const wickets = s("wickets");
+
+  const overs = ballsBowled
+    ? `${Math.floor(ballsBowled / 6)}.${ballsBowled % 6}`
     : "0.0";
 
   const economy =
-    player.ballsBowled > 0
-      ? (player.runsGiven / (player.ballsBowled / 6)).toFixed(2)
-      : "0.00";
+    ballsBowled > 0 ? (runsGiven / (ballsBowled / 6)).toFixed(2) : "0.00";
 
-  const bowlingAvg =
-    player.wickets > 0
-      ? ((player.runsGiven || 0) / player.wickets).toFixed(2)
-      : "—";
+  const bowlingAvg = wickets > 0 ? (runsGiven / wickets).toFixed(2) : "—";
 
   return (
     <div className={styles.container}>
       {/* ─── NAME CARD ─────────────────────────────────────── */}
-<div className={styles.card}>
-  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-    <h1 className={styles.title}>
-      <span className={styles.jersey}>#{player.jersey}</span>
-      {player.name}
-    </h1>
-    {/* ✅ Small icon button, no text, sits inside the card */}
-    {!editingJersey && (
-      <button
-        onClick={() => { setNewJersey(player.jersey || ""); setEditingJersey(true); }}
-        title="Edit Jersey Number"
-        style={{
-          background: "transparent",
-          border: "none",
-          color: "#4b5563",
-          fontSize: "14px",
-          cursor: "pointer",
-          padding: "4px",
-          lineHeight: 1,
-          flexShrink: 0,
-        }}
-      >
-        <b>Edit J No.</b>
-      </button>
-    )}
-  </div>
+      <div className={styles.card}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <h1 className={styles.title}>
+            <span className={styles.jersey}>#{player.jersey}</span>
+            {player.name}
+          </h1>
+          {/* ✅ Small icon button, no text, sits inside the card */}
+          {!editingJersey && (
+            <button
+              onClick={() => {
+                setNewJersey(player.jersey || "");
+                setEditingJersey(true);
+              }}
+              title="Edit Jersey Number"
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#4b5563",
+                fontSize: "14px",
+                cursor: "pointer",
+                padding: "4px",
+                lineHeight: 1,
+                flexShrink: 0,
+              }}
+            >
+              <b>Edit J No.</b>
+            </button>
+          )}
+        </div>
 
-  {/* Edit form appears inside the card, below the name */}
-  {editingJersey && (
-    <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "10px", flexWrap: "wrap" }}>
-      <span style={{ color: "#9ca3af", fontSize: "13px" }}>#</span>
-      <input
-        value={newJersey}
-        onChange={(e) => { setNewJersey(e.target.value); setJerseyError(""); }}
-        placeholder="New jersey #"
-        style={{
-          background: "#111",
-          border: "1px solid #22c55e",
-          color: "#fff",
-          borderRadius: "6px",
-          padding: "4px 8px",
-          width: "80px",
-          fontSize: "13px",
-        }}
-      />
-      <button
-        onClick={handleJerseyEdit}
-        style={{
-          background: "#22c55e", color: "#000", border: "none",
-          borderRadius: "6px", padding: "4px 12px",
-          fontWeight: 600, fontSize: "13px", cursor: "pointer",
-        }}
-      >
-        Save
-      </button>
-      <button
-        onClick={() => { setEditingJersey(false); setJerseyError(""); }}
-        style={{
-          background: "#374151", color: "#e5e7eb", border: "none",
-          borderRadius: "6px", padding: "4px 12px",
-          fontSize: "13px", cursor: "pointer",
-        }}
-      >
-        Cancel
-      </button>
-      {jerseyError && <span style={{ color: "#ef4444", fontSize: "12px" }}>{jerseyError}</span>}
-    </div>
-  )}
-</div>    
+        {/* Edit form appears inside the card, below the name */}
+        {editingJersey && (
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              alignItems: "center",
+              marginTop: "10px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ color: "#9ca3af", fontSize: "13px" }}>#</span>
+            <input
+              value={newJersey}
+              onChange={(e) => {
+                setNewJersey(e.target.value);
+                setJerseyError("");
+              }}
+              placeholder="New jersey #"
+              style={{
+                background: "#111",
+                border: "1px solid #22c55e",
+                color: "#fff",
+                borderRadius: "6px",
+                padding: "4px 8px",
+                width: "80px",
+                fontSize: "13px",
+              }}
+            />
+            <button
+              onClick={handleJerseyEdit}
+              style={{
+                background: "#22c55e",
+                color: "#000",
+                border: "none",
+                borderRadius: "6px",
+                padding: "4px 12px",
+                fontWeight: 600,
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              Save
+            </button>
+            <button
+              onClick={() => {
+                setEditingJersey(false);
+                setJerseyError("");
+              }}
+              style={{
+                background: "#374151",
+                color: "#e5e7eb",
+                border: "none",
+                borderRadius: "6px",
+                padding: "4px 12px",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+            {jerseyError && (
+              <span style={{ color: "#ef4444", fontSize: "12px" }}>
+                {jerseyError}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
       {/* ─── TABS ──────────────────────────────────────────── */}
       <div className={styles.tabBar}>
         {TABS.map((tab, i) => (
@@ -187,13 +238,36 @@ function PlayerDetailPage() {
           </button>
         ))}
       </div>
+      {/* ─── FORMAT FILTER ─────────────────────────────────── */}
+      <div style={{ display: "flex", gap: "8px", margin: "8px 0" }}>
+        {["all", "test", "limitedOvers"].map((f) => (
+          <button
+            key={f}
+            onClick={() => setFormat(f)}
+            style={{
+              flex: 1,
+              padding: "6px",
+              borderRadius: "8px",
+              border: "1px solid",
+              borderColor: format === f ? "#22c55e" : "#374151",
+              background: format === f ? "rgba(34,197,94,0.12)" : "transparent",
+              color: format === f ? "#22c55e" : "#9ca3af",
+              fontSize: "12px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {f === "all" ? "All" : f === "test" ? "Test" : "T20/ODI"}
+          </button>
+        ))}
+      </div>
 
       {/* ─── BATTING ──────────────────────────────────────── */}
       {activeTab === 0 && (
         <div className={styles.card}>
           <h2 className={styles.sectionTitle}>🏏 Batting</h2>
-          <StatRow label="Matches" value={player.matches || 0} />
-          <StatRow label="Innings" value={innings} />
+          <StatRow label="Matches" value={s("matches")} />
+          <StatRow label="Innings" value={s("innings")} />
           <StatRow label="Not Outs" value={notOuts} />
           <StatRow
             label="Highest Score"
@@ -205,16 +279,17 @@ function PlayerDetailPage() {
           <StatRow label="Balls" value={balls} />
           <StatRow label="Strike Rate" value={strikeRate} highlight />
           <StatRow label="Average" value={avg} highlight />
-          <StatRow label="Dot Balls" value={player.dotBalls || 0} />
-          <StatRow label="Ducks" value={player.ducks || 0} />
-          <StatRow label="1s" value={player.ones || 0} />
-          <StatRow label="2s" value={player.twos || 0} />
-          <StatRow label="3s" value={player.threes || 0} />
-          <StatRow label="4s" value={player.fours || 0} />
-          <StatRow label="6s" value={player.sixes || 0} />
-          <StatRow label="30s" value={player.thirties || 0} />
-          <StatRow label="50s" value={player.fifties || 0} />
-          <StatRow label="100s" value={player.hundreds || 0} />
+          // WITH:
+          <StatRow label="Dot Balls" value={s("dotBalls")} />
+          <StatRow label="Ducks" value={s("ducks")} />
+          <StatRow label="1s" value={s("ones")} />
+          <StatRow label="2s" value={s("twos")} />
+          <StatRow label="3s" value={s("threes")} />
+          <StatRow label="4s" value={s("fours")} />
+          <StatRow label="6s" value={s("sixes")} />
+          <StatRow label="30s" value={s("thirties")} />
+          <StatRow label="50s" value={s("fifties")} />
+          <StatRow label="100s" value={s("hundreds")} />
         </div>
       )}
 
@@ -222,29 +297,19 @@ function PlayerDetailPage() {
       {activeTab === 1 && (
         <div className={styles.card}>
           <h2 className={styles.sectionTitle}>🎯 Bowling</h2>
-          <StatRow label="Bowling Innings" value={player.bowlingInnings || 0} />
-          <StatRow label="Wickets" value={player.wickets || 0} highlight />
+          // WITH:
+          <StatRow label="Bowling Innings" value={s("bowlingInnings")} />
+          <StatRow label="Wickets" value={wickets} highlight />
           <StatRow label="Economy" value={economy} highlight />
           <StatRow label="Average" value={bowlingAvg} highlight />
           <StatRow label="Overs" value={overs} highlight />
-          <StatRow
-            label="Best Bowling"
-            value={
-              (player.bestBowlingWickets || 0) === 0
-                ? "—"
-                : `${player.bestBowlingWickets}/${player.bestBowlingRuns}`
-            }
-          />
-          <StatRow
-            label="Dot Balls Bowled"
-            value={player.dotBallsBowled || 0}
-          />
-          <StatRow label="Wides" value={player.wides || 0} />
-          <StatRow label="No Balls" value={player.noBalls || 0} />
-          <StatRow label="Maiden Overs" value={player.maidens || 0} />
-          <StatRow label="3-Wicket Hauls" value={player.threeWickets || 0} />
-          <StatRow label="5-Wicket Hauls" value={player.fiveWickets || 0} />
-          <StatRow label="10-Wicket Hauls" value={player.tenWickets || 0} />
+          <StatRow label="Dot Balls Bowled" value={s("dotBallsBowled")} />
+          <StatRow label="Wides" value={s("wides")} />
+          <StatRow label="No Balls" value={s("noBalls")} />
+          <StatRow label="Maiden Overs" value={s("maidens")} />
+          <StatRow label="3-Wicket Hauls" value={s("threeWickets")} />
+          <StatRow label="5-Wicket Hauls" value={s("fiveWickets")} />
+          <StatRow label="10-Wicket Hauls" value={s("tenWickets")} />
         </div>
       )}
 
