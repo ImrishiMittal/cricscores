@@ -661,6 +661,22 @@ function ScoringPage() {
     matchData.battingFirst === matchData.teamA
       ? matchData.teamB
       : matchData.teamA;
+  const totalOversBowled = (() => {
+    const inn1 =
+      (engine.innings1Score?.overs || 0) +
+      (engine.innings1Score?.balls || 0) / 6;
+    const inn2 =
+      (engine.innings2Score?.overs || 0) +
+      (engine.innings2Score?.balls || 0) / 6;
+    const inn3 =
+      (engine.innings3Score?.overs || 0) +
+      (engine.innings3Score?.balls || 0) / 6;
+    const current = engine.overs + engine.balls / 6;
+    if (engine.innings === 1) return current;
+    if (engine.innings === 2) return inn1 + current;
+    if (engine.innings === 3) return inn1 + inn2 + current;
+    return inn1 + inn2 + inn3 + current;
+  })();
   const currentBattingTeam = engine.isSuperOver
     ? engine.innings === 1
       ? secondBattingTeam
@@ -1254,7 +1270,98 @@ function ScoringPage() {
             toss={`${matchData.tossWinner} elected to ${
               matchData.battingFirst === matchData.tossWinner ? "bat" : "bowl"
             }`}
+            isTestMatch={updatedMatchData.isTestMatch}
+            testDays={Number(updatedMatchData.matchDays) || 5}
+            oversPerDay={Number(updatedMatchData.oversPerDay) || 90}
+            totalOversBowled={totalOversBowled}
           />
+          {updatedMatchData.isTestMatch &&
+            engine.innings >= 2 &&
+            !engine.isSuperOver &&
+            (() => {
+              // ── Innings 4: show "needs X to win" instead of trail/lead ──
+              if (engine.innings === 4) {
+                const runsNeeded = (engine.testTarget ?? 0) - engine.score;
+                if (runsNeeded <= 0) return null; // match over, don't show
+                return (
+                  <div
+                    style={{
+                      background: "rgba(59,130,246,0.12)",
+                      border: "1px solid #3b82f6",
+                      borderRadius: "8px",
+                      padding: "6px 14px",
+                      textAlign: "center",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#60a5fa",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    {`${currentBattingTeam} need${
+                      runsNeeded === 1 ? "s" : ""
+                    } ${runsNeeded} run${runsNeeded === 1 ? "" : "s"} to win`}
+                  </div>
+                );
+              }
+
+              // ── Innings 2 & 3: trail/lead banner ──
+              let trailLeadRuns = 0;
+              let isTrailing = false;
+
+              if (engine.innings === 2) {
+                const lead = (engine.innings1Score?.score ?? 0) - engine.score;
+                trailLeadRuns = Math.abs(lead);
+                isTrailing = lead > 0;
+              } else if (engine.innings === 3) {
+                const teamACumulative =
+                  (engine.innings1Score?.score ?? 0) + engine.score;
+                const teamBTotal = engine.innings2Score?.score ?? 0;
+                const lead = teamACumulative - teamBTotal;
+                trailLeadRuns = Math.abs(lead);
+                isTrailing = lead < 0;
+              }
+
+              if (trailLeadRuns === 0)
+                return (
+                  <div
+                    style={{
+                      background: "rgba(234,179,8,0.12)",
+                      border: "1px solid #eab308",
+                      borderRadius: "8px",
+                      padding: "6px 14px",
+                      textAlign: "center",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#eab308",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Scores level
+                  </div>
+                );
+
+              return (
+                <div
+                  style={{
+                    background: isTrailing
+                      ? "rgba(239,68,68,0.12)"
+                      : "rgba(34,197,94,0.12)",
+                    border: `1px solid ${isTrailing ? "#ef4444" : "#22c55e"}`,
+                    borderRadius: "8px",
+                    padding: "6px 14px",
+                    textAlign: "center",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: isTrailing ? "#ef4444" : "#22c55e",
+                    marginBottom: "6px",
+                  }}
+                >
+                  {isTrailing
+                    ? `${currentBattingTeam} trail by ${trailLeadRuns} runs`
+                    : `${currentBattingTeam} lead by ${trailLeadRuns} runs`}
+                </div>
+              );
+            })()}
           <InfoStrip
             overs={engine.overs}
             balls={engine.balls}
@@ -1685,13 +1792,21 @@ function ScoringPage() {
         innings2Data={summaryInnings2Data}
         innings1Score={engine.realMatchInnings1Score ?? engine.innings1Score}
         innings2Score={engine.realMatchInnings2Score ?? engine.innings2Score}
+        innings3Score={engine.innings3Score || null}
+        innings3Data={inningsDataHook.innings3Data || null}
         innings1HistoryRef={inningsDataHook.innings1HistoryRef}
         innings1History={
           engine.innings === 1
             ? engine.completeHistory
             : engine.innings1History || engine.innings1HistoryRef?.current || []
         }
-        innings2History={engine.innings === 2 ? engine.completeHistory : []}
+        innings2History={
+          engine.innings === 2
+            ? engine.completeHistory
+            : engine.innings2History || engine.innings2HistoryRef?.current || []
+        }
+        innings3History={engine.innings3History || []}
+        innings4History={[]}
         matchData={matchData}
         updatedMatchData={updatedMatchData}
         firstBattingTeam={firstBattingTeam}

@@ -141,14 +141,13 @@ function usePlayerDatabase() {
   const migratePlayer = useCallback(() => {}, []);
 
   // ── updatePlayerStats (buffers per-ball stats in memory) ──────────────────
-  const updatePlayerStats = useCallback((jersey, stats) => {
+  const updatePlayerStats = useCallback((jersey, stats, isTestMatch = false) => {
     const key = String(jersey);
     const currentMatchId = localStorage.getItem("current_match_id");
-
+    const formatKey = isTestMatch ? "test" : "limitedOvers";
+  
     if (!pendingStatsRef.current[key]) {
-      // Seed highestScore from cache so we don't overwrite with a lower value
       const cachedHS = _cache[key]?.highestScore || 0;
-      
       pendingStatsRef.current[key] = {
         jersey: key, name: stats.name, matchId: currentMatchId,
         runs: 0, balls: 0, wickets: 0, runsGiven: 0, ballsBowled: 0,
@@ -160,12 +159,25 @@ function usePlayerDatabase() {
         captainMatches: 0, captainWins: 0, captainLosses: 0, captainTies: 0,
         captainNR: 0, captainDraws: 0,
         catches: 0, runouts: 0, stumpings: 0,
+        // ← format buckets
+        test: { runs: 0, balls: 0, wickets: 0, runsGiven: 0, ballsBowled: 0,
+                fours: 0, sixes: 0, innings: 0, bowlingInnings: 0, matches: 0,
+                dotBalls: 0, dotBallsBowled: 0, ducks: 0, ones: 0, twos: 0,
+                threes: 0, thirties: 0, fifties: 0, hundreds: 0,
+                wides: 0, noBalls: 0, maidens: 0, dismissals: 0, notOuts: 0,
+                highestScore: 0, threeWickets: 0, fiveWickets: 0, tenWickets: 0 },
+        limitedOvers: { runs: 0, balls: 0, wickets: 0, runsGiven: 0, ballsBowled: 0,
+                fours: 0, sixes: 0, innings: 0, bowlingInnings: 0, matches: 0,
+                dotBalls: 0, dotBallsBowled: 0, ducks: 0, ones: 0, twos: 0,
+                threes: 0, thirties: 0, fifties: 0, hundreds: 0,
+                wides: 0, noBalls: 0, maidens: 0, dismissals: 0, notOuts: 0,
+                highestScore: 0, threeWickets: 0, fiveWickets: 0, tenWickets: 0 },
       };
     }
-
+  
     const buf = pendingStatsRef.current[key];
     if (stats.name) buf.name = stats.name;
-
+  
     const addFields = [
       "runs", "balls", "wickets", "runsGiven", "ballsBowled",
       "fours", "sixes", "innings", "dotBalls", "dotBallsBowled",
@@ -173,16 +185,37 @@ function usePlayerDatabase() {
       "dismissals", "notOuts", "wides", "noBalls", "maidens",
       "threeWickets", "fiveWickets", "tenWickets", "matches",
       "captainMatches", "captainWins", "captainLosses", "captainTies", "captainNR",
-      "captainDraws",
-      "bowlingInnings",
+      "captainDraws", "bowlingInnings",
     ];
+  
+    // Update overall (existing behaviour — unchanged)
     for (const field of addFields) {
       if (stats[field] !== undefined) buf[field] += stats[field];
     }
     if (stats.highestScore !== undefined && stats.highestScore > buf.highestScore) {
       buf.highestScore = stats.highestScore;
     }
-
+  
+    // Update format bucket
+    if (!buf[formatKey]) buf[formatKey] = {};
+    const formatBuf = buf[formatKey];
+    const formatAddFields = [
+      "runs", "balls", "wickets", "runsGiven", "ballsBowled",
+      "fours", "sixes", "innings", "bowlingInnings", "matches",
+      "dotBalls", "dotBallsBowled", "ducks", "ones", "twos", "threes",
+      "thirties", "fifties", "hundreds", "wides", "noBalls", "maidens",
+      "dismissals", "notOuts", "threeWickets", "fiveWickets", "tenWickets",
+    ];
+    for (const field of formatAddFields) {
+      if (stats[field] !== undefined) {
+        formatBuf[field] = (formatBuf[field] || 0) + stats[field];
+      }
+    }
+    if (stats.highestScore !== undefined && stats.highestScore > (formatBuf.highestScore || 0)) {
+      formatBuf.highestScore = stats.highestScore;
+    }
+  
+    // Update cache
     if (_cache[key]) {
       for (const field of addFields) {
         if (stats[field] !== undefined) {
