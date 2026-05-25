@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import usePlayerDatabase from "../hooks/usePlayerDatabase";
 import styles from "./PlayerDetailPage.module.css";
 import * as playerApi from "../api/playerApi";
+
 const TABS = ["Batting", "Bowling", "Fielding", "Captaincy"];
+const FORMATS = [
+  { key: "all", label: "All" },
+  { key: "test", label: "Test" },
+  { key: "limitedOvers", label: "T20/ODI" },
+];
 
 function StatRow({ label, value, highlight, note }) {
   return (
@@ -24,7 +30,7 @@ function StatRow({ label, value, highlight, note }) {
 function PlayerDetailPage() {
   const { jersey } = useParams();
   const { getPlayer, migratePlayer, getAllPlayers, createOrGetPlayer } =
-    usePlayerDatabase(); // ✅ add getAllPlayers
+    usePlayerDatabase();
   const [activeTab, setActiveTab] = useState(0);
   const [editingJersey, setEditingJersey] = useState(false);
   const [newJersey, setNewJersey] = useState("");
@@ -43,7 +49,6 @@ function PlayerDetailPage() {
       setJerseyError("Jersey number required");
       return;
     }
-
     const all = getAllPlayers();
     const conflict = all.find(
       (p) => String(p.jersey) === trimmed && String(p.jersey) !== String(jersey)
@@ -52,11 +57,8 @@ function PlayerDetailPage() {
       setJerseyError(`#${trimmed} is already taken by ${conflict.name}`);
       return;
     }
-
     try {
-      // Use the playerApi directly — import it at top of file
       await playerApi.updatePlayer(player._id, { jersey: trimmed });
-      // Re-cache with new jersey
       await createOrGetPlayer(trimmed, player.name);
       setEditingJersey(false);
       setJerseyError("");
@@ -69,51 +71,47 @@ function PlayerDetailPage() {
   if (!player) {
     return <div className={styles.empty}>No Player Found</div>;
   }
+
   const s = (field) => {
     if (format === "all") return player[field] || 0;
     return player[format]?.[field] || 0;
   };
 
+  // ── Batting derived stats ──────────────────────────────────────────────────
   const totalRuns = s("runs");
   const balls = s("balls");
   const innings = s("innings");
   const dismissals = s("dismissals");
   const strikeRate =
     balls > 0 ? ((totalRuns / balls) * 100).toFixed(2) : "0.00";
-
   const derivedNotOuts = Math.max(0, innings - dismissals);
   const notOuts =
     format === "all"
       ? Math.max(player.notOuts || 0, derivedNotOuts)
       : s("notOuts");
-
   const avg =
     dismissals > 0
       ? (totalRuns / dismissals).toFixed(2)
       : totalRuns > 0
       ? "N/O"
       : "0.00";
+  const highestScore =
+    format === "all"
+      ? player.highestScore || 0
+      : player[format]?.highestScore || 0;
+  const highestScoreDisplay =
+    highestScore > 0 ? highestScore : totalRuns > 0 ? "—" : 0;
+  const highestScoreIsStale = highestScore === 0 && totalRuns > 0;
 
-      const highestScore =
-      format === "all"
-        ? player.highestScore || 0
-        : player[format]?.highestScore || 0;
-    
-    const highestScoreDisplay =
-      highestScore > 0 ? highestScore : totalRuns > 0 ? "—" : 0;
-    const highestScoreIsStale = highestScore === 0 && totalRuns > 0;
-
+  // ── Bowling derived stats ──────────────────────────────────────────────────
   const ballsBowled = s("ballsBowled");
   const runsGiven = s("runsGiven");
   const wickets = s("wickets");
-
   const overs = ballsBowled
     ? `${Math.floor(ballsBowled / 6)}.${ballsBowled % 6}`
     : "0.0";
-
   const economy =
     ballsBowled > 0 ? (runsGiven / (ballsBowled / 6)).toFixed(2) : "0.00";
-
   const bowlingAvg = wickets > 0 ? (runsGiven / wickets).toFixed(2) : "—";
 
   return (
@@ -131,7 +129,6 @@ function PlayerDetailPage() {
             <span className={styles.jersey}>#{player.jersey}</span>
             {player.name}
           </h1>
-          {/* ✅ Small icon button, no text, sits inside the card */}
           {!editingJersey && (
             <button
               onClick={() => {
@@ -155,7 +152,6 @@ function PlayerDetailPage() {
           )}
         </div>
 
-        {/* Edit form appears inside the card, below the name */}
         {editingJersey && (
           <div
             style={{
@@ -224,8 +220,34 @@ function PlayerDetailPage() {
           </div>
         )}
       </div>
-      {/* ─── TABS ──────────────────────────────────────────── */}
-      <div className={styles.tabBar}>
+
+      {/* ─── FORMAT FILTER (top) ────────────────────────────── */}
+      <div style={{ display: "flex", gap: "8px", margin: "8px 0 0" }}>
+        {FORMATS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setFormat(key)}
+            style={{
+              flex: 1,
+              padding: "6px",
+              borderRadius: "8px",
+              border: "1px solid",
+              borderColor: format === key ? "#22c55e" : "#374151",
+              background:
+                format === key ? "rgba(34,197,94,0.12)" : "transparent",
+              color: format === key ? "#22c55e" : "#9ca3af",
+              fontSize: "12px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ─── TABS (below format) ────────────────────────────── */}
+      <div className={styles.tabBar} style={{ marginTop: "8px" }}>
         {TABS.map((tab, i) => (
           <button
             key={tab}
@@ -238,36 +260,13 @@ function PlayerDetailPage() {
           </button>
         ))}
       </div>
-      {/* ─── FORMAT FILTER ─────────────────────────────────── */}
-      <div style={{ display: "flex", gap: "8px", margin: "8px 0" }}>
-        {["all", "test", "limitedOvers"].map((f) => (
-          <button
-            key={f}
-            onClick={() => setFormat(f)}
-            style={{
-              flex: 1,
-              padding: "6px",
-              borderRadius: "8px",
-              border: "1px solid",
-              borderColor: format === f ? "#22c55e" : "#374151",
-              background: format === f ? "rgba(34,197,94,0.12)" : "transparent",
-              color: format === f ? "#22c55e" : "#9ca3af",
-              fontSize: "12px",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            {f === "all" ? "All" : f === "test" ? "Test" : "T20/ODI"}
-          </button>
-        ))}
-      </div>
 
       {/* ─── BATTING ──────────────────────────────────────── */}
       {activeTab === 0 && (
         <div className={styles.card}>
           <h2 className={styles.sectionTitle}>🏏 Batting</h2>
           <StatRow label="Matches" value={s("matches")} />
-          <StatRow label="Innings" value={s("innings")} />
+          <StatRow label="Innings" value={innings} />
           <StatRow label="Not Outs" value={notOuts} />
           <StatRow
             label="Highest Score"
@@ -279,7 +278,6 @@ function PlayerDetailPage() {
           <StatRow label="Balls" value={balls} />
           <StatRow label="Strike Rate" value={strikeRate} highlight />
           <StatRow label="Average" value={avg} highlight />
-          // WITH:
           <StatRow label="Dot Balls" value={s("dotBalls")} />
           <StatRow label="Ducks" value={s("ducks")} />
           <StatRow label="1s" value={s("ones")} />
@@ -297,7 +295,6 @@ function PlayerDetailPage() {
       {activeTab === 1 && (
         <div className={styles.card}>
           <h2 className={styles.sectionTitle}>🎯 Bowling</h2>
-          // WITH:
           <StatRow label="Bowling Innings" value={s("bowlingInnings")} />
           <StatRow label="Wickets" value={wickets} highlight />
           <StatRow label="Economy" value={economy} highlight />
@@ -323,6 +320,7 @@ function PlayerDetailPage() {
         </div>
       )}
 
+      {/* ─── CAPTAINCY ────────────────────────────────────── */}
       {activeTab === 3 && (
         <div className={styles.card}>
           <h2 className={styles.sectionTitle}>🧢 Captaincy</h2>
@@ -334,8 +332,6 @@ function PlayerDetailPage() {
                 label="Matches as Captain"
                 value={player.captainMatches || 0}
               />
-
-              {/* ADD WIN % RIGHT HERE ↓ */}
               <StatRow
                 label="Win %"
                 value={`${(
@@ -344,7 +340,6 @@ function PlayerDetailPage() {
                 ).toFixed(1)}%`}
                 highlight
               />
-
               <StatRow label="Wins" value={player.captainWins || 0} highlight />
               <StatRow label="Losses" value={player.captainLosses || 0} />
               <StatRow label="Ties" value={player.captainTies || 0} />
