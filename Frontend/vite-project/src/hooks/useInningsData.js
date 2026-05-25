@@ -78,6 +78,7 @@ function useInningsData(
     completeHistory,
     overs,
     balls,
+    innings,
     innings1Score,
     innings1History,
     extras,
@@ -362,22 +363,25 @@ function useInningsData(
     const c = callbacksRef.current;
 
     if (inningsChangeEvent.matchEnd) {
-      console.log("🏁 Match ended - capturing 2nd innings");
-      const inn2Data = captureCurrentInningsData(
-        c.players,
-        c.allPlayers,
-        c.bowlers,
+      console.log("🏁 Match ended - capturing innings", innings);
+    
+      const finalData = captureCurrentInningsData(
+        c.players, c.allPlayers, c.bowlers,
         c.completeHistory,
-        c.score,
-        c.wickets,
-        c.overs,
-        c.balls,
-        c.extras
+        c.score, c.wickets, c.overs, c.balls, c.extras
       );
-
-      innings2DataRef.current = inn2Data;
-      setInnings2Data(inn2Data);
-
+    
+      if (c.innings === 4) {
+        innings4DataRef.current = finalData;
+        setInnings4Data(finalData);
+      } else if (c.innings === 3) {
+        innings3DataRef.current = finalData;
+        setInnings3Data(finalData);
+      } else {
+        innings2DataRef.current = finalData;
+        setInnings2Data(finalData);
+      }
+    
       setTimeout(() => {
         setMatchCompleted(true);
         c.setInningsChangeEvent(null);
@@ -535,39 +539,42 @@ function useInningsData(
     }, 50);
   }, [inningsChangeEvent]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (matchOver && !matchCompleted && winner !== "NO RESULT") {
-      const inn2Data = captureCurrentInningsData(
-        players,
-        allPlayers,
-        bowlers,
-        completeHistory,
-        score,
-        wickets,
-        overs,
-        balls,
-        extras
-      );
+  // WITH THIS:
+useEffect(() => {
+  if (matchOver && !matchCompleted && winner !== "NO RESULT") {
+    const finalData = captureCurrentInningsData(
+      players, allPlayers, bowlers, completeHistory,
+      score, wickets, overs, balls, extras
+    );
 
-      innings2DataRef.current = inn2Data;
-      setInnings2Data(inn2Data);
-
-      setTimeout(() => setMatchCompleted(true), 100);
+    if (innings === 4) {
+      innings4DataRef.current = finalData;
+      setInnings4Data(finalData);
+    } else if (innings === 3) {
+      innings3DataRef.current = finalData;
+      setInnings3Data(finalData);
+    } else {
+      innings2DataRef.current = finalData;
+      setInnings2Data(finalData);
     }
-  }, [
-    matchOver,
-    matchCompleted,
-    players,
-    allPlayers,
-    bowlers,
-    completeHistory,
-    score,
-    wickets,
-    overs,
-    balls,
-    extras,
-    winner,
-  ]);
+
+    setTimeout(() => setMatchCompleted(true), 100);
+  }
+}, [
+  matchOver,
+  matchCompleted,
+  innings,
+  players,
+  allPlayers,
+  bowlers,
+  completeHistory,
+  score,
+  wickets,
+  overs,
+  balls,
+  extras,
+  winner,
+]);
 
   return {
     innings1Data,

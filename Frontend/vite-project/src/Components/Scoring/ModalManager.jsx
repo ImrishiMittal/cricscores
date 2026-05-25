@@ -34,6 +34,8 @@ function ModalManager({
   innings2Data,
   innings1Score,
   innings2Score,
+  innings3Data,
+  innings3Score,
   innings1HistoryRef,
   matchData,
   updatedMatchData,
@@ -47,6 +49,8 @@ function ModalManager({
   balls,
   innings1History,
   innings2History,
+  innings3History,
+  innings4History,
   completeHistory,
   innings,
   onStartInnings,
@@ -266,16 +270,25 @@ function ModalManager({
               ? innings1History
               : innings1HistoryRef?.current || []
           }
-          innings2History={innings === 2 ? completeHistory : []}
+          innings2History={
+            innings === 2 ? completeHistory : innings2History || []
+          }
+          innings3History={
+            innings === 3 ? completeHistory : innings3History || []
+          }
+          innings4History={innings === 4 ? completeHistory : []}
           currentInnings={innings}
+          firstBattingTeam={firstBattingTeam}
+          secondBattingTeam={secondBattingTeam}
           onClose={() => modalStates.setShowInningsHistory(false)}
         />
       )}
 
-      {modalStates.showInningsSummary && (
+{modalStates.showInningsSummary && (
         <TabbedInningsSummary
           innings1Data={innings1Data}
           innings2Data={innings2Data}
+          innings3Data={innings3Data}
           players={players}
           allPlayers={allPlayers.filter(
             (ap) => !players.some((p) => p.playerId === ap.playerId)
@@ -287,6 +300,11 @@ function ModalManager({
           balls={balls}
           currentInnings={innings}
           liveExtras={liveExtras}
+          innings1Score={innings1Score}
+          innings2Score={innings2Score}
+          innings3Score={innings3Score}
+          firstBattingTeam={firstBattingTeam}
+          secondBattingTeam={secondBattingTeam}
           onClose={() => modalStates.setShowInningsSummary(false)}
         />
       )}

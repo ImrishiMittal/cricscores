@@ -1,56 +1,21 @@
+import { useState } from "react";
 import styles from "./scoring.module.css";
 
 function groupByOvers(history) {
   const overs = {};
-
   history.forEach((ball) => {
     const overNo = ball.over + 1;
-
     if (!overs[overNo]) overs[overNo] = [];
     overs[overNo].push(ball);
   });
-
   return overs;
-}
-
-// ✅ NEW: Combine consecutive balls if they're run + wicket on same delivery
-function combineBalls(balls) {
-  const combined = [];
-  let i = 0;
-
-  while (i < balls.length) {
-    const current = balls[i];
-    const next = balls[i + 1];
-
-    // Check if current is a RUN and next is a WICKET (run out scenario)
-    if (
-      current && 
-      next && 
-      current.event === "RUN" && 
-      next.event === "WICKET" &&
-      current.ball === next.ball // Same ball number
-    ) {
-      // Combine them: e.g., "1W" or "2W"
-      combined.push({
-        ...current,
-        event: "RUN_WICKET",
-        runs: current.runs,
-      });
-      i += 2; // Skip both
-    } else {
-      combined.push(current);
-      i += 1;
-    }
-  }
-
-  return combined;
 }
 
 function getLabel(ball) {
   if (ball.event === "RUN_WICKET") return `${ball.runs}W`;
+  if (ball.event === "RUNOUT") return ball.runs > 0 ? `${ball.runs}W` : "0W";
   if (ball.event === "RUN") return ball.runs;
   if (ball.event === "WD") return "WD";
-  // ✅ FIX: read runs from the ball entry, same as OverBalls.jsx
   if (ball.event === "NB") return ball.runs > 0 ? `${ball.runs}NB` : "NB";
   if (ball.event === "WICKET") return "W";
   if (ball.event === "HW") return "W";
@@ -61,7 +26,8 @@ function getLabel(ball) {
 }
 
 function getBallType(ball) {
-  if (ball.event === "RUN_WICKET") return "RUN_WICKET"; // ✅ New type
+  if (ball.event === "RUNOUT") return "RUN_WICKET";
+  if (ball.event === "RUN_WICKET") return "RUN_WICKET";
   if (ball.event === "RUN") return ball.runs.toString();
   if (ball.event === "WD") return "WD";
   if (ball.event === "NB") return "NB";
@@ -71,52 +37,98 @@ function getBallType(ball) {
   return "DOT";
 }
 
-export default function InningsHistory({ history, onClose }) {
-  const overs = groupByOvers(history);
+function HistoryView({ history }) {
+  const overs = groupByOvers(history || []);
+  if (Object.keys(overs).length === 0) {
+    return <p style={{ color: "#9ca3af", padding: "12px" }}>No balls recorded.</p>;
+  }
+  return Object.entries(overs).map(([overNo, balls]) => {
+    const runs = balls.reduce((t, b) => t + (b.runs || 0), 0);
+    const wickets = balls.filter(
+      (b) => b.event === "WICKET" || b.event === "RUNOUT" || b.event === "HW"
+    ).length;
+    const bowlerName = balls[0]?.bowler || "";
+    return (
+      <div key={overNo} className={styles.overBlock}>
+        <div className={styles.overHeader}>
+          <span>Over {overNo}{bowlerName ? ` — ${bowlerName}` : ""}</span>
+          <span>{runs} Runs{wickets > 0 ? ` • ${wickets} Wkt` : ""}</span>
+        </div>
+        <div className={styles.ballRow}>
+          {balls.map((ball, i) => (
+            <div
+              key={i}
+              className={styles.ballHistory}
+              data-type={getBallType(ball)}
+            >
+              {getLabel(ball)}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  });
+}
+
+export default function InningsHistory({
+  history,
+  innings1History,
+  innings2History,
+  innings3History,
+  innings4History,
+  currentInnings,
+  onClose,
+  firstBattingTeam,
+  secondBattingTeam,
+}) {
+  const tabs = [
+    { label: `INN 1 — ${firstBattingTeam || "Team A"}`, data: innings1History },
+    { label: `INN 2 — ${secondBattingTeam || "Team B"}`, data: innings2History },
+    innings3History?.length > 0
+      ? { label: `INN 3`, data: innings3History }
+      : null,
+    innings4History?.length > 0
+      ? { label: `INN 4`, data: innings4History }
+      : null,
+  ].filter(Boolean);
+
+  // Default to current innings tab
+  const defaultTab = Math.max(0, (currentInnings || 1) - 1);
+  const [activeTab, setActiveTab] = useState(Math.min(defaultTab, tabs.length - 1));
 
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.inningsModalBox}>
         <div className={styles.modalHeader}>
           <h2>Innings History</h2>
-          <button className={styles.modalHeaderCloseBtn} onClick={onClose}>
-            ✖
-          </button>
+          <button className={styles.modalHeaderCloseBtn} onClick={onClose}>✖</button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: "6px", padding: "8px 12px", borderBottom: "1px solid #1f2937", overflowX: "auto" }}>
+          {tabs.map((tab, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveTab(i)}
+              style={{
+                padding: "5px 10px",
+                borderRadius: "6px",
+                border: "none",
+                fontSize: "11px",
+                fontWeight: "600",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                background: activeTab === i ? "#22c55e" : "#1f2937",
+                color: activeTab === i ? "#000" : "#9ca3af",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <div className={styles.inningsContent}>
-          {Object.keys(overs).length === 0 && <p>No balls recorded.</p>}
-
-          {Object.entries(overs).map(([overNo, balls]) => {
-            const runs = balls.reduce((t, b) => t + (b.runs || 0), 0);
-            const wickets = balls.filter((b) => b.event === "WICKET").length;
-            
-            // ✅ Combine consecutive run + wicket balls
-            const combinedBalls = combineBalls(balls);
-
-            return (
-              <div key={overNo} className={styles.overBlock}>
-                <div className={styles.overHeader}>
-                  <span>Over {overNo}</span>
-                  <span>
-                    {runs} Runs {wickets > 0 && `• ${wickets} Wkt`}
-                  </span>
-                </div>
-
-                <div className={styles.ballRow}>
-                  {combinedBalls.map((ball, i) => (
-                    <div
-                      key={i}
-                      className={styles.ballHistory}
-                      data-type={getBallType(ball)}
-                    >
-                      {getLabel(ball)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+          <HistoryView history={tabs[activeTab]?.data || []} />
         </div>
       </div>
     </div>

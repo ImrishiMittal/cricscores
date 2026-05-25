@@ -184,7 +184,7 @@ function MatchSetupPage() {
     if (!teamAPlayers) errors.push("Team A Number of Players");
     if (!teamBPlayers) errors.push("Team B Number of Players");
     if (!isTestMatch && !overs) errors.push("Number of Overs");
-if (isTestMatch && !matchDays) errors.push("Number of Days (Test Match)");
+    if (isTestMatch && !matchDays) errors.push("Number of Days (Test Match)");
 
     // Toss must be completed AND bat/bowl choice must be made
     if (!tossWinner) errors.push("Toss (flip the coin first)");
@@ -275,14 +275,14 @@ if (isTestMatch && !matchDays) errors.push("Number of Days (Test Match)");
           onSelect={setTeamBCaptain}
         />
 
-{!isTestMatch && (
-  <input
-    className={styles.input}
-    placeholder="Number of Overs"
-    type="number"
-    onChange={(e) => setOvers(e.target.value)}
-  />
-)}
+        {!isTestMatch && (
+          <input
+            className={styles.input}
+            placeholder="Number of Overs"
+            type="number"
+            onChange={(e) => setOvers(e.target.value)}
+          />
+        )}
 
         {/* ================= ADDITIONAL SETUP ================= */}
         <div className={styles.additionalBox}>
@@ -330,68 +330,46 @@ if (isTestMatch && !matchDays) errors.push("Number of Days (Test Match)");
               </div>
 
               {/* Test Match Toggle */}
-<label className={styles.additionalOption}>
-  <input
-    type="checkbox"
-    checked={isTestMatch}
-    onChange={(e) => {
-      setIsTestMatch(e.target.checked);
-      if (e.target.checked) {
-        setOvers(""); // clear overs when switching to Test
-        setEnableSuperOver(false); // no super over in Test
-      }
-    }}
-  />
-  Test Match (No Over Limit)
-</label>
+              <label className={styles.additionalOption}>
+                <input
+                  type="checkbox"
+                  checked={isTestMatch}
+                  onChange={(e) => {
+                    setIsTestMatch(e.target.checked);
+                    if (e.target.checked) {
+                      setOvers(""); // clear overs when switching to Test
+                      setEnableSuperOver(false); // no super over in Test
+                    }
+                  }}
+                />
+                Test Match (No Over Limit)
+              </label>
 
               {/* Test Match Options */}
               {isTestMatch && (
-                <div className={styles.testOptions}>
-                  <div className={styles.testField}>
-                    <label>Number of Days</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 5"
-                      onChange={(e) => setMatchDays(e.target.value)}
-                    />
-                  </div>
+                <>
+                  <label>Days</label>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={matchDays}
+                    onChange={(e) => setMatchDays(e.target.value)}
+                    placeholder="e.g. 5"
+                  />
 
-                  <div className={styles.testField}>
-                    <label>Overs per Day</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 90"
-                      onChange={(e) => setOversPerDay(e.target.value)}
-                    />
-                  </div>
-
-                  <div className={styles.inningsRow}>
-                    <label>Innings per Team</label>
-                    <div className={styles.radioGroup}>
-                      <label>
-                        <input
-                          type="radio"
-                          name="innings"
-                          value="1"
-                          checked={inningsPerTeam === 1}
-                          onChange={() => setInningsPerTeam(1)}
-                        />
-                        1
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="innings"
-                          value="2"
-                          checked={inningsPerTeam === 2}
-                          onChange={() => setInningsPerTeam(2)}
-                        />
-                        2
-                      </label>
-                    </div>
-                  </div>
-                </div>
+                  <label>Overs per Day</label>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min="10"
+                    max="120"
+                    value={oversPerDay}
+                    onChange={(e) => setOversPerDay(e.target.value)}
+                    placeholder="e.g. 90"
+                  />
+                </>
               )}
             </div>
           )}
@@ -533,13 +511,13 @@ if (isTestMatch && !matchDays) errors.push("Number of Days (Test Match)");
 
         {(() => {
           const ready =
-          teamA.trim() &&
-          teamB.trim() &&
-          teamAPlayers &&
-          teamBPlayers &&
-          (isTestMatch ? matchDays : overs) &&
-          tossWinner &&
-          batChoice;
+            teamA.trim() &&
+            teamB.trim() &&
+            teamAPlayers &&
+            teamBPlayers &&
+            (isTestMatch ? matchDays : overs) &&
+            tossWinner &&
+            batChoice;
 
           return (
             <button

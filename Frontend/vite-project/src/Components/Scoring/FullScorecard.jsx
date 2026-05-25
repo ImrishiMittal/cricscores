@@ -248,13 +248,13 @@ function FullScorecard({
         );
       }
   
+      // ── Test match — up to 4 innings ─────────────────────────────────────
       const inn3 = mainMatchData?.innings3Data || null;
       const inn4 = mainMatchData?.innings4Data || null;
       const inn4Target = mainMatchData?.testTarget ?? null;
   
       return (
         <div className={styles.phaseContent}>
-          {/* Draw banner — Test match only */}
           {winner === "DRAW" && (
             <div style={{
               background: "#1e3a5f",
@@ -272,20 +272,13 @@ function FullScorecard({
           )}
           {renderInningsCard(inn1, 1, "1st Innings", testInningsTeam(1))}
           {renderInningsCard(inn2, 2, "2nd Innings", testInningsTeam(2))}
-          {renderInningsCard(
-            inn3, 3, "3rd Innings", testInningsTeam(3),
-            !!followOnEnforced
-          )}
-          {renderInningsCard(
-            inn4, 4, "4th Innings", testInningsTeam(4),
-            false,
-            inn4Target
-          )}
+          {inn3 && renderInningsCard(inn3, 3, "3rd Innings", testInningsTeam(3), !!followOnEnforced)}
+          {inn4 && renderInningsCard(inn4, 4, "4th Innings", testInningsTeam(4), false, inn4Target)}
         </div>
       );
     }
   
-    // ── Super over tab ────────────────────────────────────────────────────────
+    // ── Super over tab ──────────────────────────────────────────────────────
     const soNumber = parseInt(activePhase.replace("so", ""), 10);
     const soData = superOverData?.find((so) => so.number === soNumber);
   
