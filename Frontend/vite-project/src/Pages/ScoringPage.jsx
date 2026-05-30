@@ -421,7 +421,8 @@ function ScoringPage() {
 
       const innings1 = inningsDataHook.innings1DataRef.current;
       const innings2 =
-        inningsDataHook.innings2DataRef.current || captureCurrentData();
+  inningsDataHook.innings2DataRef.current ||
+  (engine.innings === 2 ? captureCurrentData() : null);
       console.log(
         "🧪 innings1 batters:",
         innings1?.battingStats?.map((b) => b.playerName + ":" + b.runs)
@@ -588,7 +589,10 @@ function ScoringPage() {
       try {
         await matchApi.saveMatch({
           matchId: currentMatchId || `match_${Date.now()}`,
-          totalOvers: updatedMatchData.overs,
+          totalOvers: updatedMatchData.isTestMatch
+            ? Number(updatedMatchData.matchDays || 5) *
+              Number(updatedMatchData.oversPerDay || 90)
+            : updatedMatchData.overs || 0,
           team1Name: firstBattingTeam,
           team2Name: secondBattingTeam,
           tossWinner: matchData.tossWinner || "",
@@ -1250,7 +1254,63 @@ function ScoringPage() {
     engine.innings === 1 ? teamABattersRef.current : teamBBattersRef.current;
   const activeBowlerJerseys =
     engine.innings === 1 ? teamBBowlersRef.current : teamABowlersRef.current;
+  // ── Auto-draw when final day's overs exhausted in ANY Test innings ──
+  // ── Auto-draw when final day's overs exhausted in ANY Test innings ──
+  useEffect(() => {
+    if (!updatedMatchData.isTestMatch) return;
+    if (engine.matchOver) return;
+    if (engine.balls !== 0) return;
+    if (engine.overs === 0) return;
 
+    const matchDays = Number(updatedMatchData.matchDays) || 5;
+    const oversPerDay = Number(updatedMatchData.oversPerDay) || 90;
+    const totalAllowedOvers = matchDays * oversPerDay;
+
+    const completedOvers = (() => {
+      const inn1 =
+        engine.innings1Score?.overs ??
+        (engine.innings === 1 ? engine.overs : 0);
+      const inn2 =
+        engine.innings2Score?.overs ??
+        (engine.innings === 2 ? engine.overs : 0);
+      const inn3 =
+        engine.innings3Score?.overs ??
+        (engine.innings === 3 ? engine.overs : 0);
+      const inn4 = engine.innings === 4 ? engine.overs : 0;
+      return inn1 + inn2 + inn3 + inn4;
+    })();
+    if (completedOvers >= totalAllowedOvers) {
+      console.log(`⏰ Day limit reached — drawing match`);
+  
+      engine.setOverCompleteEvent(null);
+      playersHook.setIsNewBowlerPending(false);
+      engine.handleDraw();
+  
+      setTimeout(() => {
+        const currentData = captureCurrentData();
+  
+        if (!inningsDataHook.innings1DataRef.current && inningsDataHook.innings1Data) {
+          inningsDataHook.innings1DataRef.current = inningsDataHook.innings1Data;
+        }
+  
+        if (engine.innings === 2) {
+          inningsDataHook.setInnings2Data(currentData);
+          inningsDataHook.innings2DataRef.current = currentData;
+        } else if (engine.innings === 3) {
+          inningsDataHook.setInnings3Data(currentData);
+          inningsDataHook.innings3DataRef.current = currentData;
+        } else if (engine.innings === 4) {
+          inningsDataHook.setInnings4Data?.(currentData);
+          if (inningsDataHook.innings4DataRef?.current !== undefined) {
+            inningsDataHook.innings4DataRef.current = currentData;
+          }
+        }
+  
+        inningsDataHook.setMatchCompleted(true);
+        modalStates.setShowSummary(true);
+      }, 150);
+    }
+  }, [engine.overs, engine.balls, engine.innings]);
   return (
     <div className={styles.container}>
       <BrandTitle size="small" />
