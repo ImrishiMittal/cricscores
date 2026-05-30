@@ -13,7 +13,9 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://cricscorers.netlify.app" // update after you get Netlify URL
+    "https://cricscorers.netlify.app",
+    "https://cricscorers.in",
+    "https://www.cricscorers.in"
   ],
   credentials: true
 }));
