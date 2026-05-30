@@ -24,7 +24,7 @@ function LandingPage() {
 
         {/* Title */}
         <h1 className={styles.title}>
-          Cric<span>Scores</span>
+          Cric<span>Scorers</span>
         </h1>
         <span className={styles.titleAccent} />
 

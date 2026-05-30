@@ -15,7 +15,7 @@ function HomePage() {
 
       {/* Title */}
       <h1 className={styles.title}>
-        Cric<span>Scores</span>
+        Cric<span>Scorers</span>
       </h1>
       <span className={styles.titleAccent} />
 
@@ -49,7 +49,7 @@ function HomePage() {
         </button>
       </div>
 
-      <p className={styles.footerHint}>CricScores · v1.0</p>
+      <p className={styles.footerHint}>CricScorers · v1.0</p>
     </div>
   );
 }

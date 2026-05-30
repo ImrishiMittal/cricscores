@@ -3,7 +3,7 @@ import styles from "./BrandTitle.module.css";
 function BrandTitle({ size = "large" }) {
   return (
     <h1 className={`${styles.title} ${styles[size]}`}>
-      Cric<span>Scores</span>
+      Cric<span>Scorers</span>
     </h1>
   );
 }
