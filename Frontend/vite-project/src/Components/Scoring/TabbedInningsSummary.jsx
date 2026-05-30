@@ -41,9 +41,15 @@ function TabbedInningsSummary({
 
   const tabs = [
     { key: "innings1", label: `INN 1 · ${t1}` },
-    ...(currentInnings >= 2 ? [{ key: "innings2", label: `INN 2 · ${t2}` }] : []),
-    ...(currentInnings >= 3 ? [{ key: "innings3", label: `INN 3 · ${t1}` }] : []),
-    ...(currentInnings >= 4 ? [{ key: "innings4", label: `INN 4 · ${t2}` }] : []),
+    ...(currentInnings >= 2
+      ? [{ key: "innings2", label: `INN 2 · ${t2}` }]
+      : []),
+    ...(currentInnings >= 3
+      ? [{ key: "innings3", label: `INN 3 · ${t1}` }]
+      : []),
+    ...(currentInnings >= 4
+      ? [{ key: "innings4", label: `INN 4 · ${t2}` }]
+      : []),
   ];
 
   const getData = (tab) => {
@@ -75,8 +81,16 @@ function TabbedInningsSummary({
       }
       if (innings1Data || innings1Score)
         return {
-          score: innings1Score?.score ?? innings1Data?.score ?? innings1Data?.totalRuns ?? 0,
-          wickets: innings1Score?.wickets ?? innings1Data?.wickets ?? innings1Data?.totalWickets ?? 0,
+          score:
+            innings1Score?.score ??
+            innings1Data?.score ??
+            innings1Data?.totalRuns ??
+            0,
+          wickets:
+            innings1Score?.wickets ??
+            innings1Data?.wickets ??
+            innings1Data?.totalWickets ??
+            0,
           overs: innings1Score?.overs ?? innings1Data?.overs ?? 0,
           balls: innings1Score?.balls ?? innings1Data?.balls ?? 0,
           extras: innings1Data?.extras ?? innings1Data?.innings1Extras ?? null,
@@ -113,8 +127,16 @@ function TabbedInningsSummary({
       }
       if (innings2Data || innings2Score)
         return {
-          score: innings2Score?.score ?? innings2Data?.score ?? innings2Data?.totalRuns ?? 0,
-          wickets: innings2Score?.wickets ?? innings2Data?.wickets ?? innings2Data?.totalWickets ?? 0,
+          score:
+            innings2Score?.score ??
+            innings2Data?.score ??
+            innings2Data?.totalRuns ??
+            0,
+          wickets:
+            innings2Score?.wickets ??
+            innings2Data?.wickets ??
+            innings2Data?.totalWickets ??
+            0,
           overs: innings2Score?.overs ?? innings2Data?.overs ?? 0,
           balls: innings2Score?.balls ?? innings2Data?.balls ?? 0,
           extras: innings2Data?.extras ?? null,
@@ -140,8 +162,14 @@ function TabbedInningsSummary({
           .filter((p) => p.balls > 0 || p.dismissal)
           .sort((a, b) => (a.battingOrder ?? 999) - (b.battingOrder ?? 999));
         return {
-          score, wickets, overs, balls,
-          extras: liveExtras, battedPlayers, bowlers, isCompleted: false,
+          score,
+          wickets,
+          overs,
+          balls,
+          extras: liveExtras,
+          battedPlayers,
+          bowlers,
+          isCompleted: false,
         };
       }
       // Completed innings 3 — use innings3Data or fall back to innings3Score
@@ -173,8 +201,14 @@ function TabbedInningsSummary({
           .filter((p) => p.balls > 0 || p.dismissal)
           .sort((a, b) => (a.battingOrder ?? 999) - (b.battingOrder ?? 999));
         return {
-          score, wickets, overs, balls,
-          extras: liveExtras, battedPlayers, bowlers, isCompleted: false,
+          score,
+          wickets,
+          overs,
+          balls,
+          extras: liveExtras,
+          battedPlayers,
+          bowlers,
+          isCompleted: false,
         };
       }
       return null;
@@ -238,7 +272,9 @@ function TabbedInningsSummary({
                 {formatOvers(data.overs, data.balls)} overs
               </div>
               {data.extras && data.extras.total > 0 && (
-                <div style={{ fontSize: "13px", color: "#aaa", marginTop: "4px" }}>
+                <div
+                  style={{ fontSize: "13px", color: "#aaa", marginTop: "4px" }}
+                >
                   Extras: {data.extras.total}
                   {" ("}
                   {data.extras.wides > 0 && `W ${data.extras.wides}`}
@@ -311,52 +347,46 @@ function TabbedInningsSummary({
             </div>
 
             {/* Bowling Summary */}
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>⚡ BOWLING</h3>
-              <div className={styles.table}>
-                <div className={styles.tableHeader}>
-                  <div className={styles.playerCol}>BOWLER</div>
-                  <div className={styles.statCol}>O</div>
-                  <div className={styles.statCol}>R</div>
-                  <div className={styles.statCol}>W</div>
-                  <div className={styles.statCol}>ECO</div>
-                </div>
-                {data.bowlers.length === 0 && (
-                  <div className={styles.noData}>No bowling data available</div>
-                )}
-                {data.bowlers.map((bowler, idx) => {
-                  // Live bowlers use ballsBowled/runsGiven; completed innings data uses overs/balls/runs
-                  const ballsBowled = bowler.ballsBowled ?? bowler.balls ?? 0;
-                  const runsGiven = bowler.runsGiven ?? bowler.runs ?? 0;
-                  const oversNum = Math.floor(ballsBowled / 6);
-                  const ballsRem = ballsBowled % 6;
-                  const oversDecimal = ballsBowled / 6;
-                  const economy =
-                    oversDecimal > 0
-                      ? (runsGiven / oversDecimal).toFixed(2)
-                      : "0.00";
+            {/* Bowling Summary */}
+<div className={styles.section}>
+  <h3 className={styles.sectionTitle}>⚡ BOWLING</h3>
+  <div className={styles.table}>
+    <div className={styles.tableHeader}>
+      <div className={styles.playerCol}>BOWLER</div>
+      <div className={styles.statCol}>O</div>
+      <div className={styles.statCol}>R</div>
+      <div className={styles.statCol}>W</div>
+      <div className={styles.statCol}>ECO</div>
+    </div>
+    {data.bowlers.length === 0 && (
+      <div className={styles.noData}>No bowling data available</div>
+    )}
+    {data.bowlers.map((bowler, idx) => {
+      const ballsBowled =
+        bowler.ballsBowled != null
+          ? bowler.ballsBowled
+          : (bowler.overs ?? 0) * 6 + (bowler.balls ?? 0);
+      const runsGiven = bowler.runsGiven ?? bowler.runs ?? 0;
+      const oversNum = Math.floor(ballsBowled / 6);
+      const ballsRem = ballsBowled % 6;
+      const oversDecimal = ballsBowled / 6;
+      const economy =
+        oversDecimal > 0
+          ? (runsGiven / oversDecimal).toFixed(2)
+          : "0.00";
 
-                  return (
-                    <div
-                      key={bowler.playerId || idx}
-                      className={styles.tableRow}
-                    >
-                      <div className={styles.playerCol}>
-                        {getBowlerName(bowler)}
-                      </div>
-                      <div className={styles.statCol}>
-                        {oversNum}.{ballsRem}
-                      </div>
-                      <div className={styles.statCol}>{runsGiven}</div>
-                      <div className={styles.statCol}>
-                        {bowler.wickets ?? 0}
-                      </div>
-                      <div className={styles.statCol}>{economy}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+      return (
+        <div key={bowler.playerId || idx} className={styles.tableRow}>
+          <div className={styles.playerCol}>{getBowlerName(bowler)}</div>
+          <div className={styles.statCol}>{oversNum}.{ballsRem}</div>
+          <div className={styles.statCol}>{runsGiven}</div>
+          <div className={styles.statCol}>{bowler.wickets ?? 0}</div>
+          <div className={styles.statCol}>{economy}</div>
+        </div>
+      );
+    })}
+  </div>
+</div>
           </>
         )}
         <button className={styles.closeBtn} onClick={onClose}>
