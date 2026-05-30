@@ -55,7 +55,7 @@ export default function usePartnerships() {
   };
 
   // ✅ Reads from refs — always fresh, no stale closure issue
-  const savePartnership = (currentScore, currentWickets, nameOverride1, nameOverride2) => {
+  const savePartnership = (currentScore, currentWickets, nameOverride1, nameOverride2, currentOvers, currentBalls) => {
     const name1 = nameOverride1
       || currentBatsmenRef.current[0]?.displayName
       || currentBatsmenRef.current[0]?.name || "";
@@ -72,6 +72,9 @@ export default function usePartnerships() {
       totalBalls: ballsRef.current,
       scoreWhenBroke: currentScore,
       wicketNumber: currentWickets,
+      oversWhenBroke: (currentOvers !== undefined && currentBalls !== undefined)
+        ? `${currentOvers}.${currentBalls}`
+        : "—",
     };
 
     setPartnershipHistory(prev => [...prev, entry]);

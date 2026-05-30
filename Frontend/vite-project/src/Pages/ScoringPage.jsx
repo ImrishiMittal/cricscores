@@ -154,7 +154,8 @@ function ScoringPage() {
     innings1BowlersSnapshotRef,
     engine.innings1HistoryRef,
     engine.innings2History,
-    engine.innings3History
+    engine.innings3History,
+    partnershipsHook.partnershipHistory,
   );
 
   const historySnapshotHook = useHistorySnapshot(
@@ -710,8 +711,8 @@ function ScoringPage() {
     if (currentInningsRef.current === 2) innings2SnapshotCountRef.current += 1;
   };
 
-  const captureCurrentData = () =>
-    inningsDataHook.captureCurrentInningsData(
+  const captureCurrentData = () => {
+    const data = inningsDataHook.captureCurrentInningsData(
       playersHook.players,
       playersHook.allPlayers,
       playersHook.bowlers,
@@ -722,6 +723,9 @@ function ScoringPage() {
       engine.balls,
       engine.extras
     );
+    if (data) data.partnershipHistory = [...partnershipsHook.partnershipHistory];
+    return data;
+  };
 
   const startPartnershipFromPlayers = (p, fallback1 = "", fallback2 = "") => {
     const s1 = p[0]
@@ -1034,7 +1038,9 @@ function ScoringPage() {
       engine.score,
       nextWickets,
       playersHook.players[0]?.displayName,
-      playersHook.players[1]?.displayName
+      playersHook.players[1]?.displayName,
+      engine.overs,
+      engine.balls   
     );
     partnershipsHook.resetPartnership();
 
@@ -1196,7 +1202,14 @@ function ScoringPage() {
     }
 
     partnershipsHook.addBallToPartnership();
-    partnershipsHook.savePartnership(engine.score, nextWickets);
+    partnershipsHook.savePartnership(
+      engine.score,
+      nextWickets,
+      undefined,
+      undefined,
+      engine.overs,  
+      engine.balls   
+    );
     partnershipsHook.resetPartnership();
     engine.handleWicket(
       false,

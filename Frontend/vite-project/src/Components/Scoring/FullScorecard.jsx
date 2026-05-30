@@ -229,6 +229,7 @@ function FullScorecard({
             })}
           </div>
         </div>
+        {renderFOWAndPartnerships(inningsData)}
       </div>
     );
   };
@@ -290,6 +291,59 @@ function FullScorecard({
         {renderInningsCard(soData.innings1Data, 1, `Super Over ${soNumber}`)}
         {renderInningsCard(soData.innings2Data, 2, `Super Over ${soNumber}`)}
       </div>
+    );
+  };
+
+  const renderFOWAndPartnerships = (inningsData) => {
+    const partnerships = inningsData?.partnershipHistory || [];
+    if (partnerships.length === 0) return null;
+  
+    return (
+      <>
+        {/* FALL OF WICKETS */}
+        <div className={styles.section} style={{ marginTop: "12px" }}>
+          <h4 className={styles.sectionTitle}>📉 FALL OF WICKETS</h4>
+          <div className={styles.table}>
+            <div className={`${styles.tableRow} ${styles.tableHeader}`}>
+              <div className={styles.statCol}>Wkt</div>
+              <div className={styles.statCol}>Score</div>
+              <div className={styles.statCol}>Overs</div>
+              <div style={{ flex: 3, fontSize: "12px", color: "#9ca3af" }}>Batsman Out</div>
+            </div>
+            {partnerships.map((p, idx) => (
+              <div key={idx} className={styles.tableRow}>
+                <div className={styles.statCol}>{p.wicketNumber ?? idx + 1}</div>
+                <div className={styles.statCol}>{p.scoreWhenBroke ?? "—"}</div>
+                <div className={styles.statCol}>{p.oversWhenBroke ?? "—"}</div>
+                <div style={{ flex: 3, fontSize: "12px", color: "#e5e7eb" }}>
+                  {p.batsman1} / {p.batsman2}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+  
+        {/* PARTNERSHIPS */}
+        <div className={styles.section} style={{ marginTop: "12px" }}>
+          <h4 className={styles.sectionTitle}>🤝 PARTNERSHIPS</h4>
+          <div className={styles.table}>
+            <div className={`${styles.tableRow} ${styles.tableHeader}`}>
+              <div className={styles.statCol}>Runs</div>
+              <div className={styles.statCol}>Balls</div>
+              <div style={{ flex: 3, fontSize: "12px", color: "#9ca3af" }}>Players</div>
+            </div>
+            {partnerships.map((p, idx) => (
+              <div key={idx} className={styles.tableRow}>
+                <div className={styles.statCol}>{p.totalRuns ?? 0}</div>
+                <div className={styles.statCol}>{p.totalBalls ?? "—"}</div>
+                <div style={{ flex: 3, fontSize: "12px", color: "#e5e7eb" }}>
+                  {p.batsman1} ({p.batsman1Runs ?? 0}) — {p.batsman2} ({p.batsman2Runs ?? 0})
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
     );
   };
 
