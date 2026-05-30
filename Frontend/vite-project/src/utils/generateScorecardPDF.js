@@ -340,12 +340,14 @@ export function generateScorecardPDF(match) {
         batting: blob?.battingStats || [],
         bowling: blob?.bowlingStats || [],
         extras: blob?.extras || null,
+        partnerships: blob?.partnershipHistory || [],   // ← ADD
       };
     }
     return {
       batting: match[flatBatKey] || [],
       bowling: match[flatBowlKey] || [],
       extras: null,
+      partnerships: [],   // ← ADD
     };
   };
 
@@ -356,13 +358,10 @@ export function generateScorecardPDF(match) {
   y = drawInfoStrip(doc, match, t1, t2, y);
   y = drawScoreCards(doc, match, t1, t2, y);
 
-  // Innings 1
+  
+  // ── Innings 1 ──────────────────────────────────────────────────────────────
   y = ensureSpace(doc, y, 20);
-  y = drawSectionHeading(
-    doc,
-    `${t1} — BATTING  (${fmtOvers(match.team1Balls)} ov)`,
-    y
-  );
+  y = drawSectionHeading(doc, `${t1} — BATTING  (${fmtOvers(match.team1Balls)} ov)`, y);
   y = drawBattingTable(doc, inn1.batting, y);
   y = drawExtras(doc, hasBlob ? match.innings1DataBlob : null, y);
 
@@ -370,19 +369,33 @@ export function generateScorecardPDF(match) {
   y = drawSectionHeading(doc, `${t2} — BOWLING  (${t1} innings)`, y);
   y = drawBowlingTable(doc, inn1.bowling, y);
 
-  // Innings 2
+  if (inn1.partnerships.length > 0) {
+    y = ensureSpace(doc, y, 25);
+    y = drawSectionHeading(doc, `${t1} — FALL OF WICKETS`, y);
+    y = drawFallOfWickets(doc, inn1.partnerships, y);
+    y = ensureSpace(doc, y, 25);
+    y = drawSectionHeading(doc, `${t1} — PARTNERSHIPS`, y);
+    y = drawPartnerships(doc, inn1.partnerships, y);
+  }
+
+  // ── Innings 2 ──────────────────────────────────────────────────────────────
   y = ensureSpace(doc, y, 20);
-  y = drawSectionHeading(
-    doc,
-    `${t2} — BATTING  (${fmtOvers(match.team2Balls)} ov)`,
-    y
-  );
+  y = drawSectionHeading(doc, `${t2} — BATTING  (${fmtOvers(match.team2Balls)} ov)`, y);
   y = drawBattingTable(doc, inn2.batting, y);
   y = drawExtras(doc, hasBlob ? match.innings2DataBlob : null, y);
 
   y = ensureSpace(doc, y, 20);
   y = drawSectionHeading(doc, `${t1} — BOWLING  (${t2} innings)`, y);
   y = drawBowlingTable(doc, inn2.bowling, y);
+
+  if (inn2.partnerships.length > 0) {
+    y = ensureSpace(doc, y, 25);
+    y = drawSectionHeading(doc, `${t2} — FALL OF WICKETS`, y);
+    y = drawFallOfWickets(doc, inn2.partnerships, y);
+    y = ensureSpace(doc, y, 25);
+    y = drawSectionHeading(doc, `${t2} — PARTNERSHIPS`, y);
+    y = drawPartnerships(doc, inn2.partnerships, y);
+  }
 
   drawFooter(doc);
 
@@ -486,11 +499,65 @@ export function buildScoringPagePayload({
     manOfTheMatch: manOfTheMatch || "",
     tossWinner:    matchData.tossWinner || "",
     totalOvers:    updatedMatchData.overs || matchData.overs || "?",
-    team1Captain:  team1CaptainName,   // ✅ fixed
-    team2Captain:  team2CaptainName,   // ✅ fixed
+    team1Captain:  team1CaptainName, 
+    team2Captain:  team2CaptainName, 
     team1Batting:  innings1.battingStats || [],
     team2Batting:  innings2.battingStats || [],
     team1Bowling:  innings1.bowlingStats || inn1BowlersSnapshotRef?.current || [],
     team2Bowling:  innings2.bowlingStats || [],
+    innings1DataBlob: inningsDataHook.innings1DataRef?.current || null,  
+    innings2DataBlob: inningsDataHook.innings2DataRef?.current || null, 
   };
+}
+
+// ─── Fall of Wickets table ────────────────────────────────────────────────────
+function drawFallOfWickets(doc, partnerships, startY) {
+  if (!partnerships || partnerships.length === 0) return startY;
+  const rows = partnerships.map((p, idx) => [
+    String(p.wicketNumber ?? idx + 1),
+    String(p.scoreWhenBroke ?? "—"),
+    String(p.oversWhenBroke ?? "—"),
+    `${p.batsman1 ?? ""} / ${p.batsman2 ?? ""}`,
+  ]);
+  autoTable(doc, {
+    startY,
+    head: [["Wkt", "Score", "Overs", "Batsman"]],
+    body: rows,
+    theme: "grid",
+    headStyles: { fillColor: [30, 41, 59], textColor: [255,255,255], fontSize: 8 },
+    bodyStyles: { fontSize: 7, textColor: [31,31,31] },
+    columnStyles: {
+      0: { cellWidth: 12, halign: "center" },
+      1: { cellWidth: 18, halign: "center" },
+      2: { cellWidth: 18, halign: "center" },
+      3: { cellWidth: 102 },
+    },
+    margin: { left: 14, right: 14 },
+  });
+  return doc.lastAutoTable.finalY + 3;
+}
+
+// ─── Partnership table ────────────────────────────────────────────────────────
+function drawPartnerships(doc, partnerships, startY) {
+  if (!partnerships || partnerships.length === 0) return startY;
+  const rows = partnerships.map((p) => [
+    String(p.totalRuns ?? 0),
+    String(p.totalBalls ?? "—"),
+    `${p.batsman1 ?? ""} (${p.batsman1Runs ?? 0}) — ${p.batsman2 ?? ""} (${p.batsman2Runs ?? 0})`,
+  ]);
+  autoTable(doc, {
+    startY,
+    head: [["Runs", "Balls", "Players"]],
+    body: rows,
+    theme: "grid",
+    headStyles: { fillColor: [30, 41, 59], textColor: [255,255,255], fontSize: 8 },
+    bodyStyles: { fontSize: 7, textColor: [31,31,31] },
+    columnStyles: {
+      0: { cellWidth: 18, halign: "center" },
+      1: { cellWidth: 18, halign: "center" },
+      2: { cellWidth: 114 },
+    },
+    margin: { left: 14, right: 14 },
+  });
+  return doc.lastAutoTable.finalY + 6;
 }

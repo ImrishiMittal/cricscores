@@ -45,7 +45,8 @@ function useInningsData(
   overCompleteBowlerSnapshotRef,
   matchEngineInnings1HistoryRef,
   innings2History,
-  innings3History
+  innings3History,
+  partnershipHistory  
 ) {
   const [innings1Data, setInnings1Data] = useState(null);
   const [innings2Data, setInnings2Data] = useState(null);
@@ -85,6 +86,7 @@ function useInningsData(
     innings1Extras,
     innings2History,
     innings3History: innings3History || [],
+    partnershipHistory: partnershipHistory || [],
   };
 
   // ─── Merge live bowlers with over-complete snapshot ──────────────────────────
@@ -354,6 +356,7 @@ function useInningsData(
       }),
 
       history: [...historyData],
+      partnershipHistory: [],
     };
   };
 
@@ -370,6 +373,7 @@ function useInningsData(
         c.completeHistory,
         c.score, c.wickets, c.overs, c.balls, c.extras
       );
+      finalData.partnershipHistory = c.partnershipHistory || [];
     
       if (c.innings === 4) {
         innings4DataRef.current = finalData;
@@ -403,6 +407,7 @@ function useInningsData(
         c.balls,
         c.extras
       );
+      inn3Data.partnershipHistory = c.partnershipHistory || [];
       innings3DataRef.current = inn3Data;
       setInnings3Data(inn3Data);
 
@@ -446,6 +451,7 @@ function useInningsData(
         c.balls,
         c.extras
       );
+      inn2Data.partnershipHistory = c.partnershipHistory || []; 
       innings2DataRef.current = inn2Data;
       setInnings2Data(inn2Data);
 
@@ -486,7 +492,7 @@ function useInningsData(
     );
 
     if (c.partnershipRuns > 0 || c.partnershipBalls > 0) {
-      c.savePartnership(c.score, c.wickets);
+      c.savePartnership(c.score, c.wickets, undefined, undefined, c.overs, c.balls);
     }
 
     const scoreToUse = c.innings1Score?.score ?? c.score;
@@ -513,6 +519,7 @@ function useInningsData(
       ballsToUse,
       c.innings1Extras || c.extras
     );
+    inn1Data.partnershipHistory = callbacksRef.current.partnershipHistory || [];
 
     innings1DataRef.current = inn1Data;
     setInnings1Data(inn1Data);
@@ -546,7 +553,7 @@ useEffect(() => {
       players, allPlayers, bowlers, completeHistory,
       score, wickets, overs, balls, extras
     );
-
+    finalData.partnershipHistory = callbacksRef.current.partnershipHistory || [];
     if (innings === 4) {
       innings4DataRef.current = finalData;
       setInnings4Data(finalData);
