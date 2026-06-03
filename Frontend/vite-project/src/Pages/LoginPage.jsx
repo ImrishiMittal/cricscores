@@ -84,13 +84,13 @@ function LoginPage() {
           </button>
         </form>
 
-        <div className={styles.or}>OR</div>
+        {/* <div className={styles.or}>OR</div>
 
         <div className={styles.socials}>
           <i className="fa-brands fa-google"></i>
           <i className="fa-solid fa-envelope"></i>
           <i className="fa-brands fa-x-twitter"></i>
-        </div>
+        </div> */}
 
         <div className={styles.linkText}>
           Don't have an account?
