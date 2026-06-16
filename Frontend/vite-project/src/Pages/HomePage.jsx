@@ -6,7 +6,6 @@ function HomePage() {
 
   return (
     <div className={styles.container}>
-
       {/* Live pill */}
       <div className={styles.livePill}>
         <span className={styles.liveDot} />
@@ -48,6 +47,12 @@ function HomePage() {
           MATCH HISTORY
         </button>
       </div>
+
+      <button className={styles.btnTournament} disabled>
+        <span className={styles.btnEmoji}>🏆</span>
+        TOURNAMENT MODE
+        <span className={styles.comingSoonBadge}>COMING SOON</span>
+      </button>
 
       <p className={styles.footerHint}>CricScorers · v1.0</p>
     </div>

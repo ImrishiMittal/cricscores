@@ -17,13 +17,14 @@ function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-
     setLoading(true);
     try {
+      console.log("Hitting:", import.meta.env.VITE_API_URL);  // ADD THIS
       const data = await loginUser(email.trim(), password);
       login(data);
       navigate("/home");
     } catch (err) {
+      console.error("Full error:", err);  // ADD THIS
       setError(err.response?.data?.error || "Invalid email or password.");
     } finally {
       setLoading(false);
