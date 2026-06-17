@@ -11,14 +11,13 @@ function getHeaders() {
   };
 }
 
-// ─── Fetch all tournaments for logged-in user ─────────────────────────────────
+// ─── Fetch all tournaments for logged-in user ──────────────────────────────────
 export async function getTournaments() {
   const res = await fetch(`${API_BASE}/tournaments`, {
     headers: getHeaders(),
   });
 
   if (res.status === 401) {
-    // Token expired — force logout
     localStorage.removeItem("cricket_token");
     window.location.href = "/login";
     return;
@@ -32,7 +31,7 @@ export async function getTournaments() {
   return res.json();
 }
 
-// ─── Fetch single tournament ───────────────────────────────────────────────────
+// ─── Fetch single tournament (includes its fixtures) ───────────────────────────
 export async function getTournament(tournamentId) {
   const res = await fetch(`${API_BASE}/tournaments/${tournamentId}`, {
     headers: getHeaders(),
@@ -49,7 +48,9 @@ export async function getTournament(tournamentId) {
     throw new Error(data.error || "Failed to fetch tournament");
   }
 
-  return res.json();
+  const tournament = await res.json();
+  const fixtures = await getFixtures(tournamentId);
+  return { ...tournament, fixtures };
 }
 
 // ─── Create a tournament ───────────────────────────────────────────────────────

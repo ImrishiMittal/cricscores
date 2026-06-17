@@ -48,10 +48,12 @@ function HomePage() {
         </button>
       </div>
 
-      <button className={styles.btnTournament} disabled>
+      <button
+        onClick={() => navigate("/tournaments")}
+        className={styles.btnTournament}
+      >
         <span className={styles.btnEmoji}>🏆</span>
         TOURNAMENT MODE
-        <span className={styles.comingSoonBadge}>COMING SOON</span>
       </button>
 
       <p className={styles.footerHint}>CricScorers · v1.0</p>
