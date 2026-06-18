@@ -214,6 +214,88 @@ router.post("/:id/fixtures", async (req, res) => {
   }
 });
 
+router.post("/:id/fixtures/manual", async (req, res) => {
+  try {
+    const tournament = await Tournament.findOne({
+      _id: req.params.id,
+      userId: req.userId,
+    });
+    if (!tournament) {
+      return res.status(404).json({ error: "Tournament not found" });
+    }
+
+    const { pairs, force } = req.body;
+
+    if (!Array.isArray(pairs) || pairs.length === 0) {
+      return res.status(400).json({ error: "At least one matchup is required" });
+    }
+
+    const teamSet = new Set(tournament.teams);
+    const matchCount = {};
+    tournament.teams.forEach((t) => {
+      matchCount[t] = 0;
+    });
+
+    for (const pair of pairs) {
+      const teamA = pair?.teamA;
+      const teamB = pair?.teamB;
+      if (!teamSet.has(teamA) || !teamSet.has(teamB)) {
+        return res.status(400).json({
+          error: `Unknown team in matchup: ${teamA} vs ${teamB}`,
+        });
+      }
+      if (teamA === teamB) {
+        return res.status(400).json({ error: "A team cannot play itself" });
+      }
+      matchCount[teamA]++;
+      matchCount[teamB]++;
+    }
+
+    const counts = Object.values(matchCount);
+    const allEqual = counts.every((c) => c === counts[0]);
+    if (!allEqual) {
+      return res.status(400).json({
+        error: "Uneven schedule — every team must play the same number of matches",
+        matchCount,
+      });
+    }
+
+    const existingCount = await Fixture.countDocuments({
+      tournamentId: tournament._id,
+    });
+    const forceFlag = force === true || req.query.force === "true";
+
+    if (existingCount > 0 && !forceFlag) {
+      return res.status(400).json({
+        error:
+          "Fixtures already exist for this tournament. Pass force=true to regenerate (this will delete existing fixtures).",
+      });
+    }
+
+    if (existingCount > 0 && forceFlag) {
+      await Fixture.deleteMany({ tournamentId: tournament._id });
+    }
+
+    const fixtureDocs = pairs.map(({ teamA, teamB }) => ({
+      userId: req.userId,
+      tournamentId: tournament._id,
+      teamA,
+      teamB,
+      stage: "league",
+      status: "scheduled",
+    }));
+
+    const created = await Fixture.insertMany(fixtureDocs);
+
+    tournament.status = "ongoing";
+    await tournament.save();
+
+    res.status(201).json(created);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // ─── GET /:id/fixtures — list fixtures for a tournament ──────────────────────
 router.get("/:id/fixtures", async (req, res) => {
   try {

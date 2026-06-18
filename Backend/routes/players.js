@@ -15,6 +15,20 @@ router.get("/", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// GET /players/jersey/:jersey — look up a player by jersey number
+router.get("/jersey/:jersey", async (req, res) => {
+  try {
+    const player = await Player.findOne({
+      userId: req.userId,
+      jersey: req.params.jersey,
+    });
+    if (!player) return res.status(404).json({ error: "Not found" });
+    res.json({ name: player.name, jersey: player.jersey });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ─── GET single player by _id ─────────────────────────────────────────────────
 router.get("/:id", async (req, res) => {
@@ -26,6 +40,7 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // ─── POST — create a new player ───────────────────────────────────────────────
 router.post("/", async (req, res) => {
@@ -196,5 +211,7 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
 
 module.exports = router;
