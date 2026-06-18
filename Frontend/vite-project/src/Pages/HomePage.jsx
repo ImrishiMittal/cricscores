@@ -46,15 +46,15 @@ function HomePage() {
           <span className={styles.btnEmoji}></span>
           MATCH HISTORY
         </button>
-      </div>
-
       <button
         onClick={() => navigate("/tournaments")}
-        className={styles.btnSecondary}
+        className={styles.btnTournament}
       >
         <span className={styles.btnEmoji}></span>
         TOURNAMENT MODE
       </button>
+      </div>
+
 
       <p className={styles.footerHint}>CricScorers · v1.0</p>
     </div>
