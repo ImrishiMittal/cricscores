@@ -27,7 +27,7 @@ function HomePage() {
           onClick={() => navigate("/setup")}
           className={styles.btnPrimary}
         >
-          <span className={styles.btnEmoji}>🏏</span>
+          <span className={styles.btnEmoji}></span>
           START MATCH
         </button>
 
@@ -35,7 +35,7 @@ function HomePage() {
           onClick={() => navigate("/stats")}
           className={styles.btnSecondary}
         >
-          <span className={styles.btnEmoji}>📊</span>
+          <span className={styles.btnEmoji}></span>
           VIEW RECORDS
         </button>
 
@@ -43,16 +43,16 @@ function HomePage() {
           onClick={() => navigate("/history")}
           className={styles.btnSecondary}
         >
-          <span className={styles.btnEmoji}>📋</span>
+          <span className={styles.btnEmoji}></span>
           MATCH HISTORY
         </button>
       </div>
 
       <button
         onClick={() => navigate("/tournaments")}
-        className={styles.btnTournament}
+        className={styles.btnSecondary}
       >
-        <span className={styles.btnEmoji}>🏆</span>
+        <span className={styles.btnEmoji}></span>
         TOURNAMENT MODE
       </button>
 
