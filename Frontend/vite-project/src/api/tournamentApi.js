@@ -129,6 +129,33 @@ export async function generateFixtures(tournamentId, force = false) {
   return res.json();
 }
 
+// ─── Create fixtures manually (user-defined matchups) ───────────────────────────
+// pairs shape: [{ teamA: "Team A", teamB: "Team B" }, ...]
+// Every team must appear the same number of times across all pairs — the
+// backend enforces this too, but the UI should already validate it before
+// calling this so the user gets immediate feedback.
+// Pass force = true to wipe any existing fixtures and replace them.
+export async function createManualFixtures(tournamentId, pairs, force = false) {
+  const res = await fetch(`${API_BASE}/tournaments/${tournamentId}/fixtures/manual`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify({ pairs, force }),
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("cricket_token");
+    window.location.href = "/login";
+    return;
+  }
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to create manual fixtures");
+  }
+
+  return res.json();
+}
+
 // ─── Fetch fixtures for a tournament ────────────────────────────────────────────
 export async function getFixtures(tournamentId) {
   const res = await fetch(`${API_BASE}/tournaments/${tournamentId}/fixtures`, {

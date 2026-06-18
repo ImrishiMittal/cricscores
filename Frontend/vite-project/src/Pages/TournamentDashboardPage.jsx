@@ -9,6 +9,13 @@ export default function TournamentDashboardPage() {
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("fixtures");
+  const [generating, setGenerating] = useState(false);
+  const [fixtureMode, setFixtureMode] = useState("auto"); // "auto" | "manual"
+  const [manualTeamA, setManualTeamA] = useState("");
+  const [manualTeamB, setManualTeamB] = useState("");
+  const [manualPairs, setManualPairs] = useState([]);
+  const [manualError, setManualError] = useState("");
+  const [savingManual, setSavingManual] = useState(false);
 
   useEffect(() => {
     tournamentApi.getTournament(id)
@@ -23,7 +30,8 @@ export default function TournamentDashboardPage() {
 
   const handleStartMatch = (fixture) => {
     // Build matchData payload matching your ScoringPage format
-    const [teamA, teamB] = fixture.teams;
+    const teamA = fixture.teamA;
+    const teamB = fixture.teamB;
     navigate("/setup", {
       state: {
         fromTournament: true,
@@ -44,33 +52,85 @@ export default function TournamentDashboardPage() {
     refresh();
   };
 
+  const handleGenerateFixtures = async () => {
+    setGenerating(true);
+    try {
+      await tournamentApi.generateFixtures(id);
+      refresh();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleAddManualPair = () => {
+    if (!manualTeamA || !manualTeamB) {
+      setManualError("Select both teams.");
+      return;
+    }
+    if (manualTeamA === manualTeamB) {
+      setManualError("A team can't play itself.");
+      return;
+    }
+    const alreadyAdded = manualPairs.some(
+      p => (p.teamA === manualTeamA && p.teamB === manualTeamB) ||
+           (p.teamA === manualTeamB && p.teamB === manualTeamA)
+    );
+    if (alreadyAdded) {
+      setManualError("That matchup is already in the list.");
+      return;
+    }
+    setManualError("");
+    setManualPairs(prev => [...prev, { teamA: manualTeamA, teamB: manualTeamB }]);
+    setManualTeamA("");
+    setManualTeamB("");
+  };
+
+  const handleRemoveManualPair = (idx) => {
+    setManualPairs(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveManualFixtures = async () => {
+    setSavingManual(true);
+    setManualError("");
+    try {
+      await tournamentApi.createManualFixtures(id, manualPairs);
+      setManualPairs([]);
+      refresh();
+    } catch (err) {
+      setManualError(err.message || "Failed to save fixtures");
+    } finally {
+      setSavingManual(false);
+    }
+  };
+
+  // Checklist: every team must appear the same number of times.
+  const manualCounts = {};
+  (tournament?.teams || []).forEach(t => { manualCounts[t] = 0; });
+  manualPairs.forEach(p => {
+    manualCounts[p.teamA] = (manualCounts[p.teamA] || 0) + 1;
+    manualCounts[p.teamB] = (manualCounts[p.teamB] || 0) + 1;
+  });
+  const manualCountValues = Object.values(manualCounts);
+  const manualIsBalanced = manualPairs.length > 0 && manualCountValues.every(c => c === manualCountValues[0]);
+
   if (loading) return <div style={{ background: "#0a0a0a", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280" }}>Loading...</div>;
   if (!tournament) return <div style={{ background: "#0a0a0a", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#ef4444" }}>Tournament not found.</div>;
 
-  // Build points table
-  const pointsMap = {};
-  (tournament.teams || []).forEach(team => {
-    pointsMap[team] = { team, p: 0, w: 0, l: 0, t: 0, nr: 0, pts: 0 };
-  });
-  (tournament.fixtures || []).forEach(f => {
-    if (f.status !== "completed") return;
-    const [a, b] = f.teams;
-    if (!pointsMap[a]) pointsMap[a] = { team: a, p: 0, w: 0, l: 0, t: 0, nr: 0, pts: 0 };
-    if (!pointsMap[b]) pointsMap[b] = { team: b, p: 0, w: 0, l: 0, t: 0, nr: 0, pts: 0 };
-    pointsMap[a].p++; pointsMap[b].p++;
-    if (f.winner === "TIE") {
-      pointsMap[a].t++; pointsMap[a].pts += tournament.pointsRules?.tie ?? 1;
-      pointsMap[b].t++; pointsMap[b].pts += tournament.pointsRules?.tie ?? 1;
-    } else if (f.winner === "NO RESULT") {
-      pointsMap[a].nr++; pointsMap[a].pts += tournament.pointsRules?.nr ?? 1;
-      pointsMap[b].nr++; pointsMap[b].pts += tournament.pointsRules?.nr ?? 1;
-    } else {
-      const loser = f.winner === a ? b : a;
-      pointsMap[f.winner].w++; pointsMap[f.winner].pts += tournament.pointsRules?.win ?? 2;
-      pointsMap[loser].l++;
-    }
-  });
-  const pointsTable = Object.values(pointsMap).sort((a, b) => b.pts - a.pts || b.w - a.w);
+  // Points table: use the standings the backend already computed and returned
+  // on the tournament document (it also handles NRR, which we don't duplicate here).
+  const pointsTable = (tournament.standings || [])
+    .map(s => ({
+      team: s.teamName,
+      p: s.played,
+      w: s.wins,
+      l: s.losses,
+      t: s.ties,
+      nr: s.nr,
+      pts: s.points,
+    }))
+    .sort((a, b) => b.pts - a.pts || b.w - a.w);
 
   const upcoming = (tournament.fixtures || []).filter(f => f.status !== "completed");
   const completed = (tournament.fixtures || []).filter(f => f.status === "completed");
@@ -88,7 +148,7 @@ export default function TournamentDashboardPage() {
       <div style={{ marginTop: "10px", marginBottom: "16px" }}>
         <h2 style={{ fontSize: "20px", fontWeight: "700", color: "#f9fafb", margin: "0 0 4px" }}>{tournament.name}</h2>
         <div style={{ fontSize: "13px", color: "#6b7280" }}>
-          {tournament.format === "test" ? "Test Match" : `${tournament.overs} overs`} · {tournament.teams?.length} teams
+          {tournament.format === "Test" ? "Test Match" : `${tournament.overs} overs`} · {tournament.teams?.length} teams
         </div>
       </div>
 
@@ -115,14 +175,113 @@ export default function TournamentDashboardPage() {
       {/* Fixtures Tab */}
       {activeTab === "fixtures" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {upcoming.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", marginTop: "30px" }}>All matches completed!</p>}
+          {total === 0 && (
+            <div style={{ marginTop: "10px" }}>
+              <div style={{ display: "flex", gap: "8px", marginBottom: "18px" }}>
+                {[["auto", "⚡ Auto-Generate"], ["manual", "✍️ Manual Setup"]].map(([key, label]) => (
+                  <button key={key} onClick={() => setFixtureMode(key)} style={{
+                    flex: 1, padding: "9px 4px", borderRadius: "8px", border: `1px solid ${fixtureMode === key ? "#16a34a" : "#1f2937"}`,
+                    background: fixtureMode === key ? "#14532d" : "#111827",
+                    color: fixtureMode === key ? "#4ade80" : "#6b7280",
+                    fontWeight: "600", fontSize: "12px", cursor: "pointer"
+                  }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {fixtureMode === "auto" && (
+                <div style={{ textAlign: "center", marginTop: "20px" }}>
+                  <p style={{ color: "#6b7280", marginBottom: "16px" }}>No fixtures yet. Generate the round-robin schedule to get started.</p>
+                  <button
+                    onClick={handleGenerateFixtures}
+                    disabled={generating}
+                    style={{ background: generating ? "#374151" : "#16a34a", color: "#fff", padding: "12px 20px", borderRadius: "8px", border: "none", fontWeight: "700", fontSize: "14px", cursor: generating ? "not-allowed" : "pointer" }}
+                  >
+                    {generating ? "Generating..." : "📋 Generate Fixtures"}
+                  </button>
+                </div>
+              )}
+
+              {fixtureMode === "manual" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <p style={{ color: "#6b7280", fontSize: "13px", margin: 0 }}>Pick a matchup and add it to the schedule. Every team needs the same number of matches before you can save.</p>
+
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <select
+                      value={manualTeamA}
+                      onChange={e => setManualTeamA(e.target.value)}
+                      style={{ flex: 1, background: "#111827", border: "1px solid #374151", color: "#f9fafb", padding: "10px", borderRadius: "8px", fontSize: "13px" }}
+                    >
+                      <option value="">Team A</option>
+                      {(tournament.teams || []).map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <span style={{ color: "#4b5563", fontWeight: "700" }}>vs</span>
+                    <select
+                      value={manualTeamB}
+                      onChange={e => setManualTeamB(e.target.value)}
+                      style={{ flex: 1, background: "#111827", border: "1px solid #374151", color: "#f9fafb", padding: "10px", borderRadius: "8px", fontSize: "13px" }}
+                    >
+                      <option value="">Team B</option>
+                      {(tournament.teams || []).map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <button onClick={handleAddManualPair} style={{ background: "#1e3a5f", color: "#60a5fa", padding: "10px 14px", borderRadius: "8px", border: "1px solid #2563eb", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}>
+                      + Add
+                    </button>
+                  </div>
+
+                  {manualError && <p style={{ color: "#ef4444", fontSize: "13px", margin: 0, textAlign: "center" }}>{manualError}</p>}
+
+                  {manualPairs.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {manualPairs.map((p, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#111827", border: "1px solid #1f2937", borderRadius: "8px", padding: "10px 12px" }}>
+                          <span style={{ fontSize: "13px", color: "#e5e7eb" }}>{p.teamA} <span style={{ color: "#4b5563" }}>vs</span> {p.teamB}</span>
+                          <button onClick={() => handleRemoveManualPair(i)} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "13px" }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Balance checklist */}
+                  <div style={{ background: "#111827", border: "1px solid #1f2937", borderRadius: "10px", padding: "14px" }}>
+                    <div style={{ fontSize: "13px", color: "#9ca3af", marginBottom: "10px", fontWeight: "600" }}>Checklist</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px" }}>
+                      {(tournament.teams || []).map(t => (
+                        <div key={t} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#9ca3af" }}>
+                          <span>{t}</span>
+                          <span>{manualCounts[t] || 0} match{(manualCounts[t] || 0) === 1 ? "" : "es"}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: "13px", fontWeight: "600", color: manualIsBalanced ? "#4ade80" : "#f87171" }}>
+                      {manualPairs.length === 0
+                        ? "Add at least one matchup to begin."
+                        : manualIsBalanced
+                          ? "✅ All teams have an equal number of matches."
+                          : "⚠️ Uneven schedule — every team must play the same number of matches."}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSaveManualFixtures}
+                    disabled={!manualIsBalanced || savingManual}
+                    style={{ background: (!manualIsBalanced || savingManual) ? "#374151" : "#16a34a", color: "#fff", padding: "12px", borderRadius: "8px", border: "none", fontWeight: "700", fontSize: "14px", cursor: (!manualIsBalanced || savingManual) ? "not-allowed" : "pointer" }}
+                  >
+                    {savingManual ? "Saving..." : "✍️ Save Fixtures"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {total > 0 && upcoming.length === 0 && <p style={{ color: "#6b7280", textAlign: "center", marginTop: "30px" }}>All matches completed!</p>}
           {upcoming.map((f, i) => (
             <div key={f._id} style={{ background: "#111827", border: "1px solid #1f2937", borderRadius: "12px", padding: "14px" }}>
               <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "8px" }}>Match {completed.length + i + 1}</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                <span style={{ fontWeight: "700", color: "#f9fafb", fontSize: "15px" }}>{f.teams[0]}</span>
+                <span style={{ fontWeight: "700", color: "#f9fafb", fontSize: "15px" }}>{f.teamA}</span>
                 <span style={{ color: "#4b5563", fontWeight: "700" }}>vs</span>
-                <span style={{ fontWeight: "700", color: "#f9fafb", fontSize: "15px" }}>{f.teams[1]}</span>
+                <span style={{ fontWeight: "700", color: "#f9fafb", fontSize: "15px" }}>{f.teamB}</span>
               </div>
               <div style={{ display: "flex", gap: "8px" }}>
                 <button
@@ -133,9 +292,9 @@ export default function TournamentDashboardPage() {
                 </button>
                 <button
                   onClick={() => {
-                    const winner = prompt(`Enter winner:\n1. ${f.teams[0]}\n2. ${f.teams[1]}\n3. TIE\n4. NO RESULT`);
+                    const winner = prompt(`Enter winner:\n1. ${f.teamA}\n2. ${f.teamB}\n3. TIE\n4. NO RESULT`);
                     if (!winner) return;
-                    const w = winner.trim() === "1" ? f.teams[0] : winner.trim() === "2" ? f.teams[1] : winner.trim() === "3" ? "TIE" : winner.trim() === "4" ? "NO RESULT" : winner.trim();
+                    const w = winner.trim() === "1" ? f.teamA : winner.trim() === "2" ? f.teamB : winner.trim() === "3" ? "Tie" : winner.trim() === "4" ? "No Result" : winner.trim();
                     handleMarkResult(f._id, w);
                   }}
                   style={{ flex: 1, background: "#1a1a1a", color: "#9ca3af", padding: "9px", borderRadius: "8px", border: "1px solid #374151", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}
@@ -190,12 +349,12 @@ export default function TournamentDashboardPage() {
             <div key={f._id} style={{ background: "#111827", border: "1px solid #1f2937", borderRadius: "10px", padding: "12px 14px" }}>
               <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Match {i + 1}</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: "600", color: f.winner === f.teams[0] ? "#4ade80" : "#9ca3af" }}>{f.teams[0]}</span>
+                <span style={{ fontWeight: "600", color: f.winner === f.teamA ? "#4ade80" : "#9ca3af" }}>{f.teamA}</span>
                 <span style={{ color: "#4b5563" }}>vs</span>
-                <span style={{ fontWeight: "600", color: f.winner === f.teams[1] ? "#4ade80" : "#9ca3af" }}>{f.teams[1]}</span>
+                <span style={{ fontWeight: "600", color: f.winner === f.teamB ? "#4ade80" : "#9ca3af" }}>{f.teamB}</span>
               </div>
               <div style={{ textAlign: "center", fontSize: "12px", color: "#60a5fa", marginTop: "6px", fontWeight: "600" }}>
-                {f.winner === "TIE" ? "🤝 Match Tied" : f.winner === "NO RESULT" ? "🌧 No Result" : `🏆 ${f.winner} won`}
+                {f.winner === "Tie" ? "🤝 Match Tied" : f.winner === "No Result" ? "🌧 No Result" : `🏆 ${f.winner} won`}
               </div>
             </div>
           ))}

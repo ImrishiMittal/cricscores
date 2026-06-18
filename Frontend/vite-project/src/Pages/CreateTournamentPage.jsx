@@ -39,7 +39,7 @@ export default function CreateTournamentPage() {
     try {
       const payload = {
         name: name.trim(),
-        format,
+        format: format === "limited" ? "Limited Overs" : "Test",
         overs: format === "limited" ? Number(overs) : undefined,
         matchDays: format === "test" ? Number(matchDays) : undefined,
         oversPerDay: format === "test" ? Number(oversPerDay) : undefined,
