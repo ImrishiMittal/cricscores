@@ -11,6 +11,7 @@ import MatchHistoryPage from "./Pages/MatchHistoryPage";
 import TournamentsPage from "./Pages/TournamentsPage";
 import CreateTournamentPage from "./Pages/CreateTournamentPage";
 import TournamentDashboardPage from "./Pages/TournamentDashboardPage";
+import SquadManagerPage from "./Pages/SquadManagerPage";   // ← ADD
 
 const router = createBrowserRouter([
   { path: "/",                        element: <LandingPage /> },
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
   { path: "/tournaments",             element: <TournamentsPage /> },
   { path: "/tournaments/new",         element: <CreateTournamentPage /> },
   { path: "/tournaments/:id",         element: <TournamentDashboardPage /> },
+  { path: "/squads",                  element: <SquadManagerPage /> },
 ]);
 
 function App() {

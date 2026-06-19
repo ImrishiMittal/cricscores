@@ -745,6 +745,14 @@ function ScoringPage() {
     : engine.innings === 3
     ? firstBattingTeam
     : secondBattingTeam; // innings 4
+    const battingSquadPlayers =
+    currentBattingTeam === matchData.teamA
+      ? matchData.teamASquadPlayers
+      : matchData.teamBSquadPlayers;
+  const bowlingSquadPlayers =
+    currentBattingTeam === matchData.teamA
+      ? matchData.teamBSquadPlayers
+      : matchData.teamASquadPlayers;
 
   const addBatterJersey = (jersey) => {
     if (!jersey) return;
@@ -2091,6 +2099,8 @@ function ScoringPage() {
           playersHook.bowlers[playersHook.currentBowlerIndex]?.playerId
         }
         onCommitRunoutRun={commitRunoutRun}
+        battingSquadPlayers={battingSquadPlayers}
+        bowlingSquadPlayers={bowlingSquadPlayers}
       />
       <ScoringModals
         hatTrickHook={hatTrickHook}

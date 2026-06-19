@@ -276,6 +276,27 @@ export default function TournamentDashboardPage() {
       >
         {doneCount}/{total} matches done
       </div>
+      <button
+        onClick={() =>
+          navigate("/squads", {
+            state: { tournamentId: id, teams: tournament.teams || [] },
+          })
+        }
+        style={{
+          width: "100%",
+          background: "#0d1f0d",
+          border: "1px solid #16a34a",
+          color: "#4ade80",
+          padding: "10px",
+          borderRadius: "8px",
+          cursor: "pointer",
+          fontSize: "13px",
+          fontWeight: "600",
+          marginBottom: "18px",
+        }}
+      >
+        👥 Manage Squads
+      </button>
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "18px" }}>

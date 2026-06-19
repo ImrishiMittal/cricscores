@@ -84,6 +84,8 @@ function ModalManager({
   currentBowlerJersey,
   onCancelNewBatsman,
   onCommitRunoutRun,
+  battingSquadPlayers,
+  bowlingSquadPlayers,
 }) {
   const statsForPlayer = usePlayerStats(
     modalStates.statsTarget,
@@ -109,6 +111,8 @@ function ModalManager({
           firstBattingTeam={firstBattingTeam}
           secondBattingTeam={secondBattingTeam}
           currentInnings={innings}
+          battingSquadPlayers={battingSquadPlayers}
+          bowlingSquadPlayers={bowlingSquadPlayers} 
         />
       )}
 

@@ -29,12 +29,20 @@ export default function TournamentsPage() {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", marginTop: "10px" }}>
         <h2 style={{ fontSize: "20px", fontWeight: "700", color: "#f9fafb", margin: 0 }}>🏆 Tournaments</h2>
-        <button
-          onClick={() => navigate("/tournaments/new")}
-          style={{ background: "#16a34a", color: "#fff", padding: "9px 18px", borderRadius: "8px", border: "none", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
-        >
-          + New Tournament
-        </button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button
+            onClick={() => navigate("/squads")}
+            style={{ background: "transparent", color: "#4ade80", padding: "9px 14px", borderRadius: "8px", border: "1px solid #16a34a", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}
+          >
+            👥 Squads
+          </button>
+          <button
+            onClick={() => navigate("/tournaments/new")}
+            style={{ background: "#16a34a", color: "#fff", padding: "9px 18px", borderRadius: "8px", border: "none", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
+          >
+            + New Tournament
+          </button>
+        </div>
       </div>
 
       {loading && <p style={{ color: "#6b7280", textAlign: "center", marginTop: "40px" }}>Loading...</p>}

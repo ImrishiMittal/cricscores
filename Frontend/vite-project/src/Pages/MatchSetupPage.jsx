@@ -6,6 +6,7 @@ import CaptainSearch from "../Components/Scoring/CaptainSearch";
 import usePlayerDatabase from "../hooks/usePlayerDatabase";
 import * as teamApi from "../api/teamApi";
 import * as playerApi from "../api/playerApi";
+import * as squadApi from "../api/squadApi"; 
 
 // ─── Team name autocomplete (unchanged) ───────────────────────────────────────
 function TeamAutocomplete({ placeholder, value, onChange, allTeams = [], locked }) {
@@ -288,6 +289,10 @@ function MatchSetupPage() {
   // Overs — pre-filled and locked from tournament
   const tournamentOvers = tournamentState?.overs || null;
   const [overs, setOvers] = useState(tournamentOvers ? String(tournamentOvers) : "");
+  // ── Squad prefill state (tournament matches only) ──────────────────────────
+  const [teamASquad, setTeamASquad] = useState(null);   
+  const [teamBSquad, setTeamBSquad] = useState(null); 
+  const [squadsLoading, setSquadsLoading] = useState(false); 
 
   // ---------------- TEST MATCH ----------------
   const isTournamentTest = fromTournament && tournamentState?.format === "Test";
@@ -335,6 +340,45 @@ function MatchSetupPage() {
       });
   }, []);
 
+
+  // ── Fetch saved squads for prefill — TOURNAMENT MATCHES ONLY ──────────────
+  // Regular (non-tournament) matches never touch the squad API; players are
+  // always entered manually for those, same as today.
+  useEffect(() => {
+    if (!fromTournament) {
+      setTeamASquad(null);
+      setTeamBSquad(null);
+      return;
+    }
+    if (!teamA && !teamB) return;
+
+    let cancelled = false;
+    setSquadsLoading(true);
+
+    Promise.all([
+      teamA
+        ? squadApi.findSquadForTournamentTeam(teamA, tournamentState?.tournamentId)
+        : Promise.resolve(null),
+      teamB
+        ? squadApi.findSquadForTournamentTeam(teamB, tournamentState?.tournamentId)
+        : Promise.resolve(null),
+    ])
+      .then(([squadA, squadB]) => {
+        if (cancelled) return;
+        setTeamASquad(squadA);
+        setTeamBSquad(squadB);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setTeamASquad(null);
+        setTeamBSquad(null);
+      })
+      .finally(() => {
+        if (!cancelled) setSquadsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [fromTournament, teamA, teamB, tournamentState?.tournamentId]);
   // ---------------- TOSS LOGIC ----------------
   const handleToss = () => {
     const result = Math.random() < 0.5 ? "heads" : "tails";
@@ -383,11 +427,12 @@ function MatchSetupPage() {
         ? Number(maxOversPerBowler)
         : null,
       enableSuperOver,
-      // Pass tournament context through to ScoringPage so it can auto-update the fixture
       ...(fromTournament && {
         fromTournament: true,
         tournamentId: tournamentState.tournamentId,
         fixtureId: tournamentState.fixtureId,
+        teamASquadPlayers: teamASquad?.players || null,
+        teamBSquadPlayers: teamBSquad?.players || null,
       }),
     };
 
@@ -423,7 +468,16 @@ function MatchSetupPage() {
         <h2 className={styles.sectionTitle}>Match Setup</h2>
 
         {TournamentBanner}
-
+        {fromTournament && (teamA || teamB) && (
+          <div style={{ fontSize: "12px", color: "#6b7280", margin: "-4px 0 4px" }}>
+            {squadsLoading
+              ? "Checking for saved squads…"
+              : [
+                  teamASquad ? `✅ ${teamA} squad loaded (${teamASquad.players.length} players)` : teamA ? `${teamA}: no saved squad` : null,
+                  teamBSquad ? `✅ ${teamB} squad loaded (${teamBSquad.players.length} players)` : teamB ? `${teamB}: no saved squad` : null,
+                ].filter(Boolean).join("  •  ")}
+          </div>
+        )}
         {/* TEAM INFO */}
         <TeamAutocomplete
           placeholder="Team A Name"

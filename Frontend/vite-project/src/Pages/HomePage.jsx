@@ -47,12 +47,12 @@ function HomePage() {
           MATCH HISTORY
         </button>
       <button
-        onClick={() => navigate("/tournaments")}
-        className={styles.btnTournament}
-      >
-        <span className={styles.btnEmoji}></span>
-        TOURNAMENT MODE
-      </button>
+          onClick={() => navigate("/tournaments")}
+          className={styles.btnTournament}
+        >
+          <span className={styles.btnEmoji}></span>
+          TOURNAMENT MODE
+        </button>
       </div>
 
 
