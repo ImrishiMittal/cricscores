@@ -27,6 +27,7 @@ import usePlayerDatabase from "../hooks/usePlayerDatabase";
 import * as matchApi from "../api/matchApi";
 import { calculateManOfTheMatch } from "../utils/momCalculator";
 import { useNavigate, useLocation, useBlocker } from "react-router-dom";
+import * as tournamentApi from "../api/tournamentApi";
 
 function ScoringPage() {
   const location = useLocation();
@@ -155,7 +156,7 @@ function ScoringPage() {
     engine.innings1HistoryRef,
     engine.innings2History,
     engine.innings3History,
-    partnershipsHook.partnershipHistory,
+    partnershipsHook.partnershipHistory
   );
 
   const historySnapshotHook = useHistorySnapshot(
@@ -422,8 +423,8 @@ function ScoringPage() {
 
       const innings1 = inningsDataHook.innings1DataRef.current;
       const innings2 =
-  inningsDataHook.innings2DataRef.current ||
-  (engine.innings === 2 ? captureCurrentData() : null);
+        inningsDataHook.innings2DataRef.current ||
+        (engine.innings === 2 ? captureCurrentData() : null);
       console.log(
         "🧪 innings1 batters:",
         innings1?.battingStats?.map((b) => b.playerName + ":" + b.runs)
@@ -634,12 +635,63 @@ function ScoringPage() {
         historySnapshotHook.clearSavedMatch();
         localStorage.removeItem("activeMatchData");
         setMatchSaved(true);
+        // ── Auto-update tournament fixture if this was a tournament match ──
+        if (
+          matchData.fromTournament &&
+          matchData.tournamentId &&
+          matchData.fixtureId
+        ) {
+          try {
+            const { updateFixtureResult } = await import(
+              "../api/tournamentApi"
+            );
+
+            // Map ScoringPage winner strings to what the backend expects
+            let fixtureWinner = engine.winner || "No Result";
+            if (fixtureWinner === "NO RESULT") fixtureWinner = "No Result";
+            if (fixtureWinner === "TIE") fixtureWinner = "Tie";
+            if (fixtureWinner === "DRAW") fixtureWinner = "No Result"; // Test draws don't apply in limited-overs tournaments
+
+            const inn1Balls =
+              (engine.innings1Score?.overs ?? 0) * 6 +
+              (engine.innings1Score?.balls ?? 0);
+            const inn2Balls = engine.overs * 6 + engine.balls;
+
+            await updateFixtureResult(
+              matchData.tournamentId,
+              matchData.fixtureId,
+              {
+                matchId: currentMatchId,  
+                winner: fixtureWinner,
+                resultText:
+                  engine.winner === "NO RESULT"
+                    ? "No Result"
+                    : engine.winner === "TIE"
+                    ? "Match Tied"
+                    : engine.winner === "DRAW"
+                    ? "Match Drawn"
+                    : `${engine.winner} won`,
+                teamARuns: engine.innings1Score?.score ?? 0,
+                teamAWickets: engine.innings1Score?.wickets ?? 0,
+                teamABalls: inn1Balls,
+                teamBRuns: engine.score,
+                teamBWickets: engine.wickets,
+                teamBBalls: inn2Balls,
+                status: "completed",
+              }
+            );
+            console.log("✅ Tournament fixture updated");
+          } catch (tErr) {
+            // Non-fatal — match is already saved, don't block navigation
+            console.error("⚠️ Tournament fixture update failed:", tErr);
+          }
+        }
+
         setTimeout(() => {
           playerDBHook.setCurrentMatchId(null);
         }, 500);
       } catch (err) {
         console.error("❌ saveMatch failed:", err);
-        // matchSaved stays false — button stays disabled so user cannot navigate away
       }
       matchSaveInProgressRef.current = false;
     })();
@@ -723,7 +775,8 @@ function ScoringPage() {
       engine.balls,
       engine.extras
     );
-    if (data) data.partnershipHistory = [...partnershipsHook.partnershipHistory];
+    if (data)
+      data.partnershipHistory = [...partnershipsHook.partnershipHistory];
     return data;
   };
 
@@ -1040,7 +1093,7 @@ function ScoringPage() {
       playersHook.players[0]?.displayName,
       playersHook.players[1]?.displayName,
       engine.overs,
-      engine.balls   
+      engine.balls
     );
     partnershipsHook.resetPartnership();
 
@@ -1207,8 +1260,8 @@ function ScoringPage() {
       nextWickets,
       undefined,
       undefined,
-      engine.overs,  
-      engine.balls   
+      engine.overs,
+      engine.balls
     );
     partnershipsHook.resetPartnership();
     engine.handleWicket(
@@ -1294,18 +1347,22 @@ function ScoringPage() {
     })();
     if (completedOvers >= totalAllowedOvers) {
       console.log(`⏰ Day limit reached — drawing match`);
-  
+
       engine.setOverCompleteEvent(null);
       playersHook.setIsNewBowlerPending(false);
       engine.handleDraw();
-  
+
       setTimeout(() => {
         const currentData = captureCurrentData();
-  
-        if (!inningsDataHook.innings1DataRef.current && inningsDataHook.innings1Data) {
-          inningsDataHook.innings1DataRef.current = inningsDataHook.innings1Data;
+
+        if (
+          !inningsDataHook.innings1DataRef.current &&
+          inningsDataHook.innings1Data
+        ) {
+          inningsDataHook.innings1DataRef.current =
+            inningsDataHook.innings1Data;
         }
-  
+
         if (engine.innings === 2) {
           inningsDataHook.setInnings2Data(currentData);
           inningsDataHook.innings2DataRef.current = currentData;
@@ -1318,7 +1375,7 @@ function ScoringPage() {
             inningsDataHook.innings4DataRef.current = currentData;
           }
         }
-  
+
         inningsDataHook.setMatchCompleted(true);
         modalStates.setShowSummary(true);
       }, 150);
@@ -1707,6 +1764,25 @@ function ScoringPage() {
           >
             {matchSaved ? "🏠 Go to Home" : "⏳ Saving..."}
           </button>
+          {matchData.fromTournament && matchData.tournamentId && (
+            <button
+              onClick={() => navigate(`/tournaments/${matchData.tournamentId}`)}
+              disabled={!matchSaved}
+              style={{
+                background: matchSaved ? "#14532d" : "#64748b",
+                color: matchSaved ? "#4ade80" : "#9ca3af",
+                padding: "12px 20px",
+                borderRadius: "10px",
+                border: matchSaved ? "1px solid #16a34a" : "none",
+                cursor: matchSaved ? "pointer" : "not-allowed",
+                fontWeight: "600",
+                fontSize: "15px",
+                opacity: matchSaved ? 1 : 0.7,
+              }}
+            >
+              🏆 Back to Tournament
+            </button>
+          )}
           <button
             onClick={() => {
               // Compute MoM fresh at click time using the same algorithm as MatchSummary

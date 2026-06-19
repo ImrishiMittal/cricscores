@@ -314,7 +314,7 @@ function MatchSetupPage() {
     wideRunAllowed: false, noBallRunAllowed: false, noBallFreeHit: false,
   });
 
-  const [enableSuperOver, setEnableSuperOver] = useState(false);
+  const [enableSuperOver, setEnableSuperOver] = useState(fromTournament ? true : false);
   const [lastManBatting, setLastManBatting] = useState(false);
   const [maxOversPerBowler, setMaxOversPerBowler] = useState("");
   const [showAdditionalSetup, setShowAdditionalSetup] = useState(false);
