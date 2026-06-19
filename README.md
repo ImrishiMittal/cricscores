@@ -35,5 +35,7 @@ It allows users to:
 git clone https://github.com/ImrishiMittal/cricscorers.git
 cd cricscorers
 
+---
+
 ## Live Link
 https://cricscorers.in/
