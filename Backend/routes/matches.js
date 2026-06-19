@@ -17,9 +17,17 @@ router.get("/", async (req, res) => {
 });
 
 // ─── GET single match ─────────────────────────────────────────────────────────
+// ─── GET single match ─────────────────────────────────────────────────────────
 router.get("/:id", async (req, res) => {
   try {
-    const match = await Match.findOne({ _id: req.params.id, userId: req.userId });
+    // First try by custom matchId string (e.g. "match_1781842484492")
+    let match = await Match.findOne({ matchId: req.params.id, userId: req.userId });
+    
+    // Fall back to MongoDB _id if it looks like a valid ObjectId
+    if (!match && req.params.id.match(/^[a-f\d]{24}$/i)) {
+      match = await Match.findOne({ _id: req.params.id, userId: req.userId });
+    }
+    
     if (!match) return res.status(404).json({ error: "Match not found." });
     res.json(match);
   } catch (err) {
