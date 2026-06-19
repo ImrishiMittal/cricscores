@@ -1,6 +1,6 @@
-# 🏏 CricScores
+# CricScorers
 
-**CricScores** is a web-based cricket scoring and statistics tracking application built with React and designed for local/gully cricket players who struggle with manual scorekeeping and performance tracking.
+**CricScorers** is a web-based cricket scoring and statistics tracking application built with React and designed for local/gully cricket players who struggle with manual scorekeeping and performance tracking.
 
 It allows users to:
 - Score cricket matches ball-by-ball
@@ -11,7 +11,7 @@ It allows users to:
 
 ---
 
-## 📌 Features
+## Features
 ✔ Modern UI with intuitive scoring interface  
 ✔ Live run & wicket updates  
 ✔ Overs, strike rotation & extras handling  
@@ -20,7 +20,7 @@ It allows users to:
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 - **Frontend:** React, Redux Toolkit  
 - **Styling:** Tailwind CSS  
 - **Routing:** React Router  
@@ -28,9 +28,12 @@ It allows users to:
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Clone the repo
 ```bash
 git clone https://github.com/ImrishiMittal/cricscorers.git
 cd cricscorers
+
+## Live Link
+https://cricscorers.in/
