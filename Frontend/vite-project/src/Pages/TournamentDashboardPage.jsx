@@ -4,6 +4,74 @@ import * as tournamentApi from "../api/tournamentApi";
 import BrandTitle from "../Components/BrandTitle";
 import { getMatch } from "../api/matchApi";
 import { generateScorecardPDF } from "../utils/generateScorecardPDF";
+const STAGE_ORDER = ["quarterfinal","semifinal","qualifier1","eliminator","qualifier2","final"];
+const STAGE_LABEL = {
+  quarterfinal:"Quarter Finals", semifinal:"Semi Finals",
+  qualifier1:"Qualifier 1", eliminator:"Eliminator",
+  qualifier2:"Qualifier 2", final:"Final",
+};
+const SLOT_LABEL = {
+  QF1:"QF 1", QF2:"QF 2", QF3:"QF 3", QF4:"QF 4",
+  SF1:"SF 1", SF2:"SF 2",
+  Q1:"Qualifier 1", EL:"Eliminator", Q2:"Qualifier 2", F:"Final",
+};
+
+function KnockoutCard({ fixture }) {
+  const done = fixture.status === "completed";
+  const teamRow = (name, runs, wickets, balls, isWinner, isTbd) => (
+    <div style={{
+      display:"flex", alignItems:"center", justifyContent:"space-between",
+      padding:"7px 10px", borderRadius:"6px",
+      background: isWinner ? "#14532d" : "transparent",
+    }}>
+      <span style={{
+        fontSize:"13px", fontWeight: isWinner ? "700" : "500",
+        color: isTbd ? "#6b7280" : isWinner ? "#4ade80" : "#e5e7eb",
+        fontStyle: isTbd ? "italic" : "normal",
+      }}>
+        {isTbd ? "TBD" : name}
+      </span>
+      {done && !isTbd && (
+        <span style={{ fontSize:"13px", fontWeight:"700", color: isWinner ? "#4ade80" : "#9ca3af" }}>
+          {runs}/{wickets}
+          <span style={{ fontSize:"11px", fontWeight:"400", color:"#6b7280", marginLeft:"3px" }}>
+            ({Math.floor(balls/6)}.{balls%6})
+          </span>
+        </span>
+      )}
+    </div>
+  );
+  return (
+    <div style={{
+      background:"#0d1117", borderRadius:"8px", overflow:"hidden",
+      border:`1px solid ${done ? "#1f2937" : "#374151"}`,
+      minWidth:"190px", flexShrink:0,
+    }}>
+      <div style={{
+        padding:"4px 10px", background:"#1f2937",
+        fontSize:"10px", color:"#6b7280", fontWeight:"700", letterSpacing:"0.5px",
+      }}>
+        {SLOT_LABEL[fixture.knockoutSlot] || fixture.knockoutSlot}
+      </div>
+      <div style={{ padding:"6px" }}>
+        {teamRow(fixture.teamA, fixture.teamARuns, fixture.teamAWickets, fixture.teamABalls,
+          done && fixture.winner === fixture.teamA, !fixture.teamA)}
+        <div style={{ height:"1px", background:"#1f2937", margin:"2px 0" }} />
+        {teamRow(fixture.teamB, fixture.teamBRuns, fixture.teamBWickets, fixture.teamBBalls,
+          done && fixture.winner === fixture.teamB, !fixture.teamB)}
+      </div>
+      <div style={{
+        padding:"4px 10px", borderTop:"1px solid #1f2937", fontSize:"10px",
+        color: done ? "#9ca3af" : (!fixture.teamA || !fixture.teamB) ? "#6b7280" : "#f59e0b",
+        fontStyle: (!fixture.teamA || !fixture.teamB) ? "italic" : "normal",
+      }}>
+        {done
+          ? fixture.resultText || `${fixture.winner} won`
+          : (!fixture.teamA || !fixture.teamB) ? "Awaiting teams" : "Scheduled"}
+      </div>
+    </div>
+  );
+}
 
 export default function TournamentDashboardPage() {
   const { id } = useParams();
@@ -18,18 +86,29 @@ export default function TournamentDashboardPage() {
   const [manualPairs, setManualPairs] = useState([]);
   const [manualError, setManualError] = useState("");
   const [savingManual, setSavingManual] = useState(false);
+  const [genLoading, setGenLoading] = useState(false);
+const [knockoutData, setKnockoutData] = useState(null);
 
-  useEffect(() => {
-    tournamentApi
-      .getTournament(id)
-      .then(setTournament)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [id]);
+useEffect(() => {
+  tournamentApi.getTournament(id)
+    .then((t) => {
+      setTournament(t);
+      if (t.knockoutFormat && t.knockoutFormat !== "none") {
+        tournamentApi.getKnockout(id).then(setKnockoutData).catch(() => {});
+      }
+    })
+    .catch(console.error)
+    .finally(() => setLoading(false));
+}, [id]);
 
-  const refresh = () => {
-    tournamentApi.getTournament(id).then(setTournament);
-  };
+const refresh = () => {
+  tournamentApi.getTournament(id).then((t) => {
+    setTournament(t);
+    if (t.knockoutFormat && t.knockoutFormat !== "none") {
+      tournamentApi.getKnockout(id).then(setKnockoutData).catch(() => {});
+    }
+  });
+};
 
   const handleStartMatch = (fixture) => {
     // Build matchData payload matching your ScoringPage format
@@ -175,21 +254,44 @@ export default function TournamentDashboardPage() {
       </div>
     );
 
-  // Points table: use the standings the backend already computed and returned
-  // on the tournament document (it also handles NRR, which we don't duplicate here).
-  // In the pointsTable mapping — add nrr:
-  const pointsTable = (tournament.standings || [])
-    .map((s) => ({
-      team: s.teamName,
-      p: s.played,
-      w: s.wins,
-      l: s.losses,
-      t: s.ties,
-      nr: s.nr,
-      pts: s.points,
-      nrr: typeof s.nrr === "number" ? s.nrr : 0, // ← add this
-    }))
-    .sort((a, b) => b.pts - a.pts || b.nrr - a.nrr); // ← also sort by NRR as tiebreaker
+  // ── Points table data ───────────────────────────────────────────────────
+  // The backend computes standings (including NRR) and returns them on the
+  // tournament document. For group-stage tournaments each standings entry
+  // also carries a `group` field (e.g. "A", "B") — set from the same `group`
+  // value stored on fixtures. We bucket by group when that's the case, and
+  // always also provide a combined "overall" ranking.
+  const toRow = (s) => ({
+    team: s.teamName,
+    group: s.group || null,
+    p: s.played,
+    w: s.wins,
+    l: s.losses,
+    t: s.ties,
+    nr: s.nr,
+    pts: s.points,
+    nrr: typeof s.nrr === "number" ? s.nrr : 0,
+  });
+  const sortRows = (rows) => [...rows].sort((a, b) => b.pts - a.pts || b.nrr - a.nrr);
+
+  const allStandingRows = (tournament.standings || []).map(toRow);
+  const isGroupStage =
+    tournament.leagueFormat === "groups" &&
+    allStandingRows.some((r) => r.group);
+
+  // { "A": [rows...], "B": [rows...] } — sorted by group name, rows sorted within.
+  const groupedTables = isGroupStage
+    ? Object.entries(
+        allStandingRows.reduce((acc, row) => {
+          const key = row.group || "Ungrouped";
+          (acc[key] = acc[key] || []).push(row);
+          return acc;
+        }, {})
+      )
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([group, rows]) => [group, sortRows(rows)])
+    : [];
+
+  const pointsTable = sortRows(allStandingRows);
 
   const upcoming = (tournament.fixtures || []).filter(
     (f) => f.status !== "completed"
@@ -301,9 +403,12 @@ export default function TournamentDashboardPage() {
       {/* Tabs */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "18px" }}>
         {[
-          ["fixtures", "📋 Fixtures"],
-          ["points", "📊 Points Table"],
-          ["done", `✅ Results (${doneCount})`],
+          ["fixtures", " Fixtures"],
+          ["points", " Points Table"],
+          ["done", ` Results (${doneCount})`],
+          ...(tournament.knockoutFormat && tournament.knockoutFormat !== "none"
+  ? [["bracket", " Bracket"]]
+  : []),
         ].map(([key, label]) => (
           <button
             key={key}
@@ -720,86 +825,130 @@ export default function TournamentDashboardPage() {
       )}
 
       {/* Points Table Tab */}
-      {activeTab === "points" && (
-        <div
-          style={{
-            background: "#111827",
-            border: "1px solid #1f2937",
-            borderRadius: "12px",
-            overflow: "hidden",
-          }}
-        >
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#0f172a" }}>
-                <th
-                  style={{ ...thStyle, textAlign: "left", paddingLeft: "14px" }}
-                >
-                  Team
-                </th>
-                <th style={thStyle}>P</th>
-                <th style={thStyle}>W</th>
-                <th style={thStyle}>L</th>
-                <th style={thStyle}>T</th>
-                <th style={thStyle}>NR</th>
-                <th style={{ ...thStyle, color: "#60a5fa" }}>NRR</th>
-                <th style={{ ...thStyle, color: "#4ade80" }}>Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pointsTable.map((row, i) => (
-                <tr
-                  key={row.team}
-                  style={{ background: i % 2 === 0 ? "#0d1117" : "#111827" }}
-                >
-                  <td
-                    style={{
-                      ...tdStyle,
-                      textAlign: "left",
-                      paddingLeft: "14px",
-                      fontWeight: "600",
-                      color: "#f9fafb",
-                    }}
+      {activeTab === "points" && (() => {
+        const StandingsTable = ({ rows, highlightTop }) => (
+          <div
+            style={{
+              background: "#111827",
+              border: "1px solid #1f2937",
+              borderRadius: "12px",
+              overflow: "hidden",
+            }}
+          >
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#0f172a" }}>
+                  <th
+                    style={{ ...thStyle, textAlign: "left", paddingLeft: "14px" }}
                   >
-                    {i === 0 && doneCount > 0 ? "🥇 " : ""}
-                    {row.team}
-                  </td>
-                  <td style={tdStyle}>{row.p}</td>
-                  <td style={{ ...tdStyle, color: "#4ade80" }}>{row.w}</td>
-                  <td style={{ ...tdStyle, color: "#f87171" }}>{row.l}</td>
-                  <td style={tdStyle}>{row.t}</td>
-                  <td style={tdStyle}>{row.nr}</td>
-                  <td
-                    style={{
-                      ...tdStyle,
-                      color:
-                        row.nrr > 0
-                          ? "#4ade80"
-                          : row.nrr < 0
-                          ? "#f87171"
-                          : "#9ca3af",
-                      fontWeight: "600",
-                    }}
-                  >
-                    {row.nrr > 0 ? "+" : ""}
-                    {row.nrr.toFixed(3)}
-                  </td>
-                  <td
-                    style={{
-                      ...tdStyle,
-                      fontWeight: "700",
-                      color: "#4ade80",
-                      fontSize: "15px",
-                    }}
-                  >
-                    {row.pts}
-                  </td>
+                    Team
+                  </th>
+                  <th style={thStyle}>P</th>
+                  <th style={thStyle}>W</th>
+                  <th style={thStyle}>L</th>
+                  <th style={thStyle}>T</th>
+                  <th style={thStyle}>NR</th>
+                  <th style={{ ...thStyle, color: "#60a5fa" }}>NRR</th>
+                  <th style={{ ...thStyle, color: "#4ade80" }}>Pts</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr
+                    key={row.team}
+                    style={{ background: i % 2 === 0 ? "#0d1117" : "#111827" }}
+                  >
+                    <td
+                      style={{
+                        ...tdStyle,
+                        textAlign: "left",
+                        paddingLeft: "14px",
+                        fontWeight: "600",
+                        color: "#f9fafb",
+                      }}
+                    >
+                      {i === 0 && highlightTop ? "🥇 " : ""}
+                      {row.team}
+                    </td>
+                    <td style={tdStyle}>{row.p}</td>
+                    <td style={{ ...tdStyle, color: "#4ade80" }}>{row.w}</td>
+                    <td style={{ ...tdStyle, color: "#f87171" }}>{row.l}</td>
+                    <td style={tdStyle}>{row.t}</td>
+                    <td style={tdStyle}>{row.nr}</td>
+                    <td
+                      style={{
+                        ...tdStyle,
+                        color:
+                          row.nrr > 0
+                            ? "#4ade80"
+                            : row.nrr < 0
+                            ? "#f87171"
+                            : "#9ca3af",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {row.nrr > 0 ? "+" : ""}
+                      {row.nrr.toFixed(3)}
+                    </td>
+                    <td
+                      style={{
+                        ...tdStyle,
+                        fontWeight: "700",
+                        color: "#4ade80",
+                        fontSize: "15px",
+                      }}
+                    >
+                      {row.pts}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+
+        if (!isGroupStage) {
+          return <StandingsTable rows={pointsTable} highlightTop={doneCount > 0} />;
+        }
+
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
+            {groupedTables.map(([group, rows]) => (
+              <div key={group}>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    color: "#4ade80",
+                    letterSpacing: "0.5px",
+                    marginBottom: "8px",
+                  }}
+                >
+                  GROUP {group.toUpperCase()}
+                </div>
+                <StandingsTable rows={rows} highlightTop={doneCount > 0} />
+              </div>
+            ))}
+
+            <div>
+              <div
+                style={{
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  color: "#60a5fa",
+                  letterSpacing: "0.5px",
+                  marginBottom: "8px",
+                  paddingTop: "6px",
+                  borderTop: "1px solid #1f2937",
+                }}
+              >
+                OVERALL STANDINGS
+              </div>
+              <StandingsTable rows={pointsTable} highlightTop={false} />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Results Tab */}
       {activeTab === "done" && (
@@ -897,6 +1046,112 @@ export default function TournamentDashboardPage() {
           ))}
         </div>
       )}
+
+      {/* Bracket Tab */}
+{activeTab === "bracket" && tournament.knockoutFormat && tournament.knockoutFormat !== "none" && (() => {
+  const knockoutFixtures = (tournament.fixtures || []).filter(f => f.stage !== "league");
+  const knockoutGenerated = knockoutFixtures.length > 0;
+  const byStage = {};
+  knockoutFixtures.forEach(f => {
+    if (!byStage[f.stage]) byStage[f.stage] = [];
+    byStage[f.stage].push(f);
+  });
+  const orderedStages = STAGE_ORDER.filter(s => byStage[s]);
+  const leagueFixtures = (tournament.fixtures || []).filter(f => f.stage === "league");
+  const leagueDoneCount = leagueFixtures.filter(f => f.status === "completed").length;
+  const leagueTotal = leagueFixtures.length;
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+      {!knockoutGenerated ? (
+        <div style={{
+          background:"#111827", border:"1px solid #1f2937",
+          borderRadius:"12px", padding:"24px 16px", textAlign:"center",
+        }}>
+          <div style={{ fontSize:"28px", marginBottom:"10px" }}>🏅</div>
+          <div style={{ fontSize:"14px", color:"#9ca3af", marginBottom:"6px" }}>
+            Knockout bracket not generated yet.
+          </div>
+          <div style={{ fontSize:"12px", color:"#6b7280", marginBottom:"18px" }}>
+            {leagueTotal === 0
+              ? "Generate league fixtures first."
+              : leagueDoneCount < leagueTotal
+                ? `${leagueTotal - leagueDoneCount} league match${leagueTotal - leagueDoneCount !== 1 ? "es" : ""} still to play — you can seed early or wait.`
+                : "All league matches done. Ready to seed the bracket."}
+          </div>
+          <button
+            onClick={async () => {
+              if (!window.confirm("Generate the knockout bracket from current standings?")) return;
+              setGenLoading(true);
+              try {
+                await tournamentApi.generateKnockout(id);
+                refresh();
+              } catch (err) {
+                alert(err.message || "Failed to generate knockout bracket");
+              } finally { setGenLoading(false); }
+            }}
+            disabled={genLoading || leagueTotal === 0}
+            style={{
+              background: (genLoading || leagueTotal === 0) ? "#374151" : "#16a34a",
+              color:"#fff", border:"none", padding:"11px 24px",
+              borderRadius:"8px", fontWeight:"700", fontSize:"14px",
+              cursor: (genLoading || leagueTotal === 0) ? "not-allowed" : "pointer",
+            }}
+          >
+            {genLoading ? "Generating…" : "🏅 Generate Bracket"}
+          </button>
+        </div>
+      ) : (
+        <>
+          {tournament.status === "completed" && tournament.winner && (
+            <div style={{
+              padding:"12px 16px", borderRadius:"10px",
+              background:"#14532d", border:"1px solid #16a34a",
+              fontSize:"15px", fontWeight:"700", color:"#4ade80", textAlign:"center",
+            }}>
+              🥇 {tournament.winner} — Tournament Champions
+            </div>
+          )}
+          {orderedStages.map(stage => (
+            <div key={stage}>
+              <div style={{
+                fontSize:"11px", fontWeight:"700", color:"#4ade80",
+                letterSpacing:"1px", textTransform:"uppercase",
+                marginBottom:"10px", paddingBottom:"6px",
+                borderBottom:"1px solid #1f2937",
+              }}>
+                {STAGE_LABEL[stage]}
+              </div>
+              <div style={{ display:"flex", gap:"10px", overflowX:"auto", paddingBottom:"4px" }}>
+                {byStage[stage].map(f => <KnockoutCard key={f._id} fixture={f} />)}
+              </div>
+            </div>
+          ))}
+          <button
+            onClick={async () => {
+              if (!window.confirm("Regenerate bracket? All existing knockout results will be lost.")) return;
+              setGenLoading(true);
+              try {
+                await tournamentApi.generateKnockout(id, true);
+                refresh();
+              } catch (err) {
+                alert(err.message || "Failed to regenerate");
+              } finally { setGenLoading(false); }
+            }}
+            disabled={genLoading}
+            style={{
+              background:"transparent", color:"#6b7280", border:"1px solid #374151",
+              padding:"8px", borderRadius:"8px", fontSize:"12px",
+              cursor: genLoading ? "not-allowed" : "pointer", width:"100%",
+            }}
+          >
+            ↺ Regenerate Bracket from Current Standings
+          </button>
+        </>
+      )}
+    </div>
+  );
+})()}
 
       <button
         onClick={() => navigate("/tournaments")}

@@ -28,6 +28,16 @@ export default function SquadManagerPage() {
   const contextTeams = tournamentContext.teams || [];
   const contextTournamentId = tournamentContext.tournamentId || null;
 
+  // When we land here with a fixed team list from a tournament (e.g. right after
+  // "Create Tournament" → "Create Squads Now"), every legal team name is already
+  // known. Match lookup later (MatchSetupPage → findSquadForTournamentTeam) can
+  // only ever search by names from that same fixed list — fixtures are generated
+  // from tournament.teams, and team pickers are locked for tournament matches.
+  // A squad saved under any other name would be created but never findable by
+  // a real fixture, so the "custom team name" escape hatch is disabled whenever
+  // we have that fixed list to work with.
+  const hasFixedTeamList = contextTeams.length > 0;
+
   const [teamNames, setTeamNames] = useState(contextTeams);
   const [selectedTeam, setSelectedTeam] = useState("");
   const [customTeamName, setCustomTeamName] = useState("");
@@ -76,6 +86,17 @@ export default function SquadManagerPage() {
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // If a fixed team list shows up (e.g. context arrives after mount) while the
+  // custom-name path is active, snap back to the picker — a custom name is
+  // never valid once we know the real roster.
+  useEffect(() => {
+    if (hasFixedTeamList && usingCustomTeam) {
+      setUsingCustomTeam(false);
+      setCustomTeamName("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasFixedTeamList]);
 
   // ── Whenever the active team changes, load its saved squad (if any) ───────
   useEffect(() => {
@@ -329,22 +350,30 @@ export default function SquadManagerPage() {
                 </option>
               ))}
             </select>
-            <button
-              onClick={() => {
-                setUsingCustomTeam(true);
-                setSelectedTeam("");
-              }}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#60a5fa",
-                fontSize: "13px",
-                cursor: "pointer",
-                padding: 0,
-              }}
-            >
-              + Use a new team name instead
-            </button>
+            {hasFixedTeamList ? (
+              <div style={{ fontSize: "11px", color: "#6b7280" }}>
+                This tournament has a fixed list of {contextTeams.length} team
+                {contextTeams.length === 1 ? "" : "s"} — pick one above. Squads
+                saved under any other name wouldn't be matched to a fixture.
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setUsingCustomTeam(true);
+                  setSelectedTeam("");
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#60a5fa",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                + Use a new team name instead
+              </button>
+            )}
           </>
         ) : (
           <>

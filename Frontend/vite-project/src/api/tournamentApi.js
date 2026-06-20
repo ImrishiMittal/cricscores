@@ -209,3 +209,44 @@ export async function updateFixtureResult(tournamentId, fixtureId, resultData) {
 
   return res.json();
 }
+// ─── Generate knockout bracket from current standings ──────────────────────────
+export async function generateKnockout(tournamentId, force = false) {
+  const url = `${API_BASE}/tournaments/${tournamentId}/knockout/generate${force ? "?force=true" : ""}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: getHeaders(),
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("cricket_token");
+    window.location.href = "/login";
+    return;
+  }
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to generate knockout bracket");
+  }
+
+  return res.json();
+}
+
+// ─── Fetch knockout fixtures grouped by stage ───────────────────────────────────
+export async function getKnockout(tournamentId) {
+  const res = await fetch(`${API_BASE}/tournaments/${tournamentId}/knockout`, {
+    headers: getHeaders(),
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("cricket_token");
+    window.location.href = "/login";
+    return;
+  }
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to fetch knockout data");
+  }
+
+  return res.json();
+}
