@@ -657,6 +657,36 @@ function ScoringPage() {
               (engine.innings1Score?.balls ?? 0);
             const inn2Balls = engine.overs * 6 + engine.balls;
 
+            // The fixture's teamA/teamB slots are fixed by team NAME at
+            // fixture-creation time and are independent of which team won
+            // the toss. innings1/innings2 here reflect BATTING ORDER, not
+            // the fixture's team slots — so we map by name (matchData.teamA
+            // is always the fixture's actual teamA name, set/locked by
+            // MatchSetupPage) rather than assuming innings1 == fixture teamA.
+            // This avoids silently swapping runs/balls between teams
+            // whenever the fixture's teamB happens to bat first.
+            const fixtureTeamAStruckFirst =
+              matchData.battingFirst === matchData.teamA;
+
+            const fixtureTeamARuns = fixtureTeamAStruckFirst
+              ? engine.innings1Score?.score ?? 0
+              : engine.score;
+            const fixtureTeamAWickets = fixtureTeamAStruckFirst
+              ? engine.innings1Score?.wickets ?? 0
+              : engine.wickets;
+            const fixtureTeamABalls = fixtureTeamAStruckFirst
+              ? inn1Balls
+              : inn2Balls;
+            const fixtureTeamBRuns = fixtureTeamAStruckFirst
+              ? engine.score
+              : engine.innings1Score?.score ?? 0;
+            const fixtureTeamBWickets = fixtureTeamAStruckFirst
+              ? engine.wickets
+              : engine.innings1Score?.wickets ?? 0;
+            const fixtureTeamBBalls = fixtureTeamAStruckFirst
+              ? inn2Balls
+              : inn1Balls;
+
             await updateFixtureResult(
               matchData.tournamentId,
               matchData.fixtureId,
@@ -671,12 +701,12 @@ function ScoringPage() {
                     : engine.winner === "DRAW"
                     ? "Match Drawn"
                     : `${engine.winner} won`,
-                teamARuns: engine.innings1Score?.score ?? 0,
-                teamAWickets: engine.innings1Score?.wickets ?? 0,
-                teamABalls: inn1Balls,
-                teamBRuns: engine.score,
-                teamBWickets: engine.wickets,
-                teamBBalls: inn2Balls,
+                teamARuns: fixtureTeamARuns,
+                teamAWickets: fixtureTeamAWickets,
+                teamABalls: fixtureTeamABalls,
+                teamBRuns: fixtureTeamBRuns,
+                teamBWickets: fixtureTeamBWickets,
+                teamBBalls: fixtureTeamBBalls,
                 status: "completed",
               }
             );
