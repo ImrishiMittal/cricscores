@@ -42,6 +42,18 @@ const pointsRulesSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Tie-handling rules, set during the wizard's "Super Over" step.
+const superOverRuleSchema = new mongoose.Schema(
+  {
+    // Whether a tied LEAGUE match is allowed to stand as a tie, or forces a super over.
+    leagueTieAllowed: { type: Boolean, default: true },
+    // Knockout matches always need a winner — kept explicit/true for clarity in the UI,
+    // but stored so it's not a hardcoded assumption baked into every consumer.
+    knockoutMandatory: { type: Boolean, default: true },
+  },
+  { _id: false }
+);
+
 const tournamentSchema = new mongoose.Schema(
   {
     userId: {
@@ -61,13 +73,23 @@ const tournamentSchema = new mongoose.Schema(
 
     // Only meaningful when format === "Limited Overs"
     overs: { type: Number, default: null },
-    // Only meaningful when format === "Test"
-    days: { type: Number, default: null },
+    // Only meaningful when format === "Test".
+    // NOTE: previously named `days` — renamed to `matchDays` to match what
+    // the frontend (CreateTournamentPage / MatchSetupPage / dashboard) sends
+    // and reads. `oversPerDay` was being silently dropped before; now stored.
+    matchDays: { type: Number, default: null },
+    oversPerDay: { type: Number, default: null },
 
     // Free-text team names, consistent with how Match.js stores
     // team1Name/team2Name as strings rather than Team references.
     teams: { type: [String], required: true },
 
+    // ── League stage config (set via the Create Tournament wizard) ────────
+    leagueFormat: {
+      type: String,
+      enum: ["roundRobin", "groups"],
+      default: "roundRobin",
+    },
     // User-selectable fixture generation style.
     // "single" = each team plays every other team once.
     // "double" = each team plays every other team twice (home/away mirror).
@@ -76,8 +98,20 @@ const tournamentSchema = new mongoose.Schema(
       enum: ["single", "double"],
       default: "single",
     },
+    // Only meaningful when leagueFormat === "groups". Teams are split
+    // sequentially into this many equal groups (teams % numGroups === 0
+    // and teams/numGroups >= 3 is enforced at creation time).
+    numGroups: { type: Number, default: null },
+
+    // ── Knockout stage config ──────────────────────────────────────────────
+    knockoutFormat: {
+      type: String,
+      enum: ["top2", "top4", "top8", "ipl", "none"],
+      default: "none",
+    },
 
     pointsRules: { type: pointsRulesSchema, default: () => ({}) },
+    superOver: { type: superOverRuleSchema, default: () => ({}) },
 
     standings: { type: [standingsEntrySchema], default: [] },
 
