@@ -6,36 +6,44 @@ const authMiddleware = require("../middleware/auth");
 
 router.use(authMiddleware);
 
-// ─── GET /api/squads — list all squads for the logged-in user ────────────────
-// Optional query params:
-//   ?teamName=Team A            -> filter to one team
-//   ?tournamentId=<id>          -> filter to one tournament's squads
-//   ?teamName=Team A&tournamentId=<id> -> the exact lookup MatchSetupPage uses
+// ─── GET /api/squads — list all squads for this user ─────────────────────────
 router.get("/", async (req, res) => {
   try {
-    const filter = { userId: req.userId };
-    if (req.query.teamName) filter.teamName = req.query.teamName;
-
-    if (req.query.tournamentId === "null") {
-      filter.tournamentId = null;
-    } else if (req.query.tournamentId) {
-      filter.tournamentId = req.query.tournamentId;
-    }
-
-    const squads = await Squad.find(filter).sort({ teamName: 1 });
+    const squads = await Squad.find({ userId: req.userId }).sort({ createdAt: -1 });
     res.json(squads);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ─── GET /api/squads/:id — get a single squad ─────────────────────────────────
-router.get("/:id", async (req, res) => {
+// ─── GET /api/squads/find — find squad by teamName + optional tournamentId ───
+// Used by MatchSetupPage / SquadManagerPage to load a saved squad.
+// Priority: tournament-scoped squad first, then default squad for the team.
+router.get("/find", async (req, res) => {
   try {
-    const squad = await Squad.findOne({
-      _id: req.params.id,
-      userId: req.userId,
-    });
+    const { teamName, tournamentId } = req.query;
+    if (!teamName) return res.status(400).json({ error: "teamName is required" });
+
+    let squad = null;
+
+    // 1. Look for a squad scoped to this tournament
+    if (tournamentId) {
+      squad = await Squad.findOne({
+        userId: req.userId,
+        teamName,
+        tournamentId,
+      });
+    }
+
+    // 2. Fall back to the team's default squad (no tournamentId)
+    if (!squad) {
+      squad = await Squad.findOne({
+        userId: req.userId,
+        teamName,
+        tournamentId: null,
+      });
+    }
+
     if (!squad) return res.status(404).json({ error: "Squad not found" });
     res.json(squad);
   } catch (err) {
@@ -43,8 +51,18 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ─── POST /api/squads — create a squad ────────────────────────────────────────
-// body: { teamName, tournamentId (optional), players: [{ jersey, name, role }] }
+// ─── GET /api/squads/:id — fetch a single squad ───────────────────────────────
+router.get("/:id", async (req, res) => {
+  try {
+    const squad = await Squad.findOne({ _id: req.params.id, userId: req.userId });
+    if (!squad) return res.status(404).json({ error: "Squad not found" });
+    res.json(squad);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/squads — create a squad (with loyalty check) ──────────────────
 router.post("/", async (req, res) => {
   try {
     const { teamName, tournamentId, players } = req.body;
@@ -63,9 +81,41 @@ router.post("/", async (req, res) => {
           .filter((p) => p.jersey && p.name)
       : [];
 
+    // ── Within-squad duplicate jersey check ──────────────────────────────────
     const jerseys = cleanPlayers.map((p) => p.jersey);
     if (new Set(jerseys).size !== jerseys.length) {
       return res.status(400).json({ error: "Duplicate jersey numbers in squad" });
+    }
+
+    // ── Cross-squad loyalty check (tournament-scoped) ────────────────────────
+    // If this squad belongs to a tournament, no jersey number may already
+    // appear in any OTHER team's squad for the same tournament.
+    if (tournamentId && cleanPlayers.length > 0) {
+      const otherSquads = await Squad.find({
+        userId: req.userId,
+        tournamentId,
+        teamName: { $ne: teamName.trim() },
+      });
+
+      const clashes = [];
+      for (const other of otherSquads) {
+        for (const op of other.players) {
+          if (jerseys.includes(String(op.jersey))) {
+            clashes.push({
+              jersey: op.jersey,
+              playerName: op.name,
+              conflictTeam: other.teamName,
+            });
+          }
+        }
+      }
+
+      if (clashes.length > 0) {
+        return res.status(409).json({
+          error: "Player loyalty conflict — the following players are already registered in another team in this tournament",
+          clashes,
+        });
+      }
     }
 
     const squad = new Squad({
@@ -87,7 +137,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ─── PATCH /api/squads/:id — update a squad's players or name ────────────────
+// ─── PATCH /api/squads/:id — update squad (with loyalty check) ───────────────
 router.patch("/:id", async (req, res) => {
   try {
     const squad = await Squad.findOne({
@@ -121,6 +171,36 @@ router.patch("/:id", async (req, res) => {
         return res.status(400).json({ error: "Duplicate jersey numbers in squad" });
       }
 
+      // ── Cross-squad loyalty check on update ──────────────────────────────
+      if (squad.tournamentId && cleanPlayers.length > 0) {
+        const otherSquads = await Squad.find({
+          userId: req.userId,
+          tournamentId: squad.tournamentId,
+          teamName: { $ne: squad.teamName },
+          _id: { $ne: squad._id },
+        });
+
+        const clashes = [];
+        for (const other of otherSquads) {
+          for (const op of other.players) {
+            if (jerseys.includes(String(op.jersey))) {
+              clashes.push({
+                jersey: op.jersey,
+                playerName: op.name,
+                conflictTeam: other.teamName,
+              });
+            }
+          }
+        }
+
+        if (clashes.length > 0) {
+          return res.status(409).json({
+            error: "Player loyalty conflict — the following players are already registered in another team in this tournament",
+            clashes,
+          });
+        }
+      }
+
       squad.players = cleanPlayers;
     }
 
@@ -136,15 +216,11 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
-// ─── DELETE /api/squads/:id — delete a squad ──────────────────────────────────
+// ─── DELETE /api/squads/:id — delete a squad ─────────────────────────────────
 router.delete("/:id", async (req, res) => {
   try {
-    const squad = await Squad.findOne({
-      _id: req.params.id,
-      userId: req.userId,
-    });
+    const squad = await Squad.findOne({ _id: req.params.id, userId: req.userId });
     if (!squad) return res.status(404).json({ error: "Squad not found" });
-
     await squad.deleteOne();
     res.json({ message: "Squad deleted ✅" });
   } catch (err) {
