@@ -250,3 +250,23 @@ export async function getKnockout(tournamentId) {
 
   return res.json();
 }
+
+
+export async function getTournamentAwards(tournamentId) {
+  const res = await fetch(`${API_BASE}/tournaments/${tournamentId}/awards`, {
+    headers: getHeaders(),
+  });
+ 
+  if (res.status === 401) {
+    localStorage.removeItem("cricket_token");
+    window.location.href = "/login";
+    return;
+  }
+ 
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to fetch awards");
+  }
+ 
+  return res.json();
+}

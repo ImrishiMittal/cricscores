@@ -5,7 +5,6 @@ import * as teamApi from "../api/teamApi";
 import * as squadApi from "../api/squadApi";
 import usePlayerDatabase from "../hooks/usePlayerDatabase"; // ← add
 
-
 const ROLES = [
   { value: "batsman", label: "Batsman" },
   { value: "bowler", label: "Bowler" },
@@ -18,6 +17,39 @@ const roleBadgeColor = {
   bowler: { bg: "#7f1d1d", fg: "#f87171" },
   allrounder: { bg: "#14532d", fg: "#4ade80" },
   wk: { bg: "#3f2d5c", fg: "#c084fc" },
+};
+
+// ── LoyaltyErrorDisplay — defined OUTSIDE SquadManagerPage ───────────────────
+const LoyaltyErrorDisplay = ({ error, clashes }) => {
+  if (!error) return null;
+  return (
+    <div style={{
+      background: "#2a0a0a",
+      border: "1px solid #ef4444",
+      borderRadius: "10px",
+      padding: "12px 14px",
+      marginBottom: "12px",
+    }}>
+      <div style={{ color: "#ef4444", fontSize: "13px", fontWeight: "600", marginBottom: clashes?.length ? "8px" : 0 }}>
+        {error}
+      </div>
+      {clashes?.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          {clashes.map((c, i) => (
+            <div key={i} style={{
+              background: "#1a0a0a",
+              borderRadius: "6px",
+              padding: "7px 10px",
+              fontSize: "12px",
+              color: "#fca5a5",
+            }}>
+              <strong>#{c.jersey} {c.playerName}</strong> is already in <strong>{c.conflictTeam}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default function SquadManagerPage() {
@@ -58,6 +90,7 @@ export default function SquadManagerPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
+  const [clashes, setClashes] = useState([]);
 
   const activeTeamName = usingCustomTeam ? customTeamName.trim() : selectedTeam;
 
@@ -230,6 +263,7 @@ export default function SquadManagerPage() {
 
     setSaving(true);
     setError("");
+    setClashes([]);
     setSavedMessage("");
 
     try {
@@ -261,6 +295,7 @@ export default function SquadManagerPage() {
       }
     } catch (err) {
       setError(err.message || "Failed to save squad");
+      setClashes(err.clashes || []);
     } finally {
       setSaving(false);
     }
@@ -508,7 +543,7 @@ export default function SquadManagerPage() {
               })}
             </div>
           )}
-          
+
           {/* ── ADD PLAYER ROW ── */}
           <div
             ref={addPlayerRef}
@@ -627,11 +662,9 @@ export default function SquadManagerPage() {
             </div>
           </div>
 
-          {error && (
-            <p style={{ color: "#ef4444", fontSize: "13px", marginBottom: "12px" }}>
-              {error}
-            </p>
-          )}
+          {/* ── ERROR / LOYALTY CLASH DISPLAY ── */}
+          <LoyaltyErrorDisplay error={error} clashes={clashes} />
+
           {savedMessage && (
             <p style={{ color: "#4ade80", fontSize: "13px", marginBottom: "12px" }}>
               {savedMessage}

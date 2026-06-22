@@ -3,15 +3,45 @@ import { useState, useEffect, useRef } from "react";
 // ─── Helper: parse dismissal string OR object ─────────────────────────────────
 const parseDismissal = (dismissal) => {
   if (!dismissal) return { isOut: false, type: "", fielder: "", bowler: "" };
-  if (typeof dismissal === "string") {
-    return { isOut: true, type: "bowled", fielder: "", bowler: dismissal };
+  
+  if (typeof dismissal === "object") {
+    return {
+      isOut: true,
+      type: dismissal.type || "",
+      fielder: dismissal.fielder || "",
+      bowler: dismissal.bowler || "",
+    };
   }
-  return {
-    isOut: true,
-    type: dismissal.type || "",
-    fielder: dismissal.fielder || "",
-    bowler: dismissal.bowler || "",
-  };
+
+  // Parse string format: "c FielderName b BowlerName", "b BowlerName",
+  // "run out (FielderName)", "st FielderName b BowlerName", etc.
+  const s = dismissal.trim();
+
+  // "c & b BowlerName"
+  const cAndB = s.match(/^c\s*&\s*b\s+(.+)$/i);
+  if (cAndB) return { isOut: true, type: "caught", fielder: cAndB[1].trim(), bowler: cAndB[1].trim() };
+
+  // "c FielderName b BowlerName"
+  const caught = s.match(/^c\s+(.+?)\s+b\s+(.+)$/i);
+  if (caught) return { isOut: true, type: "caught", fielder: caught[1].trim(), bowler: caught[2].trim() };
+
+  // "st FielderName b BowlerName"
+  const stumped = s.match(/^st\s+(.+?)\s+b\s+(.+)$/i);
+  if (stumped) return { isOut: true, type: "stumped", fielder: stumped[1].trim(), bowler: stumped[2].trim() };
+
+  // "run out (FielderName)"
+  const runout = s.match(/^run\s+out\s*\((.+)\)$/i);
+  if (runout) return { isOut: true, type: "runout", fielder: runout[1].trim(), bowler: "" };
+
+  // "run out" (no fielder)
+  if (/^run\s+out$/i.test(s)) return { isOut: true, type: "runout", fielder: "", bowler: "" };
+
+  // "b BowlerName" or "lbw b BowlerName"
+  const bowled = s.match(/^(?:lbw\s+)?b\s+(.+)$/i);
+  if (bowled) return { isOut: true, type: s.toLowerCase().startsWith("lbw") ? "lbw" : "bowled", fielder: "", bowler: bowled[1].trim() };
+
+  // Fallback
+  return { isOut: true, type: "bowled", fielder: "", bowler: s };
 };
 
 function useInningsData(
