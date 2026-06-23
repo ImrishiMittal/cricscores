@@ -69,6 +69,7 @@ export async function getSquad(squadId) {
 //   tournamentId: null,  // or a tournament _id
 //   players: [{ jersey: "7", name: "Rishi", role: "batsman" }, ...]
 // }
+// ─── Create a squad ─────────────────────────────────────────────────────────────
 export async function createSquad(squadData) {
   const res = await fetch(`${API_BASE}/squads`, {
     method: "POST",
@@ -84,7 +85,9 @@ export async function createSquad(squadData) {
 
   if (!res.ok) {
     const data = await res.json();
-    throw new Error(data.error || "Failed to create squad");
+    const err = new Error(data.error || "Failed to create squad");
+    err.clashes = data.clashes; // ← fix: attach clashes so UI can render them
+    throw err;
   }
 
   return res.json();
@@ -106,10 +109,42 @@ export async function updateSquad(squadId, updates) {
 
   if (!res.ok) {
     const data = await res.json();
-    throw new Error(data.error || "Failed to update squad");
+    const err = new Error(data.error || "Failed to update squad");
+    err.clashes = data.clashes; // ← fix: attach clashes so UI can render them
+    throw err;
   }
 
   return res.json();
+}
+
+// ─── Check jersey loyalty for a tournament match ─────────────────────────────────
+// Called by StartInningsModal / NewBatsmanModal before confirming players.
+// Returns { clashes: [{ jersey, claimedBy }] } — empty array means all clear.
+// Returns null on network error (non-fatal — caller decides whether to block).
+export async function checkLoyalty(tournamentId, jerseys, teamName) {
+  if (!tournamentId || !jerseys?.length || !teamName) return { clashes: [] };
+
+  try {
+    const params = new URLSearchParams({
+      jerseys: jerseys.join(","),
+      teamName,
+    });
+    const res = await fetch(
+      `${API_BASE}/tournaments/${tournamentId}/loyalty?${params}`,
+      { headers: getHeaders() }
+    );
+
+    if (res.status === 401) {
+      localStorage.removeItem("cricket_token");
+      window.location.href = "/login";
+      return null;
+    }
+
+    if (!res.ok) return { clashes: [] }; // non-fatal fallback
+    return res.json();
+  } catch {
+    return { clashes: [] }; // network error — don't block the scorer
+  }
 }
 
 // ─── Delete a squad ──────────────────────────────────────────────────────────────

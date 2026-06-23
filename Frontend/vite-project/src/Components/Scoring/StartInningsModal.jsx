@@ -1,5 +1,6 @@
 import { useState } from "react";
 import styles from "./StartInningsModal.module.css";
+import { checkLoyalty } from "../../api/squadApi"; 
 
 function StartInningsModal({
   onStart,
@@ -9,9 +10,9 @@ function StartInningsModal({
   firstBattingTeam,
   secondBattingTeam,
   currentInnings,
-  // ── Squad prefill (tournament matches only — undefined/null for regular matches) ──
-  battingSquadPlayers,   // squad of the team currently batting, or null
-  bowlingSquadPlayers,   // squad of the team currently bowling, or null
+  battingSquadPlayers,
+  bowlingSquadPlayers,
+  tournamentId,  
 }) {
   const [striker, setStriker] = useState("");
   const [strikerJersey, setStrikerJersey] = useState("");
@@ -32,6 +33,7 @@ function StartInningsModal({
   const [showBowlerSuggestions, setShowBowlerSuggestions] = useState(false);
 
   const [error, setError] = useState("");
+  const [loyaltyChecking, setLoyaltyChecking] = useState(false);
 
   const bowlingTeam = currentInnings === 1 ? secondBattingTeam : firstBattingTeam;
 
@@ -216,7 +218,8 @@ function StartInningsModal({
     (bowlerJersey.trim() === strikerJersey.trim() ||
       bowlerJersey.trim() === nonStrikerJersey.trim());
 
-  const handleStart = () => {
+  /* ── SUBMIT ── */
+  const handleStart = async () => {   // ← make async
     if (!striker.trim()) { setError("⚠️ Please enter striker name"); return; }
     if (!strikerJersey.trim()) { setError("⚠️ Please enter striker jersey number"); return; }
     if (!nonStriker.trim()) { setError("⚠️ Please enter non-striker name"); return; }
@@ -233,6 +236,40 @@ function StartInningsModal({
       else
         setError("⚠️ Non-Striker and Bowler cannot have the same jersey number");
       return;
+    }
+
+    // ── Tournament loyalty check ─────────────────────────────────────────────
+    if (tournamentId) {
+      setLoyaltyChecking(true);
+      try {
+        // Batting jerseys must belong to currentBattingTeam
+        const batResult = await checkLoyalty(
+          tournamentId,
+          [strikerJersey.trim(), nonStrikerJersey.trim()],
+          currentBattingTeam
+        );
+        if (batResult?.clashes?.length > 0) {
+          const c = batResult.clashes[0];
+          setError(`🚫 Jersey #${c.jersey} is registered to ${c.claimedBy} in this tournament`);
+          setLoyaltyChecking(false);
+          return;
+        }
+
+        // Bowler jersey must belong to the bowling team
+        const bowlResult = await checkLoyalty(
+          tournamentId,
+          [bowlerJersey.trim()],
+          bowlingTeam
+        );
+        if (bowlResult?.clashes?.length > 0) {
+          const c = bowlResult.clashes[0];
+          setError(`🚫 Jersey #${c.jersey} is registered to ${c.claimedBy} in this tournament`);
+          setLoyaltyChecking(false);
+          return;
+        }
+      } finally {
+        setLoyaltyChecking(false);
+      }
     }
 
     onStart(
@@ -419,13 +456,14 @@ function StartInningsModal({
             className={styles.startBtn}
             onClick={handleStart}
             disabled={
+              loyaltyChecking ||
               !striker.trim() || !nonStriker.trim() || !bowler.trim() ||
               !strikerJersey.trim() || !nonStrikerJersey.trim() || !bowlerJersey.trim() ||
               hasLockError ||
               new Set([strikerJersey.trim(), nonStrikerJersey.trim(), bowlerJersey.trim()]).size !== 3
             }
           >
-            Start Innings
+            {loyaltyChecking ? "Checking..." : "Start Innings"}
           </button>
         </div>
 

@@ -112,7 +112,9 @@ function ModalManager({
           secondBattingTeam={secondBattingTeam}
           currentInnings={innings}
           battingSquadPlayers={battingSquadPlayers}
-          bowlingSquadPlayers={bowlingSquadPlayers} 
+          bowlingSquadPlayers={bowlingSquadPlayers}
+          tournamentId={matchData.fromTournament ? matchData.tournamentId : undefined}
+ 
         />
       )}
 
@@ -128,6 +130,8 @@ function ModalManager({
         onFielderCancel={onFielderCancel}
         onConfirmNewBatsman={onConfirmNewBatsman}
         onCancelNewBatsman={onCancelNewBatsman}
+        tournamentId={matchData.fromTournament ? matchData.tournamentId : undefined}
+currentBattingTeam={currentBattingTeam}
         onReturnRetiredConfirm={onReturnRetiredConfirm}
         playerDB={playerDB}
         activePlayers={activePlayers}

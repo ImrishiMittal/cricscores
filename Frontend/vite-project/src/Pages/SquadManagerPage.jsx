@@ -272,6 +272,7 @@ export default function SquadManagerPage() {
         const updated = await squadApi.updateSquad(existingSquad._id, {
           teamName: activeTeamName,
           players,
+          tournamentId: contextTournamentId, 
         });
         setExistingSquad(updated);
       } else {
