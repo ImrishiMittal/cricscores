@@ -6,16 +6,6 @@ const authMiddleware = require("../middleware/auth");
 
 router.use(authMiddleware);
 
-// ─── GET /api/squads — list all squads for this user ─────────────────────────
-router.get("/", async (req, res) => {
-  try {
-    const squads = await Squad.find({ userId: req.userId }).sort({ createdAt: -1 });
-    res.json(squads);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ─── GET /api/squads/find — find squad by teamName + optional tournamentId ───
 // Used by MatchSetupPage / SquadManagerPage to load a saved squad.
 // Priority: tournament-scoped squad first, then default squad for the team.
@@ -57,6 +47,27 @@ router.get("/:id", async (req, res) => {
     const squad = await Squad.findOne({ _id: req.params.id, userId: req.userId });
     if (!squad) return res.status(404).json({ error: "Squad not found" });
     res.json(squad);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/", async (req, res) => {
+  try {
+    const filter = { userId: req.userId };
+
+    if (req.query.teamName) {
+      filter.teamName = req.query.teamName;
+    }
+
+    if (req.query.tournamentId !== undefined) {
+      filter.tournamentId = req.query.tournamentId === "null"
+        ? null
+        : req.query.tournamentId;
+    }
+
+    const squads = await Squad.find(filter).sort({ createdAt: -1 });
+    res.json(squads);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -172,13 +183,14 @@ router.patch("/:id", async (req, res) => {
       }
 
       // ── Cross-squad loyalty check on update ──────────────────────────────
-      if (squad.tournamentId && cleanPlayers.length > 0) {
-        const otherSquads = await Squad.find({
-          userId: req.userId,
-          tournamentId: squad.tournamentId,
-          teamName: { $ne: squad.teamName },
-          _id: { $ne: squad._id },
-        });
+      const effectiveTournamentId = squad.tournamentId || req.body.tournamentId || null;
+if (effectiveTournamentId && cleanPlayers.length > 0) {
+  const otherSquads = await Squad.find({
+    userId: req.userId,
+    tournamentId: effectiveTournamentId,
+    teamName: { $ne: teamName?.trim() || squad.teamName },
+    _id: { $ne: squad._id },
+  });
 
         const clashes = [];
         for (const other of otherSquads) {

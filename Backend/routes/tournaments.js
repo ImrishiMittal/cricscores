@@ -950,6 +950,105 @@ mostHundreds: (() => { const p = pick(battingList, (a, b) => b.hundreds - a.hund
   }
 });
 
+router.get("/:id/loyalty", async (req, res) => {
+  try {
+    const tournament = await Tournament.findOne({
+      _id: req.params.id,
+      userId: req.userId,
+    });
+    if (!tournament) return res.status(404).json({ error: "Tournament not found" });
+
+    const { jerseys, teamName } = req.query;
+    if (!jerseys || !teamName) {
+      return res.status(400).json({ error: "jerseys and teamName are required" });
+    }
+
+    const requestedJerseys = jerseys
+      .split(",")
+      .map((j) => j.trim())
+      .filter(Boolean);
+
+    if (requestedJerseys.length === 0) {
+      return res.json({ clashes: [] });
+    }
+
+    const Squad = require("../models/Squad");
+    const clashMap = {}; // jersey -> claimedBy (team name)
+
+    // ── Step 1: check squads saved for this tournament ────────────────────────
+    const otherSquads = await Squad.find({
+      userId: req.userId,
+      tournamentId: tournament._id,
+      teamName: { $ne: teamName },
+    });
+
+    for (const squad of otherSquads) {
+      for (const player of squad.players) {
+        const j = String(player.jersey);
+        if (requestedJerseys.includes(j) && !clashMap[j]) {
+          clashMap[j] = squad.teamName;
+        }
+      }
+    }
+
+    // ── Step 2: for jerseys still unchecked, scan Match records ───────────────
+    const unchecked = requestedJerseys.filter((j) => !clashMap[j]);
+
+    if (unchecked.length > 0) {
+      // Find all completed fixtures that were actually scored
+      const scoredFixtures = await Fixture.find({
+        tournamentId: tournament._id,
+        status: "completed",
+        matchId: { $exists: true, $nin: [null, ""] },
+      });
+
+      if (scoredFixtures.length > 0) {
+        const matchIds = scoredFixtures.map((f) => f.matchId);
+        const matches = await Match.find({
+          matchId: { $in: matchIds },
+          userId: req.userId,
+        });
+
+        // Build a map: jersey -> team name, from batting + bowling records
+        // A jersey belongs to the team whose side it appeared on
+        for (const match of matches) {
+          // Find the fixture for this match to know which team is which
+          const fixture = scoredFixtures.find((f) => f.matchId === match.matchId);
+          if (!fixture) continue;
+
+          // team1 batted first — team1Name maps to fixture teamA or teamB
+          // We use match.team1Name / match.team2Name directly
+          const team1 = match.team1Name;
+          const team2 = match.team2Name;
+
+          const scanPlayers = (playerList, teamLabel) => {
+            for (const p of playerList || []) {
+              const j = String(p.jersey || p.playerId || "").trim();
+              if (!j || !unchecked.includes(j)) continue;
+              if (teamLabel === teamName) continue; // same team — no clash
+              if (!clashMap[j]) clashMap[j] = teamLabel;
+            }
+          };
+
+          scanPlayers(match.team1Batting, team1);
+          scanPlayers(match.team1Bowling, team1);
+          scanPlayers(match.team2Batting, team2);
+          scanPlayers(match.team2Bowling, team2);
+        }
+      }
+    }
+
+    const clashes = Object.entries(clashMap).map(([jersey, claimedBy]) => ({
+      jersey,
+      claimedBy,
+    }));
+
+    res.json({ clashes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── DELETE /:id — delete tournament and all fixtures ────────────────────────
 router.delete("/:id", async (req, res) => {
   try {
