@@ -6,8 +6,69 @@ const Tournament = require("../models/Tournament");
 const Fixture = require("../models/Fixture");
 const Match = require("../models/Match");
 const authMiddleware = require("../middleware/auth");
+const crypto = require("crypto");
+
+// ─── GET /public/:shareId — public view (no auth) ─────────────────────────
+router.get("/public/:shareId", async (req, res) => {
+  try {
+    const tournament = await Tournament.findOne({
+      shareId: req.params.shareId,
+      visibility: "public",
+    }).select("-userId");
+
+    if (!tournament) {
+      return res.status(404).json({ error: "Tournament not found or not public" });
+    }
+
+    const fixtures = await Fixture.find({ tournamentId: tournament._id })
+      .sort({ createdAt: 1 })
+      .select("-userId");
+
+    res.json({ tournament, fixtures });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /share-lookup — resolve shareId without auth (for PublicTournamentPage) ─
+// (no extra route needed — /public/:shareId above handles everything)
 
 router.use(authMiddleware);
+
+// ─── POST /:id/share — enable public sharing, generate shareId ───────────────
+router.post("/:id/share", async (req, res) => {
+  try {
+    const tournament = await Tournament.findOne({
+      _id: req.params.id,
+      userId: req.userId,
+    });
+    if (!tournament) return res.status(404).json({ error: "Tournament not found" });
+
+    const { visibility } = req.body; // "public" | "private"
+
+    if (visibility === "public") {
+      if (!tournament.shareId) {
+        tournament.shareId = crypto.randomBytes(6).toString("hex"); // e.g. "a1b2c3d4e5f6"
+      }
+      tournament.visibility = "public";
+    } else {
+      tournament.visibility = "private";
+      // Keep shareId so the same link still works if they re-enable sharing later.
+      // To fully revoke: tournament.shareId = null;
+    }
+
+    await tournament.save();
+    res.json({
+      shareId: tournament.shareId,
+      visibility: tournament.visibility,
+      shareUrl: tournament.shareId
+        ? `${process.env.FRONTEND_URL || "https://cricscorers.in"}/t/${tournament.shareId}`
+        : null,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
 const KNOCKOUT_MINIMUMS = { top2: 3, top4: 4, top8: 8, ipl: 4, none: 2 };
 

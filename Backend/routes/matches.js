@@ -4,6 +4,17 @@ const router  = express.Router();
 const Match   = require("../models/Match");
 const authMiddleware = require("../middleware/auth");
 
+// ─── GET /:matchId/public — unauthenticated scorecard for public tournament view ──
+router.get("/:matchId/public", async (req, res) => {
+  try {
+    const match = await Match.findOne({ matchId: req.params.matchId });
+    if (!match) return res.status(404).json({ error: "Match not found" });
+    res.json(match);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.use(authMiddleware);
 
 // ─── GET all matches ──────────────────────────────────────────────────────────
