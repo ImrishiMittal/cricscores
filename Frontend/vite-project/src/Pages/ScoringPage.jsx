@@ -111,8 +111,21 @@ function ScoringPage() {
     if (!existingMatchId) {
       const matchId = `match_${Date.now()}`;
       playerDBHook.setCurrentMatchId(matchId);
-      captainStatsSavedRef.current = false; // ← ERROR: ref never declared
+      captainStatsSavedRef.current = false;
       console.log("🆔 Match ID set:", matchId);
+      if (
+        resolvedMatchData.fromTournament &&
+        resolvedMatchData.tournamentId &&
+        resolvedMatchData.fixtureId
+      ) {
+        import("../api/tournamentApi").then(({ updateFixtureResult }) => {
+          updateFixtureResult(
+            resolvedMatchData.tournamentId,
+            resolvedMatchData.fixtureId,
+            { matchId, status: "scheduled" } 
+          ).catch((e) => console.warn("⚠️ Could not write live matchId:", e));
+        });
+      }
     }
   }, []);
 
@@ -742,6 +755,38 @@ function ScoringPage() {
     );
     setShowFollowOnModal(true);
   }, [engine.followOnPending]);
+  // Add near other useEffects in ScoringPage
+useEffect(() => {
+  if (!matchData.fromTournament || !matchData.tournamentId || !matchData.fixtureId) return;
+  if (engine.matchOver) return;
+
+  const syncLiveScore = async () => {
+    try {
+      const { updateFixtureResult } = await import("../api/tournamentApi");
+      await updateFixtureResult(
+        matchData.tournamentId,
+        matchData.fixtureId,
+        {
+          matchId: playerDBHook.getCurrentMatchId(),
+          // Write current batting team's score into the right slot
+          ...(matchData.battingFirst === matchData.teamA
+            ? engine.innings === 1
+              ? { teamARuns: engine.score, teamAWickets: engine.wickets, teamABalls: engine.overs * 6 + engine.balls }
+              : { teamBRuns: engine.score, teamBWickets: engine.wickets, teamBBalls: engine.overs * 6 + engine.balls }
+            : engine.innings === 1
+              ? { teamBRuns: engine.score, teamBWickets: engine.wickets, teamBBalls: engine.overs * 6 + engine.balls }
+              : { teamARuns: engine.score, teamAWickets: engine.wickets, teamABalls: engine.overs * 6 + engine.balls }
+          ),
+          status: "scheduled", // keep as scheduled, not completed
+        }
+      );
+    } catch (e) {
+      // non-fatal
+    }
+  };
+
+  syncLiveScore();
+}, [engine.score, engine.wickets, engine.overs]); // fires on score change
 
   const firstBattingTeam = matchData.battingFirst;
   const secondBattingTeam =

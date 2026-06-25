@@ -5,6 +5,7 @@ import BrandTitle from "../Components/BrandTitle";
 import { getMatch } from "../api/matchApi";
 import { generateScorecardPDF } from "../utils/generateScorecardPDF";
 import { getTournamentAwards } from "../api/tournamentApi";
+import { shareTournament } from "../api/tournamentApi";
 
 const SR_MIN_BALLS = 50;
 
@@ -480,11 +481,18 @@ export default function TournamentDashboardPage() {
   const [awardsData, setAwardsData] = useState(null);
   const [awardsLoading, setAwardsLoading] = useState(false);
   const [awardsTab, setAwardsTab] = useState("awards");
+  const [shareData, setShareData] = useState({
+    shareId: tournament?.shareId || null,
+    visibility: tournament?.visibility || "private",
+  });
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   useEffect(() => {
     tournamentApi
       .getTournament(id)
       .then((t) => {
+        setShareData({ shareId: t.shareId || null, visibility: t.visibility || "private" });
         setTournament(t);
         if (t.knockoutFormat && t.knockoutFormat !== "none") {
           tournamentApi
@@ -608,6 +616,29 @@ export default function TournamentDashboardPage() {
     }
   };
 
+  const handleToggleSharing = async () => {
+    const newVisibility = shareData.visibility === "public" ? "private" : "public";
+    setShareLoading(true);
+    try {
+      const result = await tournamentApi.shareTournament(id, newVisibility);
+      setShareData({ shareId: result.shareId, visibility: result.visibility });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setShareLoading(false);
+    }
+  };
+  
+  const shareUrl = shareData.shareId
+    ? `${window.location.origin}/t/${shareData.shareId}`
+    : null;
+  
+  const handleCopyShareLink = () => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
+  };
   // Checklist: every team must appear the same number of times.
   const manualCounts = {};
   (tournament?.teams || []).forEach((t) => {
@@ -793,6 +824,51 @@ export default function TournamentDashboardPage() {
       >
         👥 Manage Squads
       </button>
+      {/* ── Share Panel ── */}
+<div style={{ background: "#111827", border: "1px solid #1f2937", borderRadius: "12px", padding: "14px 16px", marginBottom: "18px" }}>
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: shareData.visibility === "public" ? "12px" : "0" }}>
+    <div>
+      <div style={{ fontSize: "13px", fontWeight: "700", color: "#f9fafb" }}>🌐 Public Sharing</div>
+      <div style={{ fontSize: "11px", color: "#6b7280", marginTop: "2px" }}>
+        {shareData.visibility === "public" ? "Anyone with the link can view this tournament" : "Only you can see this tournament"}
+      </div>
+    </div>
+    <button
+      onClick={handleToggleSharing}
+      disabled={shareLoading}
+      style={{
+        background: shareData.visibility === "public" ? "#14532d" : "#1f2937",
+        border: `1px solid ${shareData.visibility === "public" ? "#16a34a" : "#374151"}`,
+        color: shareData.visibility === "public" ? "#4ade80" : "#6b7280",
+        padding: "7px 14px", borderRadius: "8px",
+        fontSize: "12px", fontWeight: "700", cursor: shareLoading ? "not-allowed" : "pointer",
+        flexShrink: 0,
+      }}
+    >
+      {shareLoading ? "..." : shareData.visibility === "public" ? "● Public" : "○ Private"}
+    </button>
+  </div>
+
+  {shareData.visibility === "public" && shareUrl && (
+    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+      <div style={{ flex: 1, background: "#0d1117", border: "1px solid #374151", borderRadius: "8px", padding: "8px 10px", fontSize: "12px", color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {shareUrl}
+      </div>
+      <button
+        onClick={handleCopyShareLink}
+        style={{
+          background: shareCopied ? "#14532d" : "#1e3a5f",
+          border: `1px solid ${shareCopied ? "#16a34a" : "#2563eb"}`,
+          color: shareCopied ? "#4ade80" : "#60a5fa",
+          padding: "8px 12px", borderRadius: "8px",
+          fontSize: "12px", fontWeight: "700", cursor: "pointer", flexShrink: 0,
+        }}
+      >
+        {shareCopied ? "✅ Copied" : "Copy"}
+      </button>
+    </div>
+  )}
+</div>
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "18px", flexWrap: "wrap" }}>

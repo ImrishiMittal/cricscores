@@ -270,3 +270,31 @@ export async function getTournamentAwards(tournamentId) {
  
   return res.json();
 }
+
+// ─── Share a tournament (toggle visibility) ───────────────────────────────────
+export async function shareTournament(tournamentId, visibility) {
+  const token = localStorage.getItem("cricket_token");
+  const res = await fetch(`${API_BASE}/tournaments/${tournamentId}/share`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ visibility }),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to update sharing settings");
+  }
+  return res.json(); // { shareId, visibility, shareUrl }
+}
+
+// ─── Fetch a public tournament by shareId (no auth) ───────────────────────────
+export async function getPublicTournament(shareId) {
+  const res = await fetch(`${API_BASE}/tournaments/public/${shareId}`);
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Tournament not found");
+  }
+  return res.json(); // { tournament, fixtures }
+}
