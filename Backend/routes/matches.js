@@ -1,13 +1,20 @@
-// routes/matches.js — complete clean version
 const express = require("express");
 const router  = express.Router();
 const Match   = require("../models/Match");
 const authMiddleware = require("../middleware/auth");
 
-// ─── GET /:matchId/public — unauthenticated scorecard for public tournament view ──
+// ─── PUBLIC (no auth) ─────────────────────────────────────────────────────────
+
 router.get("/:matchId/public", async (req, res) => {
   try {
-    const match = await Match.findOne({ matchId: req.params.matchId });
+    const id = req.params.matchId;
+
+    let match = await Match.findOne({ matchId: id }).lean();
+
+    if (!match && id.match(/^[a-f\d]{24}$/i)) {
+      match = await Match.findById(id).lean();
+    }
+
     if (!match) return res.status(404).json({ error: "Match not found" });
     res.json(match);
   } catch (err) {
@@ -15,9 +22,12 @@ router.get("/:matchId/public", async (req, res) => {
   }
 });
 
+// ─── AUTH WALL ────────────────────────────────────────────────────────────────
+
 router.use(authMiddleware);
 
 // ─── GET all matches ──────────────────────────────────────────────────────────
+
 router.get("/", async (req, res) => {
   try {
     const matches = await Match.find({ userId: req.userId }).sort({ createdAt: -1 });
@@ -28,17 +38,15 @@ router.get("/", async (req, res) => {
 });
 
 // ─── GET single match ─────────────────────────────────────────────────────────
-// ─── GET single match ─────────────────────────────────────────────────────────
+
 router.get("/:id", async (req, res) => {
   try {
-    // First try by custom matchId string (e.g. "match_1781842484492")
     let match = await Match.findOne({ matchId: req.params.id, userId: req.userId });
-    
-    // Fall back to MongoDB _id if it looks like a valid ObjectId
+
     if (!match && req.params.id.match(/^[a-f\d]{24}$/i)) {
       match = await Match.findOne({ _id: req.params.id, userId: req.userId });
     }
-    
+
     if (!match) return res.status(404).json({ error: "Match not found." });
     res.json(match);
   } catch (err) {
@@ -47,8 +55,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // ─── POST save match ──────────────────────────────────────────────────────────
-// Player stats are written by updateMatchMilestones() on the frontend.
-// This route only persists the match document itself.
+
 router.post("/", async (req, res) => {
   try {
     if (!req.body.matchId) {
@@ -83,6 +90,7 @@ router.post("/", async (req, res) => {
 });
 
 // ─── DELETE match ─────────────────────────────────────────────────────────────
+
 router.delete("/:id", async (req, res) => {
   try {
     const match = await Match.findOne({ _id: req.params.id, userId: req.userId });
