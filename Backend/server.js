@@ -29,6 +29,7 @@ app.use("/api/matches", matchRoutes);
 app.use("/api/teams",   teamRoutes);
 app.use("/api/tournaments", tournamentRoutes);
 app.use("/api/squads", squadsRouter);
+app.use("/api/head-to-head", require("./routes/headToHead"));
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
