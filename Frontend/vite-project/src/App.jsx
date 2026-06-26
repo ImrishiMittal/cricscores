@@ -13,6 +13,7 @@ import CreateTournamentPage from "./Pages/CreateTournamentPage";
 import TournamentDashboardPage from "./Pages/TournamentDashboardPage";
 import SquadManagerPage from "./Pages/SquadManagerPage";
 import PublicTournamentPage from "./Pages/PublicTournamentPage";
+import HeadToHeadPage from "./Pages/HeadToHeadPage";
 
 const router = createBrowserRouter([
   { path: "/",                        element: <LandingPage /> },
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
   { path: "/tournaments/:id",         element: <TournamentDashboardPage /> },
   { path: "/squads",                  element: <SquadManagerPage /> },
   { path: "/t/:shareId",              element: <PublicTournamentPage /> },
+  { path: "/head-to-head", element: <HeadToHeadPage /> },
 ]);
 
 function App() {

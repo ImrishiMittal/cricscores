@@ -6,6 +6,7 @@ import { getMatch } from "../api/matchApi";
 import { generateScorecardPDF } from "../utils/generateScorecardPDF";
 import { getTournamentAwards } from "../api/tournamentApi";
 import { shareTournament } from "../api/tournamentApi";
+import { generateTournamentPDF } from "../utils/generateTournamentPDF";
 
 const SR_MIN_BALLS = 50;
 
@@ -487,6 +488,7 @@ export default function TournamentDashboardPage() {
   });
   const [shareLoading, setShareLoading] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   useEffect(() => {
     tournamentApi
@@ -638,6 +640,25 @@ export default function TournamentDashboardPage() {
     navigator.clipboard.writeText(shareUrl);
     setShareCopied(true);
     setTimeout(() => setShareCopied(false), 2000);
+  };
+  const handleDownloadTournamentReport = async () => {
+    setPdfLoading(true);
+    try {
+      let awardsForPdf = awardsData;
+      if (!awardsForPdf) {
+        awardsForPdf = await getTournamentAwards(id).catch(() => null);
+      }
+      generateTournamentPDF({
+        tournament,
+        fixtures: tournament.fixtures || [],
+        awardsData: awardsForPdf,
+      });
+    } catch (err) {
+      console.error("Failed to generate tournament report:", err);
+      alert("Could not generate report. Please try again.");
+    } finally {
+      setPdfLoading(false);
+    }
   };
   // Checklist: every team must appear the same number of times.
   const manualCounts = {};
@@ -824,6 +845,41 @@ export default function TournamentDashboardPage() {
       >
         👥 Manage Squads
       </button>
+      <button
+  onClick={handleDownloadTournamentReport}
+  disabled={pdfLoading}
+  style={{
+    width: "100%",
+    background: pdfLoading ? "#1a1a1a" : "#0d1f3c",
+    border: `1px solid ${pdfLoading ? "#374151" : "#2563eb"}`,
+    color: pdfLoading ? "#6b7280" : "#60a5fa",
+    padding: "10px",
+    borderRadius: "8px",
+    cursor: pdfLoading ? "not-allowed" : "pointer",
+    fontSize: "13px",
+    fontWeight: "600",
+    marginBottom: "18px",
+  }}
+>
+  {pdfLoading ? "⏳ Generating Report..." : "📄 Download Tournament Report"}
+</button>
+<button
+  onClick={() => navigate(`/head-to-head?teamA=${encodeURIComponent((tournament.teams || [])[0] || "")}&teamB=${encodeURIComponent((tournament.teams || [])[1] || "")}`)}
+  style={{
+    width: "100%",
+    background: "#1a0d2e",
+    border: "1px solid #7c3aed",
+    color: "#a78bfa",
+    padding: "10px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "600",
+    marginBottom: "18px",
+  }}
+>
+  ⚔️ Head-to-Head Stats
+</button>
       {/* ── Share Panel ── */}
 <div style={{ background: "#111827", border: "1px solid #1f2937", borderRadius: "12px", padding: "14px 16px", marginBottom: "18px" }}>
   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: shareData.visibility === "public" ? "12px" : "0" }}>
