@@ -73,8 +73,9 @@ const fixtureSchema = new mongoose.Schema(
     teamBBalls:   { type: Number, default: 0 },
 
     resultText: { type: String, default: "" },
+    battingFirst: { type: String, default: null },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 fixtureSchema.index({ tournamentId: 1, status: 1 });

@@ -600,14 +600,16 @@ router.patch("/:id/fixtures/:fixtureId", async (req, res) => {
       matchId, winner, resultText,
       teamARuns, teamAWickets, teamABalls,
       teamBRuns, teamBWickets, teamBBalls,
-      status,
+      status, battingFirst,
     } = req.body;
+    
 
     if (fixture.status === "completed" && fixture.stage === "league") {
       applyFixtureToStandings(tournament, fixture, { reverse: true });
     }
 
     if (matchId     !== undefined) fixture.matchId     = matchId;
+    if (battingFirst !== undefined) fixture.battingFirst = battingFirst;
     if (winner      !== undefined) fixture.winner      = winner;
     if (resultText  !== undefined) fixture.resultText  = resultText;
     if (teamARuns   !== undefined) fixture.teamARuns   = teamARuns;
