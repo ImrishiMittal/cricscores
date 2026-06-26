@@ -122,7 +122,7 @@ function ScoringPage() {
           updateFixtureResult(
             resolvedMatchData.tournamentId,
             resolvedMatchData.fixtureId,
-            { matchId, status: "scheduled" } 
+            { matchId, battingFirst: resolvedMatchData.battingFirst, status: "scheduled" }
           ).catch((e) => console.warn("⚠️ Could not write live matchId:", e));
         });
       }
@@ -768,6 +768,7 @@ useEffect(() => {
         matchData.fixtureId,
         {
           matchId: playerDBHook.getCurrentMatchId(),
+          battingFirst: matchData.battingFirst,
           // Write current batting team's score into the right slot
           ...(matchData.battingFirst === matchData.teamA
             ? engine.innings === 1

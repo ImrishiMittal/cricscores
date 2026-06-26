@@ -1123,65 +1123,95 @@ function LiveScoreStrip({ fixture: f }) {
       );
     }
   
-    // ── Fallback: use fixture fields written by ScoringPage's live sync ───────
-    // Determine which team is currently batting based on what data exists.
-    // After innings 1 ends, teamARuns is set and teamBRuns starts populating.
-    const hasInn1 = f.teamARuns != null;
-    const hasInn2 = f.teamBRuns != null;
-  
-    // Nothing scored yet — match just started
-    if (!hasInn1 && !hasInn2) {
+    // ── Fallback: use fixture fields ──────────────────────────────────────────────
+  const battingFirst = f.battingFirst;
+
+  if (!battingFirst) {
+    const hasAnyScore = f.teamARuns != null || f.teamBRuns != null;
+    if (!hasAnyScore) {
       return (
         <div style={{ marginTop: "8px", textAlign: "center", fontSize: "11px", color: "#6b7280", padding: "6px 0" }}>
           ⏳ Match in progress…
         </div>
       );
     }
-  
+    const teamName = f.teamARuns != null ? f.teamA : f.teamB;
+    const runs = f.teamARuns ?? f.teamBRuns ?? 0;
+    const wkts = f.teamARuns != null ? (f.teamAWickets ?? 0) : (f.teamBWickets ?? 0);
+    const balls = f.teamARuns != null ? (f.teamABalls ?? 0) : (f.teamBBalls ?? 0);
     return (
       <div style={{ marginTop: "10px", background: "#0d1117", borderRadius: "8px", padding: "10px 12px", border: "1px solid #1f2937" }}>
-        {/* Innings 1 — always show if available, dimmed once innings 2 starts */}
-        {hasInn1 && (
-          <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            marginBottom: hasInn2 ? "6px" : 0,
-            opacity: hasInn2 ? 0.7 : 1,
-          }}>
-            <span style={{ fontSize: hasInn2 ? "12px" : "13px", color: hasInn2 ? "#6b7280" : "#9ca3af", fontWeight: "600" }}>
-              {f.teamA}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: "13px", color: "#f9fafb", fontWeight: "700" }}>{teamName}</span>
+          <span style={{ fontSize: "15px", color: "#4ade80", fontWeight: "800" }}>
+            {runs}/{wkts}
+            <span style={{ fontSize: "11px", color: "#6b7280", fontWeight: "400", marginLeft: "4px" }}>
+              ({Math.floor(balls / 6)}.{balls % 6})
             </span>
-            <span style={{ fontSize: hasInn2 ? "13px" : "14px", color: hasInn2 ? "#9ca3af" : "#f9fafb", fontWeight: "700" }}>
-              {f.teamARuns}/{f.teamAWickets ?? 0}
-              <span style={{ fontSize: "11px", color: "#6b7280", marginLeft: "4px" }}>
-                ({Math.floor((f.teamABalls || 0) / 6)}.{(f.teamABalls || 0) % 6})
-              </span>
-            </span>
-          </div>
-        )}
-  
-        {/* Innings 2 — team B currently batting, show in green as live score */}
-        {hasInn2 && (
-          <>
-            {/* Target line */}
-            {hasInn1 && (
-              <div style={{ fontSize: "10px", color: "#f59e0b", textAlign: "right", marginBottom: "4px" }}>
-                Target: {(f.teamARuns ?? 0) + 1} · Need{" "}
-                {Math.max(0, (f.teamARuns ?? 0) + 1 - (f.teamBRuns ?? 0))} runs
-              </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "13px", color: "#f9fafb", fontWeight: "700" }}>
-                {f.teamB}
-              </span>
-              <span style={{ fontSize: "15px", color: "#4ade80", fontWeight: "800" }}>
-                {f.teamBRuns}/{f.teamBWickets ?? 0}
-                <span style={{ fontSize: "11px", color: "#6b7280", fontWeight: "400", marginLeft: "4px" }}>
-                  ({Math.floor((f.teamBBalls || 0) / 6)}.{(f.teamBBalls || 0) % 6})
-                </span>
-              </span>
-            </div>
-          </>
-        )}
+          </span>
+        </div>
       </div>
     );
   }
+
+  const inn1IsTeamA = battingFirst === f.teamA;
+  const inn1Team    = inn1IsTeamA ? f.teamA : f.teamB;
+  const inn2Team    = inn1IsTeamA ? f.teamB : f.teamA;
+  const inn1Runs    = inn1IsTeamA ? f.teamARuns    : f.teamBRuns;
+  const inn1Wickets = inn1IsTeamA ? f.teamAWickets : f.teamBWickets;
+  const inn1Balls   = inn1IsTeamA ? f.teamABalls   : f.teamBBalls;
+  const inn2Runs    = inn1IsTeamA ? f.teamBRuns    : f.teamARuns;
+  const inn2Wickets = inn1IsTeamA ? f.teamBWickets : f.teamAWickets;
+  const inn2Balls   = inn1IsTeamA ? f.teamBBalls   : f.teamABalls;
+
+  const hasInn1 = inn1Runs != null;
+  const hasInn2 = inn2Runs != null;
+
+  if (!hasInn1 && !hasInn2) {
+    return (
+      <div style={{ marginTop: "8px", textAlign: "center", fontSize: "11px", color: "#6b7280", padding: "6px 0" }}>
+        ⏳ Match in progress…
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: "10px", background: "#0d1117", borderRadius: "8px", padding: "10px 12px", border: "1px solid #1f2937" }}>
+      {hasInn1 && (
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          marginBottom: hasInn2 ? "6px" : 0,
+          opacity: hasInn2 ? 0.7 : 1,
+        }}>
+          <span style={{ fontSize: hasInn2 ? "12px" : "13px", color: hasInn2 ? "#6b7280" : "#9ca3af", fontWeight: "600" }}>
+            {inn1Team}
+          </span>
+          <span style={{ fontSize: hasInn2 ? "13px" : "14px", color: hasInn2 ? "#9ca3af" : "#f9fafb", fontWeight: "700" }}>
+            {inn1Runs}/{inn1Wickets ?? 0}
+            <span style={{ fontSize: "11px", color: "#6b7280", marginLeft: "4px" }}>
+              ({Math.floor((inn1Balls || 0) / 6)}.{(inn1Balls || 0) % 6})
+            </span>
+          </span>
+        </div>
+      )}
+      {hasInn2 && (
+        <>
+          {hasInn1 && (
+            <div style={{ fontSize: "10px", color: "#f59e0b", textAlign: "right", marginBottom: "4px" }}>
+              Target: {(inn1Runs ?? 0) + 1} · Need {Math.max(0, (inn1Runs ?? 0) + 1 - (inn2Runs ?? 0))} runs
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "13px", color: "#f9fafb", fontWeight: "700" }}>{inn2Team}</span>
+            <span style={{ fontSize: "15px", color: "#4ade80", fontWeight: "800" }}>
+              {inn2Runs}/{inn2Wickets ?? 0}
+              <span style={{ fontSize: "11px", color: "#6b7280", fontWeight: "400", marginLeft: "4px" }}>
+                ({Math.floor((inn2Balls || 0) / 6)}.{(inn2Balls || 0) % 6})
+              </span>
+            </span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
