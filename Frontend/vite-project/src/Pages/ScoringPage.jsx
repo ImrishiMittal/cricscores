@@ -787,7 +787,7 @@ useEffect(() => {
   };
 
   syncLiveScore();
-}, [engine.score, engine.wickets, engine.overs]); // fires on score change
+}, [engine.score, engine.wickets, engine.overs, engine.balls, engine.innings]); 
 
   const firstBattingTeam = matchData.battingFirst;
   const secondBattingTeam =

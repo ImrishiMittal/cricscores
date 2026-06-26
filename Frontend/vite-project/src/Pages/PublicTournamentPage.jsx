@@ -1035,6 +1035,7 @@ function useLiveMatch(matchId) {
     const fetch = async () => {
       try {
         const res = await getPublicMatch(matchId);
+        console.log("🔴 liveData:", JSON.stringify(res, null, 2));
         setLiveData(res);
       } catch {
         // silently ignore — fixture score is the fallback
@@ -1054,76 +1055,133 @@ function useLiveMatch(matchId) {
 
 // ── LiveScoreStrip — full ball-by-ball live view ──────────────────────────────
 function LiveScoreStrip({ fixture: f }) {
-    const { liveData } = useLiveMatch(f.matchId);
-  
-    // ── Full live view from Match document (only available after match ends) ──
-    if (liveData) {
-      const m = liveData;
-      const currentOver = m.currentOver || [];
-      const overs = m.overs ?? 0;
-      const balls = m.balls ?? 0;
-      const score = m.score ?? m.team2Score ?? 0;
-      const wickets = m.wickets ?? m.team2Wickets ?? 0;
-      const innings = m.innings ?? 1;
-  
-      const ballSymbol = (ball) => {
-        if (!ball) return null;
-        if (ball.type === "wide") return <span style={{ color: "#f59e0b" }}>Wd</span>;
-        if (ball.type === "noball") return <span style={{ color: "#f59e0b" }}>Nb</span>;
-        if (ball.type === "wicket") return <span style={{ color: "#ef4444", fontWeight: "700" }}>W</span>;
-        if (ball.runs === 4) return <span style={{ color: "#60a5fa", fontWeight: "700" }}>4</span>;
-        if (ball.runs === 6) return <span style={{ color: "#4ade80", fontWeight: "700" }}>6</span>;
-        if (ball.runs === 0) return <span style={{ color: "#6b7280" }}>·</span>;
-        return <span style={{ color: "#e5e7eb" }}>{ball.runs}</span>;
-      };
-  
-      return (
-        <div style={{ marginTop: "10px", background: "#0d1117", borderRadius: "8px", padding: "10px 12px", border: "1px solid #1f2937" }}>
-          {m.team1Score !== undefined && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-              <span style={{ fontSize: "12px", color: "#6b7280", fontWeight: "600" }}>{m.team1Name}</span>
-              <span style={{ fontSize: "13px", color: "#9ca3af", fontWeight: "700" }}>
-                {m.team1Score}/{m.team1Wickets}
-                <span style={{ fontSize: "10px", color: "#6b7280", marginLeft: "3px" }}>
-                  ({Math.floor((m.team1Balls || 0) / 6)}.{(m.team1Balls || 0) % 6})
-                </span>
-              </span>
-            </div>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "13px", color: "#f9fafb", fontWeight: "700" }}>
-              {innings === 1 ? m.team1Name : m.team2Name}
-            </span>
-            <span style={{ fontSize: "15px", color: "#4ade80", fontWeight: "800" }}>
-              {score}/{wickets}
-              <span style={{ fontSize: "11px", color: "#6b7280", fontWeight: "400", marginLeft: "4px" }}>
-                ({overs}.{balls})
+  const { liveData } = useLiveMatch(f.matchId);
+
+  if (liveData) {
+    const m = liveData;
+    const overs = m.overs ?? 0;
+    const balls = m.balls ?? 0;
+    const score = m.score ?? m.team2Score ?? 0;
+    const wickets = m.wickets ?? m.team2Wickets ?? 0;
+    const innings = m.innings ?? 1;
+    const currentOver = m.currentOver || [];
+
+    const allBatting = innings === 1
+      ? (m.team1Batting || [])
+      : (m.team2Batting || []);
+
+    const activeBatters = allBatting
+      .filter(b => !b.isOut && ((b.balls || 0) > 0 || (b.runs || 0) >= 0))
+      .slice(-2);
+
+    const allBowling = innings === 1
+      ? (m.team2Bowling || [])
+      : (m.team1Bowling || []);
+    const currentBowler = allBowling[allBowling.length - 1] || null;
+    console.log("currentBowler:", currentBowler);
+
+    const ballSymbol = (ball) => {
+      if (!ball) return null;
+      if (ball.type === "wide") return <span style={{ color: "#f59e0b" }}>Wd</span>;
+      if (ball.type === "noball") return <span style={{ color: "#f59e0b" }}>Nb</span>;
+      if (ball.type === "wicket") return <span style={{ color: "#ef4444", fontWeight: "700" }}>W</span>;
+      if (ball.runs === 4) return <span style={{ color: "#60a5fa", fontWeight: "700" }}>4</span>;
+      if (ball.runs === 6) return <span style={{ color: "#4ade80", fontWeight: "700" }}>6</span>;
+      if (ball.runs === 0) return <span style={{ color: "#6b7280" }}>·</span>;
+      return <span style={{ color: "#e5e7eb" }}>{ball.runs}</span>;
+    };
+
+    return (
+      <div style={{ marginTop: "10px", background: "#0d1117", borderRadius: "8px", padding: "10px 12px", border: "1px solid #1f2937" }}>
+
+        {/* ── Innings 1 score (faded) ── */}
+        {m.team1Score !== undefined && innings === 2 && (
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", opacity: 0.6 }}>
+            <span style={{ fontSize: "12px", color: "#6b7280" }}>{m.team1Name}</span>
+            <span style={{ fontSize: "12px", color: "#9ca3af" }}>
+              {m.team1Score}/{m.team1Wickets}
+              <span style={{ fontSize: "10px", color: "#6b7280", marginLeft: "3px" }}>
+                ({Math.floor((m.team1Balls || 0) / 6)}.{(m.team1Balls || 0) % 6})
               </span>
             </span>
           </div>
-          {currentOver.length > 0 && (
-            <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "10px", color: "#6b7280" }}>This over:</span>
-              <div style={{ display: "flex", gap: "4px" }}>
-                {currentOver.map((ball, i) => (
-                  <div key={i} style={{ width: "22px", height: "22px", borderRadius: "50%", background: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700" }}>
-                    {ballSymbol(ball)}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {m.target && innings === 2 && (
-            <div style={{ marginTop: "6px", fontSize: "11px", color: "#f59e0b", textAlign: "right" }}>
-              Target: {m.target} · Need {Math.max(0, m.target - score)} from{" "}
-              {parseInt(m.totalOvers || 20) * 6 - (overs * 6 + balls)} balls
-            </div>
-          )}
+        )}
+
+        {/* ── Live score ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+          <span style={{ fontSize: "12px", color: "#6b7280" }}>
+            {innings === 1 ? m.team1Name : m.team2Name}
+          </span>
+          <span style={{ fontSize: "16px", color: "#4ade80", fontWeight: "800" }}>
+            {score}/{wickets}
+            <span style={{ fontSize: "11px", color: "#6b7280", fontWeight: "400", marginLeft: "4px" }}>
+              ({overs}.{balls})
+            </span>
+          </span>
         </div>
-      );
-    }
-  
-    // ── Fallback: use fixture fields ──────────────────────────────────────────────
+
+        {/* ── Active batters ── */}
+        {activeBatters.length > 0 && (
+          <div style={{ borderTop: "1px solid #1f2937", paddingTop: "8px", marginBottom: "8px" }}>
+            {activeBatters.map((b, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: i === 0 ? "4px" : 0 }}>
+                <span style={{ fontSize: "12px", color: "#f9fafb", fontWeight: "600" }}>
+                  {b.playerName}
+                </span>
+                <span style={{ fontSize: "12px", color: "#e5e7eb" }}>
+                  {b.runs}
+                  <span style={{ color: "#6b7280", fontSize: "11px" }}> ({b.balls})</span>
+                  {b.fours > 0 && <span style={{ color: "#60a5fa", fontSize: "10px", marginLeft: "4px" }}>4×{b.fours}</span>}
+                  {b.sixes > 0 && <span style={{ color: "#4ade80", fontSize: "10px", marginLeft: "4px" }}>6×{b.sixes}</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Current bowler ── */}
+        {currentBowler && (
+          <div style={{ borderTop: "1px solid #1f2937", paddingTop: "8px", marginBottom: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "11px", color: "#6b7280" }}>
+                🎳 {currentBowler.playerName}
+              </span>
+              <span style={{ fontSize: "11px", color: "#9ca3af" }}>
+                {currentBowler.wickets}/{currentBowler.runsGiven}
+                <span style={{ color: "#6b7280", marginLeft: "3px" }}>
+                  ({Math.floor((currentBowler.ballsBowled || 0) / 6)}.{(currentBowler.ballsBowled || 0) % 6})
+                </span>
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ── This over ── */}
+        {currentOver.length > 0 && (
+          <div style={{ borderTop: "1px solid #1f2937", paddingTop: "8px", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "10px", color: "#6b7280" }}>This over:</span>
+            <div style={{ display: "flex", gap: "4px" }}>
+              {currentOver.map((ball, i) => (
+                <div key={i} style={{ width: "22px", height: "22px", borderRadius: "50%", background: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700" }}>
+                  {ballSymbol(ball)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Target ── */}
+        {m.target && innings === 2 && (
+          <div style={{ marginTop: "6px", fontSize: "11px", color: "#f59e0b", textAlign: "right" }}>
+            Target: {m.target} · Need {Math.max(0, m.target - score)} from{" "}
+            {parseInt(m.totalOvers || 20) * 6 - (overs * 6 + balls)} balls
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Fallback: use fixture fields ──────────────────────────────────────────────
   const battingFirst = f.battingFirst;
 
   if (!battingFirst) {
