@@ -68,23 +68,22 @@ function LoginPage() {
     }
   };
 
-  // ── Verify OTP ───────────────────────────────────────────────────────────
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setError(""); setInfo("");
-    if (!otp.trim()) { setError("Enter the OTP."); return; }
-    setLoading(true);
-    try {
-      const data = await verifyOtp(otp.trim());
-      login(data);
-      navigate("/home");
-    } catch (err) {
-      setError(err.response?.data?.error || err.message || "Invalid OTP.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Change handleVerifyOtp:
+const handleVerifyOtp = async (e) => {
+  e.preventDefault();
+  setError(""); setInfo("");
+  if (!otp.trim()) { setError("Enter the OTP."); return; }
+  setLoading(true);
+  try {
+    const data = await verifyOtp(otp.trim(), phone.trim()); // ← pass phone
+    login(data);
+    navigate("/home");
+  } catch (err) {
+    setError(err.response?.data?.error || err.message || "Invalid OTP.");
+  } finally {
+    setLoading(false);
+  }
+};
   // ── Google login ─────────────────────────────────────────────────────────
   const handleGoogleLogin = async () => {
     setError(""); setInfo("");
@@ -106,8 +105,6 @@ function LoginPage() {
 
   return (
     <div className={styles.container}>
-      {/* Invisible reCAPTCHA anchor — required for phone auth */}
-      <div id="recaptcha-container" />
 
       <div className={styles.card}>
         <div className={styles.badge}>LOG IN</div>
@@ -151,52 +148,23 @@ function LoginPage() {
         )}
 
         {/* ── Phone/OTP form ── */}
-        {tab === "phone" && (
-          <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className={styles.form}>
-            <div style={{ position: "relative", width: "100%" }}>
-              <input
-                className={styles.input}
-                placeholder="Phone number (e.g. 9876543210)"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                disabled={otpSent}
-                required
-              />
-              {otpSent && (
-                <button
-                  type="button"
-                  onClick={() => { setOtpSent(false); setOtp(""); setError(""); setInfo(""); }}
-                  style={changeLinkStyle}
-                >
-                  Change
-                </button>
-              )}
-            </div>
-
-            {otpSent && (
-              <input
-                className={styles.input}
-                placeholder="Enter 6-digit OTP"
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                required
-              />
-            )}
-
-            {info  && <p style={infoStyle}>{info}</p>}
-            {error && <p style={errorStyle}>{error}</p>}
-
-            <button type="submit" className={styles.submitBtn} disabled={loading}>
-              {loading
-                ? otpSent ? "Verifying..." : "Sending OTP..."
-                : otpSent ? "Verify OTP" : "Send OTP"}
-            </button>
-          </form>
-        )}
+        {/* ── Phone/OTP form ── */}
+{tab === "phone" && (
+  <div style={{ 
+    textAlign: "center", 
+    padding: "20px 0", 
+    color: "#9ca3af",
+    fontSize: "0.9rem"
+  }}>
+    <div style={{ fontSize: "2rem", marginBottom: "8px" }}></div>
+    <p style={{ margin: "0 0 6px 0", color: "#e5e7eb", fontWeight: 500 }}>
+      Phone OTP — Coming Soon
+    </p>
+    <p style={{ margin: 0, fontSize: "0.8rem" }}>
+      Use Email or Google Sign-In for now.
+    </p>
+  </div>
+)}
 
         {/* ── OR divider ── */}
         <div style={orDividerStyle}>
