@@ -56,7 +56,7 @@ function HomePage() {
       </div>
 
 
-      <p className={styles.footerHint}>CricScorers · v1.0</p>
+      <p className={styles.footerHint}>CricScorers · v2.0</p>
     </div>
   );
 }
