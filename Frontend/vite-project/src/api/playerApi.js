@@ -93,3 +93,12 @@ export async function deletePlayer(id) {
   }
   return res.json(); // { success: true, deletedId, name }
 }
+
+// ─── Get a single player by jersey number ─────────────────────────────────────
+export async function getPlayerByJersey(jersey) {
+  const res = await fetch(`${API_BASE}/players/jersey/${jersey}`, {
+    headers: getHeaders(),
+  });
+  if (!res.ok) return null; // 404 = not found, not an error here
+  return res.json();
+}

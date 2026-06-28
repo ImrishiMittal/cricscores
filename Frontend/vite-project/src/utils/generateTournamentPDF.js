@@ -1,0 +1,792 @@
+// src/utils/generateTournamentPDF.js
+// Generates a multi-page tournament report PDF using jsPDF.
+// Usage:
+//   import { generateTournamentPDF } from "../utils/generateTournamentPDF";
+//   generateTournamentPDF({ tournament, fixtures, awardsData });
+//
+// Dependencies: jspdf (already used by generateScorecardPDF)
+
+import { jsPDF } from "jspdf";
+
+// ── Palette ───────────────────────────────────────────────────────────────────
+const C = {
+  bg:        [10,  10,  10],
+  surface:   [17,  24,  39],
+  border:    [31,  41,  55],
+  green:     [22, 163,  74],
+  greenLight:[74, 222, 128],
+  blue:      [96, 165, 250],
+  yellow:    [251,191,  36],
+  red:       [248,113,113],
+  muted:     [107,114,128],
+  dim:       [75,  85,  99],
+  white:     [249,250,251],
+  text:      [229,231,235],
+};
+
+// ── Layout constants ──────────────────────────────────────────────────────────
+const PAGE_W = 210;   // A4 mm
+const PAGE_H = 297;
+const MARGIN = 14;
+const CONTENT_W = PAGE_W - MARGIN * 2;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function rgb(doc, color) {
+  doc.setTextColor(...color);
+}
+function fill(doc, color) {
+  doc.setFillColor(...color);
+}
+function draw(doc, color) {
+  doc.setDrawColor(...color);
+}
+
+function hline(doc, y, color = C.border) {
+  draw(doc, color);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, y, PAGE_W - MARGIN, y);
+}
+
+// Wrap y to next page if needed; returns new y.
+function checkPage(doc, y, needed = 10) {
+  if (y + needed > PAGE_H - 14) {
+    doc.addPage();
+    pageBg(doc);
+    return 20;
+  }
+  return y;
+}
+
+function pageBg(doc) {
+  fill(doc, C.bg);
+  doc.rect(0, 0, PAGE_W, PAGE_H, "F");
+}
+
+function sectionHeader(doc, y, text) {
+  y = checkPage(doc, y, 12);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  rgb(doc, C.greenLight);
+  doc.text(text.toUpperCase(), MARGIN, y);
+  hline(doc, y + 2, C.green);
+  return y + 7;
+}
+
+function label(doc, x, y, text) {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  rgb(doc, C.muted);
+  doc.text(text, x, y);
+}
+
+function value(doc, x, y, text, color = C.text) {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  rgb(doc, color);
+  doc.text(String(text ?? "—"), x, y);
+}
+
+function badge(doc, x, y, text, bg, fg) {
+  const pad = 2.5;
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  const w = doc.getTextWidth(text) + pad * 2;
+  fill(doc, bg);
+  draw(doc, bg);
+  doc.roundedRect(x, y - 4, w, 5.5, 1, 1, "F");
+  rgb(doc, fg);
+  doc.text(text, x + pad, y);
+  return x + w + 2;
+}
+
+// Centered text
+function centerText(doc, y, text, size, color, style = "normal") {
+  doc.setFont("helvetica", style);
+  doc.setFontSize(size);
+  rgb(doc, color);
+  doc.text(text, PAGE_W / 2, y, { align: "center" });
+}
+
+// NRR color
+function nrrColor(nrr) {
+  if (nrr > 0) return C.greenLight;
+  if (nrr < 0) return C.red;
+  return C.muted;
+}
+
+// ── Cover Page ────────────────────────────────────────────────────────────────
+function drawCover(doc, tournament, fixtures) {
+  pageBg(doc);
+
+  // Green accent bar top
+  fill(doc, C.green);
+  doc.rect(0, 0, PAGE_W, 3, "F");
+
+  // CricScorers brand
+  centerText(doc, 22, "🏏  CRICSCORERS", 10, C.green, "bold");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  rgb(doc, C.muted);
+  doc.text("cricscorers.in", PAGE_W / 2, 28, { align: "center" });
+
+  // Tournament name
+  centerText(doc, 52, tournament.name, 22, C.white, "bold");
+
+  // Subtitle line
+  const fmt = tournament.format === "Test" ? "Test Match" : `${tournament.overs}-Over`;
+  centerText(doc, 60, `${fmt} Tournament`, 10, C.muted);
+
+  // Divider
+  hline(doc, 66, C.border);
+
+  // Stats row
+  const completed = fixtures.filter(f => f.status === "completed");
+  const stats = [
+    ["Teams",   tournament.teams?.length ?? 0],
+    ["Matches", fixtures.filter(f => f.stage === "league").length],
+    ["Played",  completed.length],
+    ["Status",  capitalize(tournament.status)],
+  ];
+  const colW = CONTENT_W / stats.length;
+  stats.forEach(([lbl, val], i) => {
+    const x = MARGIN + i * colW + colW / 2;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    rgb(doc, C.greenLight);
+    doc.text(String(val), x, 82, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    rgb(doc, C.muted);
+    doc.text(lbl, x, 88, { align: "center" });
+  });
+
+  // Champion box
+  if (tournament.status === "completed" && tournament.winner) {
+    fill(doc, [20, 83, 45]);
+    draw(doc, C.green);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(MARGIN, 100, CONTENT_W, 36, 3, 3, "FD");
+
+    centerText(doc, 110, "🏆  CHAMPION", 8, C.green, "bold");
+    centerText(doc, 124, tournament.winner, 18, C.greenLight, "bold");
+  }
+
+  // Footer
+  fill(doc, C.green);
+  doc.rect(0, PAGE_H - 3, PAGE_W, 3, "F");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  rgb(doc, C.dim);
+  doc.text(`Generated by CricScorers · ${new Date().toLocaleDateString()}`, PAGE_W / 2, PAGE_H - 6, { align: "center" });
+}
+
+// ── Overview Page ─────────────────────────────────────────────────────────────
+function drawOverview(doc, tournament, fixtures) {
+  doc.addPage();
+  pageBg(doc);
+
+  let y = 20;
+  y = sectionHeader(doc, y, "Tournament Overview");
+
+  const completed = fixtures.filter(f => f.status === "completed" && f.stage === "league");
+  const rows = [
+    ["Tournament",      tournament.name],
+    ["Format",          tournament.format === "Test" ? "Test Match" : `${tournament.overs} Overs`],
+    ["League Format",   tournament.leagueFormat === "groups" ? `Groups (${tournament.numGroups})` : "Round Robin"],
+    ["Robin Type",      tournament.roundRobinType === "double" ? "Double Round Robin" : "Single Round Robin"],
+    ["Knockout",        formatKnockout(tournament.knockoutFormat)],
+    ["Teams",           tournament.teams?.length ?? 0],
+    ["Total Fixtures",  fixtures.filter(f => f.stage === "league").length],
+    ["Played",          completed.length],
+    ["Status",          capitalize(tournament.status)],
+    ["Winner",          tournament.winner || "TBD"],
+  ];
+
+  rows.forEach(([lbl, val], i) => {
+    y = checkPage(doc, y, 9);
+    const rowBg = i % 2 === 0 ? [13, 17, 23] : C.surface;
+    fill(doc, rowBg);
+    doc.rect(MARGIN, y - 4, CONTENT_W, 8, "F");
+
+    label(doc, MARGIN + 3, y, lbl);
+    const valColor = lbl === "Winner" && val !== "TBD" ? C.greenLight : C.white;
+    value(doc, MARGIN + 60, y, val, valColor);
+    y += 9;
+  });
+}
+
+// ── Points Table ──────────────────────────────────────────────────────────────
+function drawPointsTable(doc, tournament) {
+  doc.addPage();
+  pageBg(doc);
+
+  let y = 20;
+
+  if (tournament.leagueFormat === "groups" && tournament.numGroups > 1) {
+    // Group-by-group tables
+    const grouped = {};
+    (tournament.standings || []).forEach(s => {
+      const g = s.group || "A";
+      if (!grouped[g]) grouped[g] = [];
+      grouped[g].push(s);
+    });
+
+    // If no group field on standings, split by team index
+    if (Object.keys(grouped).length === 1 && grouped["A"]?.length === tournament.standings.length) {
+      // fallback: split evenly
+      const perGroup = Math.ceil(tournament.standings.length / tournament.numGroups);
+      Object.keys(grouped).forEach(k => delete grouped[k]);
+      tournament.standings.forEach((s, i) => {
+        const g = String.fromCharCode(65 + Math.floor(i / perGroup));
+        if (!grouped[g]) grouped[g] = [];
+        grouped[g].push(s);
+      });
+    }
+
+    Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).forEach(([g, rows]) => {
+      y = checkPage(doc, y, 30);
+      y = sectionHeader(doc, y, `Group ${g}`);
+      y = drawStandingsTable(doc, y, sortStandings(rows));
+      y += 6;
+    });
+
+    y = checkPage(doc, y, 30);
+    y = sectionHeader(doc, y, "Overall Standings");
+    y = drawStandingsTable(doc, y, sortStandings(tournament.standings || []));
+  } else {
+    y = sectionHeader(doc, y, "Points Table");
+    y = drawStandingsTable(doc, y, sortStandings(tournament.standings || []));
+  }
+}
+
+function drawStandingsTable(doc, y, rows) {
+  const cols = [
+    { label: "Team",  w: 52, align: "left"  },
+    { label: "P",     w: 12, align: "center" },
+    { label: "W",     w: 12, align: "center" },
+    { label: "L",     w: 12, align: "center" },
+    { label: "T",     w: 10, align: "center" },
+    { label: "NR",    w: 10, align: "center" },
+    { label: "NRR",   w: 20, align: "center" },
+    { label: "Pts",   w: 14, align: "center" },
+  ];
+
+  // Header row
+  fill(doc, [15, 23, 42]);
+  doc.rect(MARGIN, y - 5, CONTENT_W, 7, "F");
+  let cx = MARGIN + 2;
+  cols.forEach(col => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    rgb(doc, col.label === "NRR" ? C.blue : col.label === "Pts" ? C.greenLight : C.muted);
+    doc.text(col.label, col.align === "center" ? cx + col.w / 2 : cx, y - 1, { align: col.align });
+    cx += col.w;
+  });
+  y += 3;
+
+  rows.forEach((s, i) => {
+    y = checkPage(doc, y, 8);
+    const rowBg = i % 2 === 0 ? [13, 17, 23] : C.surface;
+    fill(doc, rowBg);
+    doc.rect(MARGIN, y - 4, CONTENT_W, 7.5, "F");
+
+    cx = MARGIN + 2;
+    const cells = [
+      { v: (i === 0 ? "🥇 " : "") + s.teamName, color: C.white,    align: "left"   },
+      { v: s.played,   color: C.text,      align: "center" },
+      { v: s.wins,     color: C.greenLight,align: "center" },
+      { v: s.losses,   color: C.red,       align: "center" },
+      { v: s.ties,     color: C.text,      align: "center" },
+      { v: s.nr,       color: C.text,      align: "center" },
+      {
+        v: `${(s.nrr || 0) > 0 ? "+" : ""}${(s.nrr || 0).toFixed(3)}`,
+        color: nrrColor(s.nrr || 0),
+        align: "center",
+      },
+      { v: s.points,   color: C.greenLight,align: "center" },
+    ];
+
+    cells.forEach((cell, ci) => {
+      doc.setFont("helvetica", ci === 7 ? "bold" : ci === 0 ? "bold" : "normal");
+      doc.setFontSize(ci === 0 ? 8 : 8);
+      rgb(doc, cell.color);
+      const tx = cell.align === "center" ? cx + cols[ci].w / 2 : cx;
+      doc.text(String(cell.v ?? ""), tx, y, { align: cell.align });
+      cx += cols[ci].w;
+    });
+    y += 8;
+  });
+
+  return y;
+}
+
+// ── Fixtures & Results ────────────────────────────────────────────────────────
+function drawFixtures(doc, fixtures) {
+  doc.addPage();
+  pageBg(doc);
+
+  let y = 20;
+
+  const league  = fixtures.filter(f => f.stage === "league");
+  const knockout = fixtures.filter(f => f.stage !== "league");
+
+  if (league.length > 0) {
+    y = sectionHeader(doc, y, "League Fixtures & Results");
+    y = drawFixtureList(doc, y, league);
+  }
+
+  if (knockout.length > 0) {
+    y = checkPage(doc, y, 20);
+    y = sectionHeader(doc, y, "Knockout Results");
+    y = drawFixtureList(doc, y, knockout, true);
+  }
+}
+
+function drawFixtureList(doc, y, fixtures, isKnockout = false) {
+  fixtures.forEach((f, i) => {
+    y = checkPage(doc, y, 14);
+
+    const done = f.status === "completed";
+    const rowBg = i % 2 === 0 ? [13, 17, 23] : C.surface;
+    fill(doc, rowBg);
+    doc.rect(MARGIN, y - 5, CONTENT_W, 12, "F");
+
+    // Match number / slot
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    rgb(doc, C.muted);
+    const matchLabel = isKnockout
+      ? (f.knockoutSlot || f.stage)
+      : `Match ${i + 1}`;
+    doc.text(matchLabel, MARGIN + 2, y - 1);
+
+    // Group badge
+    if (f.group) {
+      badge(doc, MARGIN + 30, y - 1, f.group, C.border, C.muted);
+    }
+
+    // Teams
+    const teamAColor = done && f.winner === f.teamA ? C.greenLight : C.text;
+    const teamBColor = done && f.winner === f.teamB ? C.greenLight : C.text;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    rgb(doc, teamAColor);
+    doc.text(f.teamA || "TBD", MARGIN + 2, y + 5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    rgb(doc, C.dim);
+    doc.text("vs", PAGE_W / 2, y + 5, { align: "center" });
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    rgb(doc, teamBColor);
+    doc.text(f.teamB || "TBD", PAGE_W - MARGIN - 2, y + 5, { align: "right" });
+
+    // Score / result
+    if (done) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      rgb(doc, C.blue);
+      const result = f.resultText || (
+        f.winner === "Tie" ? "Match Tied" :
+        f.winner === "No Result" ? "No Result" :
+        `${f.winner} won`
+      );
+      doc.text(result, PAGE_W / 2, y + 10, { align: "center" });
+    } else {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      rgb(doc, C.dim);
+      doc.text("Scheduled", PAGE_W / 2, y + 10, { align: "center" });
+    }
+
+    y += 14;
+  });
+  return y;
+}
+
+// ── Awards Page ───────────────────────────────────────────────────────────────
+function drawAwards(doc, awardsData) {
+  if (!awardsData || awardsData.matchesScored === 0) return;
+
+  doc.addPage();
+  pageBg(doc);
+
+  let y = 20;
+  y = sectionHeader(doc, y, "Tournament Awards");
+
+  const { awards } = awardsData;
+
+  // POTT hero card
+  if (awards.playerOfTournament) {
+    y = checkPage(doc, y, 24);
+    fill(doc, [69, 26, 3]);
+    draw(doc, [217, 119, 6]);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(MARGIN, y - 2, CONTENT_W, 20, 2, 2, "FD");
+
+    centerText(doc, y + 4, "⭐  PLAYER OF THE TOURNAMENT", 7, [217, 119, 6], "bold");
+    centerText(doc, y + 12, awards.playerOfTournament.playerName, 14, C.white, "bold");
+
+    const pott = awards.playerOfTournament;
+    const parts = [];
+    if (pott.runs > 0) parts.push(`${pott.runs} Runs`);
+    if (pott.wickets > 0) parts.push(`${pott.wickets} Wkts`);
+    if (pott.catches > 0) parts.push(`${pott.catches} Catches`);
+    centerText(doc, y + 18, parts.join("  ·  "), 7, C.muted);
+    y += 26;
+  }
+
+  // Award grid: 2 columns
+  const awardList = [
+    ["🧡", "Orange Cap",        awards.orangeCap,            p => `${p.runs} Runs  ·  SR ${p.sr}`],
+    ["💜", "Purple Cap",        awards.purpleCap,            p => `${p.wickets} Wkts  ·  Econ ${p.economy}`],
+    ["💥", "Highest Score",     awards.highestScore,         p => `${p.highestScore} (${p.highestScoreBalls} balls)`],
+    ["🎯", "Best Figures",      awards.bestBowlingFigures,   p => p.bestFigures],
+    ["⚡", "Best Strike Rate",  awards.bestStrikeRate,       p => `SR ${p.sr}`],
+    ["💸", "Best Economy",      awards.bestEconomy,          p => `Econ ${p.economy}`],
+    ["📊", "Best Batting Avg",  awards.bestBattingAvg,       p => `Avg ${p.avg ?? "—"}`],
+    ["📈", "Best Bowling Avg",  awards.bestBowlingAvg,       p => `Avg ${p.avg ?? "—"}`],
+    ["6️⃣", "Most Sixes",        awards.mostSixes,            p => `${p.sixes} Sixes`],
+    ["4️⃣", "Most Fours",        awards.mostFours,            p => `${p.fours} Fours`],
+    ["🔴", "Most Dot Balls",    awards.mostDotBalls,         p => `${p.dotBalls} Dots`],
+    ["🎳", "Most Maidens",      awards.mostMaidens,          p => `${p.maidens} Maidens`],
+    ["🤲", "Most Catches",      awards.mostCatches,          p => `${p.catches} Catches`],
+    ["🏃", "Most Run Outs",     awards.mostRunOuts,          p => `${p.runOuts} Run Outs`],
+    ["🌟", "Best All-Rounder",  awards.bestAllRounder,       p => `${p.runs} Runs  ·  ${p.wickets} Wkts`],
+  ].filter(([,, winner]) => winner != null);
+
+  const colW = CONTENT_W / 2 - 2;
+  let col = 0;
+  let rowStartY = y;
+
+  awardList.forEach(([emoji, title, winner, statFn]) => {
+    if (!winner) return;
+    y = checkPage(doc, rowStartY, 20);
+    if (col === 0) rowStartY = y;
+
+    const x = MARGIN + col * (colW + 4);
+    fill(doc, C.surface);
+    draw(doc, C.border);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, rowStartY - 2, colW, 17, 1.5, 1.5, "FD");
+
+    // Emoji + title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    rgb(doc, C.muted);
+    doc.text(`${emoji}  ${title.toUpperCase()}`, x + 3, rowStartY + 3);
+
+    // Player name
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    rgb(doc, C.white);
+    const maxW = colW - 6;
+    const name = winner.playerName.length > 18 ? winner.playerName.slice(0, 17) + "…" : winner.playerName;
+    doc.text(name, x + 3, rowStartY + 9);
+
+    // Stat
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    rgb(doc, C.yellow);
+    doc.text(statFn(winner), x + 3, rowStartY + 14);
+
+    col++;
+    if (col === 2) {
+      col = 0;
+      rowStartY += 20;
+      y = rowStartY;
+    }
+  });
+}
+
+// ── Stats Summary ─────────────────────────────────────────────────────────────
+function drawStats(doc, tournament, fixtures, awardsData) {
+  doc.addPage();
+  pageBg(doc);
+
+  let y = 20;
+  y = sectionHeader(doc, y, "Tournament Statistics");
+
+  const completed = fixtures.filter(f => f.status === "completed");
+
+  // Basic tournament stats
+  const basicStats = [
+    ["Matches Played",      completed.length],
+    ["Matches Scored",      awardsData?.matchesScored ?? "—"],
+    ["Total Teams",         tournament.teams?.length ?? 0],
+  ];
+
+  if (awardsData && awardsData.batting?.length > 0) {
+    const topRuns = awardsData.batting[0];
+    basicStats.push(["Most Runs (Player)",  `${topRuns.playerName} — ${topRuns.runs}`]);
+  }
+  if (awardsData && awardsData.bowling?.length > 0) {
+    const topWkts = awardsData.bowling[0];
+    basicStats.push(["Most Wickets (Player)", `${topWkts.playerName} — ${topWkts.wickets}`]);
+  }
+  if (awardsData && awardsData.awards?.highestScore) {
+    const hs = awardsData.awards.highestScore;
+    basicStats.push(["Highest Individual Score", `${hs.playerName} — ${hs.highestScore} (${hs.highestScoreBalls})`]);
+  }
+  if (awardsData && awardsData.awards?.bestBowlingFigures) {
+    const bf = awardsData.awards.bestBowlingFigures;
+    basicStats.push(["Best Bowling Figures",  `${bf.playerName} — ${bf.bestFigures}`]);
+  }
+
+  basicStats.forEach(([lbl, val], i) => {
+    y = checkPage(doc, y, 9);
+    fill(doc, i % 2 === 0 ? [13,17,23] : C.surface);
+    doc.rect(MARGIN, y - 4, CONTENT_W, 8, "F");
+    label(doc, MARGIN + 3, y, lbl);
+    value(doc, MARGIN + 80, y, val, C.white);
+    y += 9;
+  });
+
+  // ── Team stats ──────────────────────────────────────────────────────────────
+  y += 4;
+  y = checkPage(doc, y, 20);
+  y = sectionHeader(doc, y, "Team Records");
+
+  const sorted = sortStandings(tournament.standings || []);
+  sorted.forEach((s, i) => {
+    y = checkPage(doc, y, 22);
+    fill(doc, i % 2 === 0 ? [13,17,23] : C.surface);
+    doc.rect(MARGIN, y - 4, CONTENT_W, 18, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    rgb(doc, i === 0 && tournament.status === "completed" ? C.greenLight : C.white);
+    doc.text(`${i === 0 && tournament.status === "completed" ? "🏆 " : ""}${s.teamName}`, MARGIN + 3, y + 1);
+
+    // mini stats row
+    const miniStats = [
+      ["Played", s.played],
+      ["Won",    s.wins],
+      ["Lost",   s.losses],
+      ["Pts",    s.points],
+      ["NRR",    `${(s.nrr || 0) > 0 ? "+" : ""}${(s.nrr || 0).toFixed(3)}`],
+    ];
+    const mw = CONTENT_W / miniStats.length;
+    miniStats.forEach(([lbl, val], mi) => {
+      const mx = MARGIN + mi * mw + 3;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6);
+      rgb(doc, C.muted);
+      doc.text(lbl, mx, y + 7);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      const vc = lbl === "Won" ? C.greenLight : lbl === "Lost" ? C.red : lbl === "NRR" ? nrrColor(s.nrr || 0) : C.text;
+      rgb(doc, vc);
+      doc.text(String(val), mx, y + 13);
+    });
+
+    y += 22;
+  });
+}
+
+// ── Batting Leaderboard ───────────────────────────────────────────────────────
+function drawBattingLeaderboard(doc, batting) {
+  if (!batting || batting.length === 0) return;
+
+  doc.addPage();
+  pageBg(doc);
+
+  let y = 20;
+  y = sectionHeader(doc, y, "Batting Leaderboard");
+
+  const cols = [
+    { label: "#",    w: 8,  align: "center" },
+    { label: "Player",w:52, align: "left"   },
+    { label: "Runs", w: 20, align: "center" },
+    { label: "Inn",  w: 14, align: "center" },
+    { label: "HS",   w: 18, align: "center" },
+    { label: "Avg",  w: 18, align: "center" },
+    { label: "SR",   w: 18, align: "center" },
+    { label: "6s",   w: 10, align: "center" },
+    { label: "4s",   w: 10, align: "center" },
+  ];
+
+  y = drawLeaderTable(doc, y, cols, batting.slice(0, 25), (row, i) => [
+    { v: i + 1,       color: i < 3 ? C.yellow  : C.muted   },
+    { v: row.playerName, color: C.white                     },
+    { v: row.runs,    color: C.greenLight                   },
+    { v: row.innings, color: C.text                         },
+    { v: row.highestScore, color: C.text                    },
+    { v: row.avg ?? "—",   color: C.text                   },
+    { v: row.sr,      color: C.text                         },
+    { v: row.sixes,   color: C.text                         },
+    { v: row.fours,   color: C.text                         },
+  ]);
+}
+
+// ── Bowling Leaderboard ───────────────────────────────────────────────────────
+function drawBowlingLeaderboard(doc, bowling) {
+  if (!bowling || bowling.length === 0) return;
+
+  doc.addPage();
+  pageBg(doc);
+
+  let y = 20;
+  y = sectionHeader(doc, y, "Bowling Leaderboard");
+
+  const cols = [
+    { label: "#",     w: 8,  align: "center" },
+    { label: "Player",w: 50, align: "left"   },
+    { label: "Wkts",  w: 16, align: "center" },
+    { label: "Overs", w: 16, align: "center" },
+    { label: "Runs",  w: 16, align: "center" },
+    { label: "Econ",  w: 18, align: "center" },
+    { label: "Avg",   w: 18, align: "center" },
+    { label: "Best",  w: 18, align: "center" },
+    { label: "Mdn",   w: 12, align: "center" },
+  ];
+
+  y = drawLeaderTable(doc, y, cols, bowling.slice(0, 25), (row, i) => [
+    { v: i + 1,        color: i < 3 ? C.yellow : C.muted },
+    { v: row.playerName, color: C.white                  },
+    { v: row.wickets,  color: C.greenLight               },
+    { v: row.overs,    color: C.text                     },
+    { v: row.runsGiven,color: C.text                     },
+    { v: row.economy,  color: C.text                     },
+    { v: row.avg ?? "—", color: C.text                   },
+    { v: row.bestFigures, color: C.text                  },
+    { v: row.maidens,  color: C.text                     },
+  ]);
+}
+
+function drawLeaderTable(doc, y, cols, rows, cellsFn) {
+  // Header
+  fill(doc, [15, 23, 42]);
+  doc.rect(MARGIN, y - 5, CONTENT_W, 7, "F");
+  let cx = MARGIN + 1;
+  cols.forEach(col => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    rgb(doc, C.muted);
+    const tx = col.align === "center" ? cx + col.w / 2 : cx;
+    doc.text(col.label, tx, y - 1, { align: col.align });
+    cx += col.w;
+  });
+  y += 3;
+
+  rows.forEach((row, i) => {
+    y = checkPage(doc, y, 8);
+    fill(doc, i % 2 === 0 ? [13, 17, 23] : C.surface);
+    doc.rect(MARGIN, y - 4, CONTENT_W, 7.5, "F");
+
+    const cells = cellsFn(row, i);
+    cx = MARGIN + 1;
+    cells.forEach((cell, ci) => {
+      const col = cols[ci];
+      const isBold = ci === 0 || ci === 1 || ci === 2;
+      doc.setFont("helvetica", isBold ? "bold" : "normal");
+      doc.setFontSize(ci === 1 ? 7.5 : 8);
+      rgb(doc, cell.color);
+      const tx = col.align === "center" ? cx + col.w / 2 : cx;
+      const text = String(cell.v ?? "—");
+      // Truncate player name if too long
+      const displayText = ci === 1 && text.length > 14 ? text.slice(0, 13) + "…" : text;
+      doc.text(displayText, tx, y, { align: col.align });
+      cx += col.w;
+    });
+    y += 8;
+  });
+
+  return y;
+}
+
+// ── Closing Page ──────────────────────────────────────────────────────────────
+function drawClosingPage(doc, tournament) {
+  doc.addPage();
+  pageBg(doc);
+
+  fill(doc, C.green);
+  doc.rect(0, 0, PAGE_W, 3, "F");
+  fill(doc, C.green);
+  doc.rect(0, PAGE_H - 3, PAGE_W, 3, "F");
+
+  centerText(doc, PAGE_H / 2 - 20, "🏏", 28, C.green);
+  centerText(doc, PAGE_H / 2 - 4,  "CricScorers", 18, C.white, "bold");
+  centerText(doc, PAGE_H / 2 + 6,  "cricscorers.in", 9, C.green);
+  centerText(doc, PAGE_H / 2 + 16, `Report for "${tournament.name}"`, 8, C.muted);
+  centerText(doc, PAGE_H / 2 + 24, `Generated on ${new Date().toLocaleString()}`, 7, C.dim);
+}
+
+// ── Page numbers ──────────────────────────────────────────────────────────────
+function addPageNumbers(doc) {
+  const total = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    rgb(doc, C.dim);
+    doc.text(`${i} / ${total}`, PAGE_W - MARGIN, PAGE_H - 6, { align: "right" });
+  }
+}
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+function sortStandings(standings) {
+  return [...standings].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    if (b.nrr    !== a.nrr)   return b.nrr    - a.nrr;
+    return a.teamName.localeCompare(b.teamName);
+  });
+}
+
+function capitalize(str) {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function formatKnockout(fmt) {
+  const map = { top2: "Top 2 Final", top4: "Top 4 (Semi-Finals)", top8: "Top 8 (Quarters)", ipl: "IPL Playoffs", none: "None" };
+  return map[fmt] ?? fmt ?? "None";
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
+/**
+ * @param {object} options
+ * @param {object} options.tournament   - Tournament document
+ * @param {Array}  options.fixtures     - All fixtures (league + knockout)
+ * @param {object} [options.awardsData] - From getTournamentAwards(); pass null to skip
+ */
+export function generateTournamentPDF({ tournament, fixtures = [], awardsData = null }) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  // Page 1: Cover
+  drawCover(doc, tournament, fixtures);
+
+  // Page 2: Overview
+  drawOverview(doc, tournament, fixtures);
+
+  // Page 3: Points Table
+  drawPointsTable(doc, tournament);
+
+  // Page 4: Fixtures & Results
+  drawFixtures(doc, fixtures);
+
+  // Page 5+: Awards (if scored matches exist)
+  if (awardsData && awardsData.matchesScored > 0) {
+    drawAwards(doc, awardsData);
+    drawStats(doc, tournament, fixtures, awardsData);
+    drawBattingLeaderboard(doc, awardsData.batting);
+    drawBowlingLeaderboard(doc, awardsData.bowling);
+  } else {
+    // Still draw team stats without player awards
+    drawStats(doc, tournament, fixtures, awardsData);
+  }
+
+  // Closing page
+  drawClosingPage(doc, tournament);
+
+  // Page numbers on every page
+  addPageNumbers(doc);
+
+  // Save
+  const filename = `${tournament.name.replace(/[^a-z0-9]/gi, "_")}_Report.pdf`;
+  doc.save(filename);
+}

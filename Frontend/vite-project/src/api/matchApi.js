@@ -34,7 +34,8 @@ export async function getMatches() {
 
 // ─── Fetch single match ───────────────────────────────────────────────────────
 export async function getMatch(matchId) {
-  const res = await fetch(`${API_BASE}/matches/${matchId}`, {
+  // Use matchId query param to bypass ObjectId casting issue
+  const res = await fetch(`${API_BASE}/matches?matchId=${encodeURIComponent(matchId)}`, {
     headers: getHeaders(),
   });
 
@@ -43,7 +44,14 @@ export async function getMatch(matchId) {
     throw new Error(data.error || "Failed to fetch match");
   }
 
-  return res.json();
+  const matches = await res.json();
+  // getMatches returns an array — find the one with matching matchId
+  const match = Array.isArray(matches)
+    ? matches.find(m => m.matchId === matchId)
+    : matches;
+
+  if (!match) throw new Error("Match not found");
+  return match;
 }
 
 // ─── Save a completed match ───────────────────────────────────────────────────

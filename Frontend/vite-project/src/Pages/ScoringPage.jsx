@@ -27,6 +27,7 @@ import usePlayerDatabase from "../hooks/usePlayerDatabase";
 import * as matchApi from "../api/matchApi";
 import { calculateManOfTheMatch } from "../utils/momCalculator";
 import { useNavigate, useLocation, useBlocker } from "react-router-dom";
+import * as tournamentApi from "../api/tournamentApi";
 
 function ScoringPage() {
   const location = useLocation();
@@ -110,8 +111,21 @@ function ScoringPage() {
     if (!existingMatchId) {
       const matchId = `match_${Date.now()}`;
       playerDBHook.setCurrentMatchId(matchId);
-      captainStatsSavedRef.current = false; // ← ERROR: ref never declared
+      captainStatsSavedRef.current = false;
       console.log("🆔 Match ID set:", matchId);
+      if (
+        resolvedMatchData.fromTournament &&
+        resolvedMatchData.tournamentId &&
+        resolvedMatchData.fixtureId
+      ) {
+        import("../api/tournamentApi").then(({ updateFixtureResult }) => {
+          updateFixtureResult(
+            resolvedMatchData.tournamentId,
+            resolvedMatchData.fixtureId,
+            { matchId, battingFirst: resolvedMatchData.battingFirst, status: "scheduled" }
+          ).catch((e) => console.warn("⚠️ Could not write live matchId:", e));
+        });
+      }
     }
   }, []);
 
@@ -155,7 +169,7 @@ function ScoringPage() {
     engine.innings1HistoryRef,
     engine.innings2History,
     engine.innings3History,
-    partnershipsHook.partnershipHistory,
+    partnershipsHook.partnershipHistory
   );
 
   const historySnapshotHook = useHistorySnapshot(
@@ -422,8 +436,8 @@ function ScoringPage() {
 
       const innings1 = inningsDataHook.innings1DataRef.current;
       const innings2 =
-  inningsDataHook.innings2DataRef.current ||
-  (engine.innings === 2 ? captureCurrentData() : null);
+        inningsDataHook.innings2DataRef.current ||
+        (engine.innings === 2 ? captureCurrentData() : null);
       console.log(
         "🧪 innings1 batters:",
         innings1?.battingStats?.map((b) => b.playerName + ":" + b.runs)
@@ -634,12 +648,93 @@ function ScoringPage() {
         historySnapshotHook.clearSavedMatch();
         localStorage.removeItem("activeMatchData");
         setMatchSaved(true);
+        // ── Auto-update tournament fixture if this was a tournament match ──
+        if (
+          matchData.fromTournament &&
+          matchData.tournamentId &&
+          matchData.fixtureId
+        ) {
+          try {
+            const { updateFixtureResult } = await import(
+              "../api/tournamentApi"
+            );
+
+            // Map ScoringPage winner strings to what the backend expects
+            let fixtureWinner = engine.winner || "No Result";
+            if (fixtureWinner === "NO RESULT") fixtureWinner = "No Result";
+            if (fixtureWinner === "TIE") fixtureWinner = "Tie";
+            if (fixtureWinner === "DRAW") fixtureWinner = "No Result"; // Test draws don't apply in limited-overs tournaments
+
+            const inn1Balls =
+              (engine.innings1Score?.overs ?? 0) * 6 +
+              (engine.innings1Score?.balls ?? 0);
+            const inn2Balls = engine.overs * 6 + engine.balls;
+
+            // The fixture's teamA/teamB slots are fixed by team NAME at
+            // fixture-creation time and are independent of which team won
+            // the toss. innings1/innings2 here reflect BATTING ORDER, not
+            // the fixture's team slots — so we map by name (matchData.teamA
+            // is always the fixture's actual teamA name, set/locked by
+            // MatchSetupPage) rather than assuming innings1 == fixture teamA.
+            // This avoids silently swapping runs/balls between teams
+            // whenever the fixture's teamB happens to bat first.
+            const fixtureTeamAStruckFirst =
+              matchData.battingFirst === matchData.teamA;
+
+            const fixtureTeamARuns = fixtureTeamAStruckFirst
+              ? engine.innings1Score?.score ?? 0
+              : engine.score;
+            const fixtureTeamAWickets = fixtureTeamAStruckFirst
+              ? engine.innings1Score?.wickets ?? 0
+              : engine.wickets;
+            const fixtureTeamABalls = fixtureTeamAStruckFirst
+              ? inn1Balls
+              : inn2Balls;
+            const fixtureTeamBRuns = fixtureTeamAStruckFirst
+              ? engine.score
+              : engine.innings1Score?.score ?? 0;
+            const fixtureTeamBWickets = fixtureTeamAStruckFirst
+              ? engine.wickets
+              : engine.innings1Score?.wickets ?? 0;
+            const fixtureTeamBBalls = fixtureTeamAStruckFirst
+              ? inn2Balls
+              : inn1Balls;
+
+            await updateFixtureResult(
+              matchData.tournamentId,
+              matchData.fixtureId,
+              {
+                matchId: currentMatchId,  
+                winner: fixtureWinner,
+                resultText:
+                  engine.winner === "NO RESULT"
+                    ? "No Result"
+                    : engine.winner === "TIE"
+                    ? "Match Tied"
+                    : engine.winner === "DRAW"
+                    ? "Match Drawn"
+                    : `${engine.winner} won`,
+                teamARuns: fixtureTeamARuns,
+                teamAWickets: fixtureTeamAWickets,
+                teamABalls: fixtureTeamABalls,
+                teamBRuns: fixtureTeamBRuns,
+                teamBWickets: fixtureTeamBWickets,
+                teamBBalls: fixtureTeamBBalls,
+                status: "completed",
+              }
+            );
+            console.log("✅ Tournament fixture updated");
+          } catch (tErr) {
+            // Non-fatal — match is already saved, don't block navigation
+            console.error("⚠️ Tournament fixture update failed:", tErr);
+          }
+        }
+
         setTimeout(() => {
           playerDBHook.setCurrentMatchId(null);
         }, 500);
       } catch (err) {
         console.error("❌ saveMatch failed:", err);
-        // matchSaved stays false — button stays disabled so user cannot navigate away
       }
       matchSaveInProgressRef.current = false;
     })();
@@ -660,6 +755,39 @@ function ScoringPage() {
     );
     setShowFollowOnModal(true);
   }, [engine.followOnPending]);
+  // Add near other useEffects in ScoringPage
+useEffect(() => {
+  if (!matchData.fromTournament || !matchData.tournamentId || !matchData.fixtureId) return;
+  if (engine.matchOver) return;
+
+  const syncLiveScore = async () => {
+    try {
+      const { updateFixtureResult } = await import("../api/tournamentApi");
+      await updateFixtureResult(
+        matchData.tournamentId,
+        matchData.fixtureId,
+        {
+          matchId: playerDBHook.getCurrentMatchId(),
+          battingFirst: matchData.battingFirst,
+          // Write current batting team's score into the right slot
+          ...(matchData.battingFirst === matchData.teamA
+            ? engine.innings === 1
+              ? { teamARuns: engine.score, teamAWickets: engine.wickets, teamABalls: engine.overs * 6 + engine.balls }
+              : { teamBRuns: engine.score, teamBWickets: engine.wickets, teamBBalls: engine.overs * 6 + engine.balls }
+            : engine.innings === 1
+              ? { teamBRuns: engine.score, teamBWickets: engine.wickets, teamBBalls: engine.overs * 6 + engine.balls }
+              : { teamARuns: engine.score, teamAWickets: engine.wickets, teamABalls: engine.overs * 6 + engine.balls }
+          ),
+          status: "scheduled", // keep as scheduled, not completed
+        }
+      );
+    } catch (e) {
+      // non-fatal
+    }
+  };
+
+  syncLiveScore();
+}, [engine.score, engine.wickets, engine.overs, engine.balls, engine.innings]); 
 
   const firstBattingTeam = matchData.battingFirst;
   const secondBattingTeam =
@@ -693,6 +821,14 @@ function ScoringPage() {
     : engine.innings === 3
     ? firstBattingTeam
     : secondBattingTeam; // innings 4
+    const battingSquadPlayers =
+    currentBattingTeam === matchData.teamA
+      ? matchData.teamASquadPlayers
+      : matchData.teamBSquadPlayers;
+  const bowlingSquadPlayers =
+    currentBattingTeam === matchData.teamA
+      ? matchData.teamBSquadPlayers
+      : matchData.teamASquadPlayers;
 
   const addBatterJersey = (jersey) => {
     if (!jersey) return;
@@ -723,7 +859,8 @@ function ScoringPage() {
       engine.balls,
       engine.extras
     );
-    if (data) data.partnershipHistory = [...partnershipsHook.partnershipHistory];
+    if (data)
+      data.partnershipHistory = [...partnershipsHook.partnershipHistory];
     return data;
   };
 
@@ -1040,7 +1177,7 @@ function ScoringPage() {
       playersHook.players[0]?.displayName,
       playersHook.players[1]?.displayName,
       engine.overs,
-      engine.balls   
+      engine.balls
     );
     partnershipsHook.resetPartnership();
 
@@ -1207,8 +1344,8 @@ function ScoringPage() {
       nextWickets,
       undefined,
       undefined,
-      engine.overs,  
-      engine.balls   
+      engine.overs,
+      engine.balls
     );
     partnershipsHook.resetPartnership();
     engine.handleWicket(
@@ -1294,18 +1431,22 @@ function ScoringPage() {
     })();
     if (completedOvers >= totalAllowedOvers) {
       console.log(`⏰ Day limit reached — drawing match`);
-  
+
       engine.setOverCompleteEvent(null);
       playersHook.setIsNewBowlerPending(false);
       engine.handleDraw();
-  
+
       setTimeout(() => {
         const currentData = captureCurrentData();
-  
-        if (!inningsDataHook.innings1DataRef.current && inningsDataHook.innings1Data) {
-          inningsDataHook.innings1DataRef.current = inningsDataHook.innings1Data;
+
+        if (
+          !inningsDataHook.innings1DataRef.current &&
+          inningsDataHook.innings1Data
+        ) {
+          inningsDataHook.innings1DataRef.current =
+            inningsDataHook.innings1Data;
         }
-  
+
         if (engine.innings === 2) {
           inningsDataHook.setInnings2Data(currentData);
           inningsDataHook.innings2DataRef.current = currentData;
@@ -1318,7 +1459,7 @@ function ScoringPage() {
             inningsDataHook.innings4DataRef.current = currentData;
           }
         }
-  
+
         inningsDataHook.setMatchCompleted(true);
         modalStates.setShowSummary(true);
       }, 150);
@@ -1707,6 +1848,25 @@ function ScoringPage() {
           >
             {matchSaved ? "🏠 Go to Home" : "⏳ Saving..."}
           </button>
+          {matchData.fromTournament && matchData.tournamentId && (
+            <button
+              onClick={() => navigate(`/tournaments/${matchData.tournamentId}`)}
+              disabled={!matchSaved}
+              style={{
+                background: matchSaved ? "#14532d" : "#64748b",
+                color: matchSaved ? "#4ade80" : "#9ca3af",
+                padding: "12px 20px",
+                borderRadius: "10px",
+                border: matchSaved ? "1px solid #16a34a" : "none",
+                cursor: matchSaved ? "pointer" : "not-allowed",
+                fontWeight: "600",
+                fontSize: "15px",
+                opacity: matchSaved ? 1 : 0.7,
+              }}
+            >
+              🏆 Back to Tournament
+            </button>
+          )}
           <button
             onClick={() => {
               // Compute MoM fresh at click time using the same algorithm as MatchSummary
@@ -2015,6 +2175,8 @@ function ScoringPage() {
           playersHook.bowlers[playersHook.currentBowlerIndex]?.playerId
         }
         onCommitRunoutRun={commitRunoutRun}
+        battingSquadPlayers={battingSquadPlayers}
+        bowlingSquadPlayers={bowlingSquadPlayers}
       />
       <ScoringModals
         hatTrickHook={hatTrickHook}

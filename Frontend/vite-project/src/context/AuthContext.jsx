@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
+import { auth } from "../firebase";
+import { signOut } from "firebase/auth";
 
 const AuthContext = createContext(null);
 
@@ -18,6 +20,23 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  // Intercept 401s and auto-logout
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          logout();
+          window.location.href = "/login";
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, []);
+
+  // Called after any successful auth (email, phone, or Google)
+  // data = { token, username, userId } from your backend
   const login = (data) => {
     localStorage.setItem("cricket_token", data.token);
     localStorage.setItem("cricket_username", data.username);
@@ -25,26 +44,16 @@ export function AuthProvider({ children }) {
     setUser(data);
   };
 
-  const logout = () => {
+  const logout = async () => {
     localStorage.removeItem("cricket_token");
     localStorage.removeItem("cricket_username");
     localStorage.removeItem("cricket_userId");
     setUser(null);
+    // Also sign out from Firebase (safe to call even if not Firebase session)
+    try {
+      await signOut(auth);
+    } catch (_) {}
   };
-  // Add this useEffect inside AuthProvider, after the existing one:
-useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          logout();          // clear token
-          window.location.href = "/login";   // hard redirect to login
-        }
-        return Promise.reject(error);
-      }
-    );
-    return () => axios.interceptors.response.eject(interceptor);
-  }, []);
 
   return (
     <AuthContext.Provider value={{ user, login, logout, loading }}>

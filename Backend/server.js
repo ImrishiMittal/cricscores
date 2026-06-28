@@ -1,13 +1,15 @@
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
+require("dotenv").config(); 
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors");
-require("dotenv").config();
-
+const cors = require("cors");  
 const authRoutes   = require("./routes/auth");
 const playerRoutes = require("./routes/players");
 const matchRoutes  = require("./routes/matches");
-const teamRoutes   = require("./routes/teams");   // ← ADD
-
+const teamRoutes   = require("./routes/teams"); 
+const squadsRouter = require("./routes/squads");
+const tournamentRoutes = require("./routes/tournaments");
 const app = express();
 
 app.use(cors({
@@ -20,12 +22,18 @@ app.use(cors({
   ],
   credentials: true
 }));
+
+app.options(/.*/, cors());
+
 app.use(express.json());
 
 app.use("/api/auth",    authRoutes);
 app.use("/api/players", playerRoutes);
 app.use("/api/matches", matchRoutes);
-app.use("/api/teams",   teamRoutes);              // ← ADD
+app.use("/api/teams",   teamRoutes);
+app.use("/api/tournaments", tournamentRoutes);
+app.use("/api/squads", squadsRouter);
+app.use("/api/head-to-head", require("./routes/headToHead"));
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {

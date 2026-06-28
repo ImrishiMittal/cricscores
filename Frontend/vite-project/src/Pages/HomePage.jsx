@@ -27,7 +27,7 @@ function HomePage() {
           onClick={() => navigate("/setup")}
           className={styles.btnPrimary}
         >
-          <span className={styles.btnEmoji}>🏏</span>
+          <span className={styles.btnEmoji}></span>
           START MATCH
         </button>
 
@@ -35,7 +35,7 @@ function HomePage() {
           onClick={() => navigate("/stats")}
           className={styles.btnSecondary}
         >
-          <span className={styles.btnEmoji}>📊</span>
+          <span className={styles.btnEmoji}></span>
           VIEW RECORDS
         </button>
 
@@ -43,18 +43,20 @@ function HomePage() {
           onClick={() => navigate("/history")}
           className={styles.btnSecondary}
         >
-          <span className={styles.btnEmoji}>📋</span>
+          <span className={styles.btnEmoji}></span>
           MATCH HISTORY
+        </button>
+      <button
+          onClick={() => navigate("/tournaments")}
+          className={styles.btnTournament}
+        >
+          <span className={styles.btnEmoji}></span>
+          TOURNAMENT MODE
         </button>
       </div>
 
-      <button className={styles.btnTournament} disabled>
-        <span className={styles.btnEmoji}>🏆</span>
-        TOURNAMENT MODE
-        <span className={styles.comingSoonBadge}>COMING SOON</span>
-      </button>
 
-      <p className={styles.footerHint}>CricScorers · v1.0</p>
+      <p className={styles.footerHint}>CricScorers · v2.0</p>
     </div>
   );
 }

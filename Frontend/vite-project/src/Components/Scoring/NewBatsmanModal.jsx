@@ -1,5 +1,6 @@
 import { useState } from "react";
 import styles from "./NewBatsmanModal.module.css";
+import { checkLoyalty } from "../../api/squadApi";
 
 function NewBatsmanModal({
   onConfirm,
@@ -10,7 +11,9 @@ function NewBatsmanModal({
   activePlayers = [],
   bowlerJerseys = new Set(),
   dismissedPlayers = new Set(),
-  currentBowlerJersey = null,   // ← ADD THIS
+  currentBowlerJersey = null,  
+  tournamentId,
+  currentBattingTeam,
 }) {
   const [name, setName] = useState("");
   const [jersey, setJersey] = useState("");
@@ -19,6 +22,7 @@ function NewBatsmanModal({
   const [teamLockError, setTeamLockError] = useState("");
   const [nameSuggestions, setNameSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loyaltyChecking, setLoyaltyChecking] = useState(false); 
 
   // ✅ Check if jersey belongs to a bowler this innings
   const getBowlerLockError = (jerseyVal) => {
@@ -98,35 +102,54 @@ function NewBatsmanModal({
     jersey.trim() &&
     dismissedPlayers.has(String(jersey.trim()));
 
-  const handleConfirm = () => {
-    if (!name.trim()) {
-      setError("⚠️ Please enter player name");
-      return;
-    }
-    if (!jersey.trim()) {
-      setError("⚠️ Please enter jersey number");
-      return;
-    }
-    if (isDuplicateJersey) {
-      setError("⚠️ This jersey number is already on field");
-      return;
-    }
-    if (teamLockError) {
-      return;
-    }
-    if (isDismissed) {
-      setError("⚠️ This player is already out — cannot bat again");
-      return;
-    }
-
-    onConfirm({ name: name.trim(), jersey: jersey.trim(), existingPlayer });
-    setName("");
-    setJersey("");
-    setExistingPlayer(null);
-    setTeamLockError("");
-    setNameSuggestions([]);
-    setShowSuggestions(false);
-  };
+    const handleConfirm = async () => {   // ← make async
+      if (!name.trim()) {
+        setError("⚠️ Please enter player name");
+        return;
+      }
+      if (!jersey.trim()) {
+        setError("⚠️ Please enter jersey number");
+        return;
+      }
+      if (isDuplicateJersey) {
+        setError("⚠️ This jersey number is already on field");
+        return;
+      }
+      if (teamLockError) {
+        return;
+      }
+      if (isDismissed) {
+        setError("⚠️ This player is already out — cannot bat again");
+        return;
+      }
+  
+      // ── Tournament loyalty check ─────────────────────────────────────────────
+      if (tournamentId && currentBattingTeam) {
+        setLoyaltyChecking(true);
+        try {
+          const result = await checkLoyalty(
+            tournamentId,
+            [jersey.trim()],
+            currentBattingTeam
+          );
+          if (result?.clashes?.length > 0) {
+            const c = result.clashes[0];
+            setError(`🚫 Jersey #${c.jersey} is registered to ${c.claimedBy} in this tournament`);
+            return;
+          }
+        } finally {
+          setLoyaltyChecking(false);
+        }
+      }
+  
+      onConfirm({ name: name.trim(), jersey: jersey.trim(), existingPlayer });
+      setName("");
+      setJersey("");
+      setExistingPlayer(null);
+      setTeamLockError("");
+      setNameSuggestions([]);
+      setShowSuggestions(false);
+    };
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") handleConfirm();
@@ -289,6 +312,7 @@ function NewBatsmanModal({
             className={styles.confirmBtn}
             onClick={handleConfirm}
             disabled={
+              loyaltyChecking ||
               !name.trim() ||
               !jersey.trim() ||
               !!isDuplicateJersey ||
@@ -296,7 +320,7 @@ function NewBatsmanModal({
               !!isDismissed
             }
           >
-            {existingPlayer ? "Use Existing Player" : "Add New Player"}
+            {loyaltyChecking ? "Checking..." : existingPlayer ? "Use Existing Player" : "Add New Player"}
           </button>
         </div>
         {onCancel && (

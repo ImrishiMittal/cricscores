@@ -13,7 +13,7 @@ function WicketModals({
   onFielderConfirm,
   onFielderCancel,
   onConfirmNewBatsman,
-  onCancelNewBatsman,      // ← ADD THIS
+  onCancelNewBatsman, 
   onReturnRetiredConfirm,
   playerDB,
   activePlayers,
@@ -21,6 +21,8 @@ function WicketModals({
   bowlerJerseys,
   batterJerseys,
   currentBowlerJersey,
+  tournamentId,
+  currentBattingTeam,
 }) {
   return (
     <>
@@ -47,7 +49,7 @@ function WicketModals({
         !wicketFlow.waitingForRunoutRun && (
           <NewBatsmanModal
             onConfirm={onConfirmNewBatsman}
-            onCancel={onCancelNewBatsman}     // ← NOW WIRED UP
+            onCancel={onCancelNewBatsman}     
             retiredPlayers={retiredPlayers || []}
             onReturnRetired={onReturnRetiredConfirm}
             playerDB={playerDB}
@@ -55,6 +57,8 @@ function WicketModals({
             bowlerJerseys={bowlerJerseys}
             dismissedPlayers={dismissedPlayers}
             currentBowlerJersey={currentBowlerJersey}
+            tournamentId={tournamentId}    
+            currentBattingTeam={currentBattingTeam}
           />
         )}
 

@@ -1,12 +1,33 @@
-// routes/matches.js — complete clean version
 const express = require("express");
 const router  = express.Router();
 const Match   = require("../models/Match");
 const authMiddleware = require("../middleware/auth");
 
+// ─── PUBLIC (no auth) ─────────────────────────────────────────────────────────
+
+router.get("/:matchId/public", async (req, res) => {
+  try {
+    const id = req.params.matchId;
+
+    let match = await Match.findOne({ matchId: id }).lean();
+
+    if (!match && id.match(/^[a-f\d]{24}$/i)) {
+      match = await Match.findById(id).lean();
+    }
+
+    if (!match) return res.status(404).json({ error: "Match not found" });
+    res.json(match);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── AUTH WALL ────────────────────────────────────────────────────────────────
+
 router.use(authMiddleware);
 
 // ─── GET all matches ──────────────────────────────────────────────────────────
+
 router.get("/", async (req, res) => {
   try {
     const matches = await Match.find({ userId: req.userId }).sort({ createdAt: -1 });
@@ -17,9 +38,15 @@ router.get("/", async (req, res) => {
 });
 
 // ─── GET single match ─────────────────────────────────────────────────────────
+
 router.get("/:id", async (req, res) => {
   try {
-    const match = await Match.findOne({ _id: req.params.id, userId: req.userId });
+    let match = await Match.findOne({ matchId: req.params.id, userId: req.userId });
+
+    if (!match && req.params.id.match(/^[a-f\d]{24}$/i)) {
+      match = await Match.findOne({ _id: req.params.id, userId: req.userId });
+    }
+
     if (!match) return res.status(404).json({ error: "Match not found." });
     res.json(match);
   } catch (err) {
@@ -28,8 +55,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // ─── POST save match ──────────────────────────────────────────────────────────
-// Player stats are written by updateMatchMilestones() on the frontend.
-// This route only persists the match document itself.
+
 router.post("/", async (req, res) => {
   try {
     if (!req.body.matchId) {
@@ -64,6 +90,7 @@ router.post("/", async (req, res) => {
 });
 
 // ─── DELETE match ─────────────────────────────────────────────────────────────
+
 router.delete("/:id", async (req, res) => {
   try {
     const match = await Match.findOne({ _id: req.params.id, userId: req.userId });

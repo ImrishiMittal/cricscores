@@ -1,5 +1,6 @@
 import { useState } from "react";
 import styles from "./StartInningsModal.module.css";
+import { checkLoyalty } from "../../api/squadApi"; 
 
 function StartInningsModal({
   onStart,
@@ -9,6 +10,9 @@ function StartInningsModal({
   firstBattingTeam,
   secondBattingTeam,
   currentInnings,
+  battingSquadPlayers,
+  bowlingSquadPlayers,
+  tournamentId,  
 }) {
   const [striker, setStriker] = useState("");
   const [strikerJersey, setStrikerJersey] = useState("");
@@ -29,8 +33,15 @@ function StartInningsModal({
   const [showBowlerSuggestions, setShowBowlerSuggestions] = useState(false);
 
   const [error, setError] = useState("");
+  const [loyaltyChecking, setLoyaltyChecking] = useState(false);
 
   const bowlingTeam = currentInnings === 1 ? secondBattingTeam : firstBattingTeam;
+
+  // Squad dropdowns only ever show when a squad was actually passed in —
+  // i.e. only for tournament matches where a saved squad exists. Regular
+  // matches always get undefined/null here, so this is a no-op for them.
+  const hasBattingSquad = Array.isArray(battingSquadPlayers) && battingSquadPlayers.length > 0;
+  const hasBowlingSquad = Array.isArray(bowlingSquadPlayers) && bowlingSquadPlayers.length > 0;
 
   const getTeamLockError = (jersey, expectedTeam) => {
     if (!jersey?.trim() || !matchTeamLock) return null;
@@ -76,6 +87,23 @@ function StartInningsModal({
     setShowStrikerSuggestions(false);
   };
 
+  // From the saved squad dropdown — same effect as picking a suggestion,
+  // just sourced from squad.players instead of the live player DB.
+  const handleSquadPickStriker = (jersey) => {
+    if (!jersey) return;
+    const player = battingSquadPlayers.find((p) => String(p.jersey) === jersey);
+    if (!player) return;
+    setStrikerJersey(String(player.jersey));
+    setStriker(player.name);
+    setError("");
+    const lockErr = getTeamLockError(String(player.jersey), currentBattingTeam);
+    if (lockErr) { setError(lockErr); return; }
+    if (playerDB) {
+      const found = playerDB.getPlayer(String(player.jersey));
+      if (found) setStrikerExisting(found);
+    }
+  };
+
   /* ── NON-STRIKER ── */
   const handleNonStrikerJerseyChange = (val) => {
     setNonStrikerJersey(val);
@@ -109,6 +137,21 @@ function StartInningsModal({
     setNonStrikerJersey(player.jersey);
     setNonStrikerExisting(player);
     setShowNonStrikerSuggestions(false);
+  };
+
+  const handleSquadPickNonStriker = (jersey) => {
+    if (!jersey) return;
+    const player = battingSquadPlayers.find((p) => String(p.jersey) === jersey);
+    if (!player) return;
+    setNonStrikerJersey(String(player.jersey));
+    setNonStriker(player.name);
+    setError("");
+    const lockErr = getTeamLockError(String(player.jersey), currentBattingTeam);
+    if (lockErr) { setError(lockErr); return; }
+    if (playerDB) {
+      const found = playerDB.getPlayer(String(player.jersey));
+      if (found) setNonStrikerExisting(found);
+    }
   };
 
   /* ── BOWLER ── */
@@ -146,6 +189,21 @@ function StartInningsModal({
     setShowBowlerSuggestions(false);
   };
 
+  const handleSquadPickBowler = (jersey) => {
+    if (!jersey) return;
+    const player = bowlingSquadPlayers.find((p) => String(p.jersey) === jersey);
+    if (!player) return;
+    setBowlerJersey(String(player.jersey));
+    setBowler(player.name);
+    setError("");
+    const lockErr = getTeamLockError(String(player.jersey), bowlingTeam);
+    if (lockErr) { setError(lockErr); return; }
+    if (playerDB) {
+      const found = playerDB.getPlayer(String(player.jersey));
+      if (found) setBowlerExisting(found);
+    }
+  };
+
   /* ── SUBMIT ── */
   const hasLockError =
     !!getTeamLockError(strikerJersey, currentBattingTeam) ||
@@ -160,7 +218,8 @@ function StartInningsModal({
     (bowlerJersey.trim() === strikerJersey.trim() ||
       bowlerJersey.trim() === nonStrikerJersey.trim());
 
-  const handleStart = () => {
+  /* ── SUBMIT ── */
+  const handleStart = async () => {   // ← make async
     if (!striker.trim()) { setError("⚠️ Please enter striker name"); return; }
     if (!strikerJersey.trim()) { setError("⚠️ Please enter striker jersey number"); return; }
     if (!nonStriker.trim()) { setError("⚠️ Please enter non-striker name"); return; }
@@ -177,6 +236,40 @@ function StartInningsModal({
       else
         setError("⚠️ Non-Striker and Bowler cannot have the same jersey number");
       return;
+    }
+
+    // ── Tournament loyalty check ─────────────────────────────────────────────
+    if (tournamentId) {
+      setLoyaltyChecking(true);
+      try {
+        // Batting jerseys must belong to currentBattingTeam
+        const batResult = await checkLoyalty(
+          tournamentId,
+          [strikerJersey.trim(), nonStrikerJersey.trim()],
+          currentBattingTeam
+        );
+        if (batResult?.clashes?.length > 0) {
+          const c = batResult.clashes[0];
+          setError(`🚫 Jersey #${c.jersey} is registered to ${c.claimedBy} in this tournament`);
+          setLoyaltyChecking(false);
+          return;
+        }
+
+        // Bowler jersey must belong to the bowling team
+        const bowlResult = await checkLoyalty(
+          tournamentId,
+          [bowlerJersey.trim()],
+          bowlingTeam
+        );
+        if (bowlResult?.clashes?.length > 0) {
+          const c = bowlResult.clashes[0];
+          setError(`🚫 Jersey #${c.jersey} is registered to ${c.claimedBy} in this tournament`);
+          setLoyaltyChecking(false);
+          return;
+        }
+      } finally {
+        setLoyaltyChecking(false);
+      }
     }
 
     onStart(
@@ -218,15 +311,40 @@ function StartInningsModal({
       </div>
     );
 
+  // ── Squad dropdown (tournament matches only, rendered when a squad exists) ──
+  const renderSquadDropdown = (squadPlayers, onPick, excludeJerseys = []) => (
+    <select
+      className={styles.input}
+      defaultValue=""
+      onChange={(e) => { if (e.target.value) onPick(e.target.value); }}
+      style={{ marginBottom: "6px" }}
+    >
+      <option value="">— Pick from saved squad —</option>
+      {squadPlayers
+        .filter((p) => !excludeJerseys.includes(String(p.jersey)))
+        .map((p) => (
+          <option key={p.jersey} value={p.jersey}>
+            #{p.jersey} · {p.name}{p.role ? ` (${p.role})` : ""}
+          </option>
+        ))}
+    </select>
+  );
+
   return (
     <div className={styles.overlay} onClick={dismissAll}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>🏏 Start Innings</h2>
-        <p className={styles.subtitle}>Enter jersey number or start typing name</p>
+        <p className={styles.subtitle}>
+          {hasBattingSquad || hasBowlingSquad
+            ? "Pick from the saved squad, or enter jersey/name manually"
+            : "Enter jersey number or start typing name"}
+        </p>
 
         {/* ── STRIKER ── */}
         <div className={styles.playerSection}>
           <h3 className={styles.label}>Striker (On Strike)</h3>
+          {hasBattingSquad &&
+            renderSquadDropdown(battingSquadPlayers, handleSquadPickStriker)}
           <div className={styles.inputContainer}>
             <input
               className={styles.input}
@@ -258,6 +376,10 @@ function StartInningsModal({
         {/* ── NON-STRIKER ── */}
         <div className={styles.playerSection}>
           <h3 className={styles.label}>Non-Striker</h3>
+          {hasBattingSquad &&
+            renderSquadDropdown(battingSquadPlayers, handleSquadPickNonStriker, [
+              strikerJersey.trim(),
+            ])}
           <div className={styles.inputContainer}>
             <input
               className={styles.input}
@@ -291,6 +413,7 @@ function StartInningsModal({
         {/* ── BOWLER ── */}
         <div className={styles.playerSection}>
           <h3 className={styles.label}>Opening Bowler</h3>
+          {hasBowlingSquad && renderSquadDropdown(bowlingSquadPlayers, handleSquadPickBowler)}
           <div className={styles.inputContainer}>
             <input
               className={styles.input}
@@ -333,13 +456,14 @@ function StartInningsModal({
             className={styles.startBtn}
             onClick={handleStart}
             disabled={
+              loyaltyChecking ||
               !striker.trim() || !nonStriker.trim() || !bowler.trim() ||
               !strikerJersey.trim() || !nonStrikerJersey.trim() || !bowlerJersey.trim() ||
               hasLockError ||
               new Set([strikerJersey.trim(), nonStrikerJersey.trim(), bowlerJersey.trim()]).size !== 3
             }
           >
-            Start Innings
+            {loyaltyChecking ? "Checking..." : "Start Innings"}
           </button>
         </div>
 

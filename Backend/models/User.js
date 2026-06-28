@@ -9,14 +9,31 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: true,
+    required: false,   // Phone users have no email
     unique: true,
+    sparse: true,      // allows multiple null values in unique index
     lowercase: true,
     trim: true,
   },
   password: {
     type: String,
-    required: true,
+    required: false,   // Google/Phone users have no password
+    default: null,
+  },
+  firebaseUid: {
+    type: String,
+    unique: true,
+    sparse: true,      // allows multiple null values (email users have no firebaseUid)
+  },
+  phone: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  provider: {
+    type: String,
+    enum: ["email", "google", "phone"],
+    default: "email",
   },
 }, { timestamps: true });
 
