@@ -1,8 +1,9 @@
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
+require("dotenv").config(); 
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors");
-require("dotenv").config();
-
+const cors = require("cors");  
 const authRoutes   = require("./routes/auth");
 const playerRoutes = require("./routes/players");
 const matchRoutes  = require("./routes/matches");
